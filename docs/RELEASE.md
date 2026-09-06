@@ -1,13 +1,17 @@
-<!-- Public early-test release scope, distribution requirements and mod.io listing draft. -->
+<!-- Native alpha packaging scope and unmet subscription-only release acceptance criteria. -->
 # Early test release preparation
 
 Product: **Normal Wave Indicator**. Version: **0.6.0 alpha**.
 
 This build requires two original components: a native observation DLL loaded by the specifically supported UE4SSL runtime, and a cooked presentation Pak. **Subscribing to a Pak on mod.io alone cannot install the native component.** A mod.io-only installation route and its moderation acceptance have not been verified. Do not advertise one-click mod.io support or a Verified classification.
 
+**2026-09-07 decision: NO-GO for the requested subscription-only release.** See [the technical audit](MODIO-FEASIBILITY.md). This is a runtime compatibility blocker, not just an uncompleted upload checklist. Keep this version as a developer native alpha. Do not upload its ZIP as a working native-mod.io release.
+
+`Prepare-Release.ps1 -Target NativeAlpha` checks offline pass flags and recorded source/asset/cook/config hashes, then creates an explicitly non-release-ready native archive. `-Target Modio` stops before writing any output. It cannot be enabled by changing a manifest boolean: implement and test a genuine Pak-only event source and initialization path first.
+
 The release archive must contain only our native DLL, our Pak, an installation script, documentation, SHA-256 manifest and the MinHook license. Do not bundle the game executable, UE4SSL, Unreal Engine, Mod Hub, DRGlib, original mini-MULE assets, extracted assets, private logs or editor helpers.
 
-## Listing draft
+## Feature description for the native alpha (not an upload-ready listing)
 
 Normal Wave Indicator shows where a normal wave's enemies actually spawn. Pulsing spheres mark nearby spawn regions; warning text follows the world position each frame and shows straight-line distance in meters. Offscreen origins retain an edge direction indicator.
 

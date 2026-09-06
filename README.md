@@ -3,6 +3,8 @@
 
 Early **0.6.0 alpha** for Deep Rock Galactic, Windows / Steam. Host-local only.
 
+**Pre-release audit: blocked for mod.io subscription-only distribution.** The current Pak requires native capture and initialization. No equivalent pure-Blueprint source attribution has been established; this build is not a release candidate for that installation target. See the [feasibility audit](docs/MODIO-FEASIBILITY.md).
+
 Shows actual normal-wave enemy spawn regions with animated spheres, per-frame world labels, straight-line distance in meters, and offscreen edge indicators. Open **H → Mod Hub → Normal Wave Indicator** to change warning text, visibility duration, sphere size, RGB intensity and gentle text pulsing. Click **Apply and save**. Settings survive game restarts.
 
 The native component attributes successful enemy creation to an audited normal-wave queue path. It does not infer waves from nearby enemies or log timestamps, and never creates enemies. Points from the same wave within 8 m of a region's first actual point share a marker. Up to 8 regions can be displayed; three markers is a common grouping result, not a fixed count.
@@ -47,6 +49,8 @@ $nativeBuild = .\scripts\Build-NativeProbe.ps1
 The authoring module generates our Blueprints and material using stock engine nodes. Mod Hub's pinned interface devkit is fetched for editor references only. It is neither committed nor included in our Pak. The original mini-MULE pulse curves are loaded from the installed game at runtime; no game assets are distributed here. Generated build evidence goes to the Git-ignored `agent/codex` directory.
 
 Native tests cover actual MinHook trampolines and exactly-once original forwarding, mixed-source queue attribution, swap removal, failures, bounded storage, thread rejection and expiry. Editor tests execute serialized Blueprint graphs, including edge placement, pooling and configuration. They do not substitute for real H-menu interaction, GPU profiling or game compatibility tests.
+
+For developer alpha packaging, run `scripts/Prepare-Release.ps1 -BuildDirectory $nativeBuild -PresentationCook $cook -Target NativeAlpha`. It checks validation results and recorded input hashes and marks the archive as requiring manual native installation. `-Target Modio` deliberately fails before producing an archive while the subscription-only runtime is unimplemented. Packaging success is not gameplay or release approval.
 
 ## Alpha limitations
 
