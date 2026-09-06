@@ -1,0 +1,9 @@
+{
+    "FileVersion": 3,
+    "Version": 1,
+    "VersionName": "0.1.0",
+    "FriendlyName": "Normal Wave Asset Authoring",
+    "Description": "Editor-only generator; never included in the gameplay mod.",
+    "CanContainContent": false,
+    "Modules": [{ "Name": "NwiAuthoring", "Type": "Editor", "LoadingPhase": "PostEngineInit" }]
+}
