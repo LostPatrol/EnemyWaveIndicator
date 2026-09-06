@@ -61,6 +61,8 @@ For developer alpha packaging, run `scripts/Prepare-Release.ps1 -BuildDirectory 
 - Unknown queue changes that preserve the same count and indistinguishable keys cannot all be detected. Unsupported source paths fail attribution conservatively.
 - No mod.io approval or Verified status is claimed. See [release preparation](docs/RELEASE.md).
 
+The [Sandbox Utilities investigation](docs/SANDBOX-UTILITIES-RESEARCH.md) explains which content-only techniques can be reused, why its spawn callback does not capture the game's natural waves, and the proposed game-side event needed for an exact subscription-only version. That interface is not implemented in the current game.
+
 ## Credits and license
 
 Original project source: MIT, LostPatrol. MinHook: BSD-style license in `third_party/MinHook/LICENSE.txt`. Mod Hub interface references: [trumank/drg-mods](https://github.com/trumank/drg-mods). Deep Rock Galactic and its assets belong to Ghost Ship Games / their respective owners. This project is an unofficial mod.

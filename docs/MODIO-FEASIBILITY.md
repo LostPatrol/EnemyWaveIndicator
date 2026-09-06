@@ -5,6 +5,8 @@
 
 The required behavior remains: observe genuine normal-wave spawns, preserve their successful spawn positions and source identity, show smooth host-local markers, and require no player-installed DLL, UE4SSL, installer or PowerShell. Developer-side C++/PowerShell cooking is compatible with this goal; player-side native installation is not.
 
+Follow-up investigation: [Sandbox Utilities source analysis and solution paths](SANDBOX-UTILITIES-RESEARCH.md) verifies its reflected APIs, Custom Difficulty 2's separate bytecode splicing, and the current executable's empty pool-spawn callback. A concrete [game-owned event proposal](NORMAL-WAVE-EVENT-PROPOSAL.md) describes the missing source-preserving interface and the subsequent content-only conversion. Neither document represents an implemented subscription release.
+
 ## Runtime dependency audit
 
 | Layer | Current implementation | Subscription-only assessment |
