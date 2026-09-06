@@ -1,5 +1,6 @@
 // Headless integration tests follow UE's EngineAutomationTests transient UWorld lifecycle.
 #include "NwiValidation.h"
+#include "NwiFsdStubs.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "Engine/StaticMeshActor.h"
@@ -281,36 +282,18 @@ bool ValidatePlacement(UClass* WidgetClass)
     return true;
 }
 
-// Exercise the saved Blueprint caller after replacing ONLY its own zero-argument UFunction.
+// Exercise serialized Blueprint region updates without binding any native test function.
 namespace {
-int32 PollCalls = 0;
-void TestNativePoll(UObject* Context, FFrame& Stack, void*)
-{
-    P_FINISH;
-    ++PollCalls;
-    for (int32 I = 0; I < 8; ++I) {
-        const auto Name = FString::Printf(TEXT("NativeSerial%d"), I);
-        auto* Serial = FindFProperty<FIntProperty>(Context->GetClass(), *Name);
-        Serial->SetPropertyValue_InContainer(Context, PollCalls);
-    }
-}
-struct FRestoreNative {
-    UFunction* Function; FNativeFuncPtr Original; EFunctionFlags Flags;
-    explicit FRestoreNative(UFunction* F) : Function(F), Original(F->GetNativeFunc()), Flags(F->FunctionFlags) {}
-    ~FRestoreNative() { Function->SetNativeFunc(Original); Function->FunctionFlags = Flags; }
-};
 bool ValidateAutomatic(UClass* PulseClass, UClass* WidgetClass)
 {
     FTestWorld Test;
     auto* Class = LoadClass<AActor>(nullptr, TEXT("/Game/NormalWaveIndicator/BP_NwiAuto.BP_NwiAuto_C"));
     NWI_REQUIRE(Test.World && Class);
     auto* Controller = Test.World->SpawnActor<AActor>(Class);
-    auto* Poll = Class->FindFunctionByName(TEXT("NwiPoll"));
-    auto* Service = Class->FindFunctionByName(TEXT("ServiceNative"));
-    auto* Abi = FindFProperty<FIntProperty>(Class, TEXT("NativeAbi"));
+    NWI_REQUIRE(!Class->FindFunctionByName(TEXT("NwiPoll")));
+    auto* Service = Class->FindFunctionByName(TEXT("ServiceRegions"));
     auto* Attempted = FindFProperty<FBoolProperty>(Class, TEXT("PoolAttempted"));
-    NWI_REQUIRE(Controller && Poll && Service && Abi && Attempted && Poll->ParmsSize == 0);
-    NWI_REQUIRE(Abi->GetPropertyValue_InContainer(Controller) == 393216);
+    NWI_REQUIRE(Controller && Service && Attempted);
     NWI_REQUIRE(Controller->IsActorTickEnabled() && !Controller->GetIsReplicated());
     ++GFrameCounter; Test.World->Tick(LEVELTICK_All, 0.1f);
     NWI_REQUIRE(!Attempted->GetPropertyValue_InContainer(Controller));
@@ -323,9 +306,9 @@ bool ValidateAutomatic(UClass* PulseClass, UClass* WidgetClass)
     auto* Started = FindFProperty<FFloatProperty>(PulseClass, TEXT("StartedAt"));
     NWI_REQUIRE(Mid && Started);
     for (int32 I = 0; I < 8; ++I) {
-        auto* Point = FindFProperty<FStructProperty>(Class, *FString::Printf(TEXT("NativePoint%d"), I));
-        auto* Serial = FindFProperty<FIntProperty>(Class, *FString::Printf(TEXT("NativeSerial%d"), I));
-        auto* Visible = FindFProperty<FIntProperty>(Class, *FString::Printf(TEXT("NativeVisible%d"), I));
+        auto* Point = FindFProperty<FStructProperty>(Class, *FString::Printf(TEXT("RegionPoint%d"), I));
+        auto* Serial = FindFProperty<FIntProperty>(Class, *FString::Printf(TEXT("RegionSerial%d"), I));
+        auto* Visible = FindFProperty<FIntProperty>(Class, *FString::Printf(TEXT("RegionVisible%d"), I));
         auto* Pulse = FindFProperty<FObjectPropertyBase>(Class, *FString::Printf(TEXT("AutoPulse%d"), I));
         auto* Hud = FindFProperty<FObjectPropertyBase>(Class, *FString::Printf(TEXT("AutoHud%d"), I));
         NWI_REQUIRE(Point && Point->Struct == TBaseStructure<FVector>::Get() && Serial && Visible && Pulse && Hud);
@@ -338,30 +321,37 @@ bool ValidateAutomatic(UClass* PulseClass, UClass* WidgetClass)
         Pulse->SetObjectPropertyValue_InContainer(Controller, Pulses[I]); Hud->SetObjectPropertyValue_InContainer(Controller, Huds[I]);
         *Point->ContainerPtrToValuePtr<FVector>(Controller) = FVector(I * 1000, I * 100, 200);
         Visible->SetPropertyValue_InContainer(Controller, 1);
+        Serial->SetPropertyValue_InContainer(Controller, 1);
+        FindFProperty<FFloatProperty>(Class, *FString::Printf(TEXT("RegionExpires%d"), I))->SetPropertyValue_InContainer(Controller, Test.World->GetTimeSeconds()+8.f);
         Mids[I] = Mid->GetObjectPropertyValue_InContainer(Pulses[I]);
     }
-    FRestoreNative Restore(Poll);
-    PollCalls = 0; Poll->SetNativeFunc(&TestNativePoll); Poll->FunctionFlags |= FUNC_Native;
     Controller->ProcessEvent(Service, nullptr);
-    NWI_REQUIRE(PollCalls == 1);
     float StartTimes[8]{};
     for (int32 I = 0; I < 8; ++I) {
         NWI_REQUIRE(Pulses[I]->GetActorLocation().Equals(FVector(I * 1000, I * 100, 200)));
         NWI_REQUIRE(!Pulses[I]->IsHidden() && Pulses[I]->IsActorTickEnabled() && Huds[I]->GetVisibility() == ESlateVisibility::HitTestInvisible);
         StartTimes[I] = Started->GetPropertyValue_InContainer(Pulses[I]);
     }
-    for (int32 J = 0; J < 100; ++J) Controller->ProcessEvent(Service, nullptr);
-    NWI_REQUIRE(PollCalls == 101);
+    for (int32 J = 0; J < 100; ++J) {
+        for (int32 I = 0; I < 8; ++I) FindFProperty<FIntProperty>(Class, *FString::Printf(TEXT("RegionSerial%d"), I))->SetPropertyValue_InContainer(Controller, J+2);
+        Controller->ProcessEvent(Service, nullptr);
+    }
     for (int32 I = 0; I < 8; ++I) {
         NWI_REQUIRE(Mid->GetObjectPropertyValue_InContainer(Pulses[I]) == Mids[I]);
         NWI_REQUIRE(Started->GetPropertyValue_InContainer(Pulses[I]) == StartTimes[I]);
     }
-    // Independent timer expiry must hide the pool even if the native producer stops completely.
+    // Independent timer expiry must hide the pool even if no further spawn events arrive.
     for (int32 J = 0; J < 90; ++J) { ++GFrameCounter; Test.World->Tick(LEVELTICK_All, 0.1f); }
     for (int32 I = 0; I < 8; ++I) NWI_REQUIRE(Pulses[I]->IsHidden() && !Pulses[I]->IsActorTickEnabled() && Huds[I]->GetVisibility() == ESlateVisibility::Collapsed);
+    for (int32 I = 0; I < 8; ++I) {
+        FindFProperty<FIntProperty>(Class, *FString::Printf(TEXT("RegionSerial%d"), I))->SetPropertyValue_InContainer(Controller, 200);
+        FindFProperty<FIntProperty>(Class, *FString::Printf(TEXT("RegionVisible%d"), I))->SetPropertyValue_InContainer(Controller, 1);
+        FindFProperty<FFloatProperty>(Class, *FString::Printf(TEXT("RegionExpires%d"), I))->SetPropertyValue_InContainer(Controller, Test.World->GetTimeSeconds()+8.f);
+    }
     Controller->ProcessEvent(Service, nullptr);
     NWI_REQUIRE(!Pulses[0]->IsHidden());
-    for (int32 I = 0; I < 8; ++I) FindFProperty<FIntProperty>(Class, *FString::Printf(TEXT("NativeVisible%d"), I))->SetPropertyValue_InContainer(Controller, 0);
+    for (int32 I = 0; I < 8; ++I) FindFProperty<FIntProperty>(Class, *FString::Printf(TEXT("RegionVisible%d"), I))->SetPropertyValue_InContainer(Controller, 0);
+    for (int32 I = 0; I < 8; ++I) FindFProperty<FIntProperty>(Class, *FString::Printf(TEXT("RegionSerial%d"), I))->SetPropertyValue_InContainer(Controller, 201);
     Controller->ProcessEvent(Service, nullptr);
     for (int32 I = 0; I < 8; ++I) NWI_REQUIRE(Pulses[I]->IsHidden() && Huds[I]->GetVisibility() == ESlateVisibility::Collapsed);
     // Exercise the serialized page's actual button delegate, disk round trip and pool update.
@@ -395,7 +385,7 @@ bool ValidateAutomatic(UClass* PulseClass, UClass* WidgetClass)
     *FindFProperty<FStructProperty>(WidgetClass, TEXT("WorldLocation"))->ContainerPtrToValuePtr<FVector>(Huds[0]) = FVector(300, 400, 0);
     Huds[0]->ProcessEvent(WidgetClass->FindFunctionByName(TEXT("UpdateWarning")), nullptr);
     auto* MarkerText = Cast<UTextBlock>(Huds[0]->WidgetTree->FindWidget(TEXT("MarkerText")));
-    NWI_REQUIRE(MarkerText && MarkerText->GetText().ToString() == TEXT("WATCH OUT  |  5 m"));
+    NWI_REQUIRE(MarkerText && MarkerText->GetText().ToString() == TEXT("WATCH OUT | Unknown / possible natural wave  |  5 m"));
     NWI_REQUIRE(MarkerText->GetRenderOpacity() >= .55f && MarkerText->GetRenderOpacity() <= 1.f);
     FindFProperty<FBoolProperty>(WidgetClass, TEXT("BlinkEnabled"))->SetPropertyValue_InContainer(Huds[0], false);
     Huds[0]->ProcessEvent(WidgetClass->FindFunctionByName(TEXT("UpdateWarning")), nullptr);
@@ -414,10 +404,32 @@ bool ValidateAutomatic(UClass* PulseClass, UClass* WidgetClass)
     UE_LOG(LogTemp, Display, TEXT("NWI_TEST settings button/save/reload, pooled radius update, actual pawn 3-4-5 distance text and blink disable passed; Mod Hub H discovery still requires game testing"));
     NWI_REQUIRE(Controller->Destroy());
     for (auto* Pulse : Pulses) NWI_REQUIRE(Pulse->IsActorBeingDestroyed());
-    UE_LOG(LogTemp, Display, TEXT("NWI_TEST automatic pool: own native UFunction dispatch, 8 placements, 100 reuses without MID allocation/phase reset, timer expiry, native hide and EndPlay cleanup; 91 World ticks"));
+    UE_LOG(LogTemp, Display, TEXT("NWI_TEST automatic pool: Blueprint region events, 8 placements, 100 reuses without MID allocation/phase reset, timer expiry, explicit hide and EndPlay cleanup; 91 World ticks"));
     return true;
 }
 }
+
+#include "NwiCaptureValidation.inl"
+
+// Substitute only transient test CDO paths; the next cook process still reads the saved game paths.
+struct FTestAutomaticCurves
+{
+    UObject* Defaults;
+    FString Scale, Alpha;
+    explicit FTestAutomaticCurves(UClass* Class) : Defaults(Class->GetDefaultObject())
+    {
+        auto* S = FindFProperty<FStrProperty>(Class, TEXT("ScalePath"));
+        auto* A = FindFProperty<FStrProperty>(Class, TEXT("AlphaPath"));
+        Scale = S->GetPropertyValue_InContainer(Defaults); Alpha = A->GetPropertyValue_InContainer(Defaults);
+        S->SetPropertyValue_InContainer(Defaults, TEXT("/Game/NwiValidation/CF_TestScale.CF_TestScale"));
+        A->SetPropertyValue_InContainer(Defaults, TEXT("/Game/NwiValidation/CF_TestAlpha.CF_TestAlpha"));
+    }
+    ~FTestAutomaticCurves()
+    {
+        FindFProperty<FStrProperty>(Defaults->GetClass(), TEXT("ScalePath"))->SetPropertyValue_InContainer(Defaults, Scale);
+        FindFProperty<FStrProperty>(Defaults->GetClass(), TEXT("AlphaPath"))->SetPropertyValue_InContainer(Defaults, Alpha);
+    }
+};
 
 bool ValidateNwiPresentation()
 {
@@ -426,10 +438,14 @@ bool ValidateNwiPresentation()
     auto* ResourceClass = LoadClass<AActor>(nullptr, TEXT("/Game/NormalWaveIndicator/BP_NwiResources.BP_NwiResources_C"));
     auto* VisualClass = LoadClass<AActor>(nullptr, TEXT("/Game/NormalWaveIndicator/BP_NwiVisualTest.BP_NwiVisualTest_C"));
     NWI_REQUIRE(PulseClass && WidgetClass && ResourceClass && VisualClass);
+    auto* AutomaticClass = LoadClass<AActor>(nullptr, TEXT("/Game/NormalWaveIndicator/BP_NwiAuto.BP_NwiAuto_C"));
+    NWI_REQUIRE(AutomaticClass);
+    FTestAutomaticCurves TestCurves(AutomaticClass);
     NWI_REQUIRE(ValidatePlacement(WidgetClass));
     UE_LOG(LogTemp, Display, TEXT("NWI_TEST saved Blueprint classes loaded"));
     const int32 Before = GEngine->GetWorldContexts().Num();
     NWI_REQUIRE(ValidateAutomatic(PulseClass, WidgetClass));
+    NWI_REQUIRE(ValidateCapture());
     NWI_REQUIRE(GEngine->GetWorldContexts().Num() == Before);
     {
         // No local controller: finite initialization retries and F5 must allocate no visual pair.
@@ -465,6 +481,6 @@ bool ValidateNwiPresentation()
     NWI_REQUIRE(GEngine->GetWorldContexts().Num() == Before);
     NWI_REQUIRE(ValidateInWorld(PulseClass));
     NWI_REQUIRE(GEngine->GetWorldContexts().Num() == Before);
-    UE_LOG(LogTemp, Display, TEXT("NWI_TEST five isolated worlds cleaned up; runtime graph checks passed"));
+    UE_LOG(LogTemp, Display, TEXT("NWI_TEST six isolated worlds cleaned up; runtime graph checks passed"));
     return true;
 }

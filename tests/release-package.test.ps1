@@ -6,6 +6,7 @@ foreach ($relative in @('scripts','docs','engine\FSD\Config','third_party\MinHoo
     New-Item -ItemType Directory -Force (Join-Path $testRoot $relative) | Out-Null
 }
 Copy-Item (Join-Path $root 'scripts\Prepare-Release.ps1') (Join-Path $testRoot 'scripts\Prepare-Release.ps1')
+Copy-Item (Join-Path $root 'scripts\Prepare-ModioRelease.ps1') (Join-Path $testRoot 'scripts\Prepare-ModioRelease.ps1')
 foreach ($relative in @('README.md','LICENSE','scripts\Install-Release.ps1','docs\RELEASE.md','docs\MODIO-FEASIBILITY.md','third_party\MinHook\LICENSE.txt')) {
     Copy-Item (Join-Path $root $relative) (Join-Path $testRoot $relative)
 }
@@ -47,7 +48,7 @@ function Assert-Rejected([string]$Pattern, [string]$Target = 'NativeAlpha') {
     if (@(Get-ChildItem $outputRoot -ErrorAction SilentlyContinue).Count -ne $before) { throw 'Rejected input produced release output.' }
 }
 # This must fail even before verification records exist, leaving no output tree.
-Assert-Rejected 'subscription-only release is blocked' 'Modio'
+Assert-Rejected 'Missing content-only cook verification' 'Modio'
 Save-Fixture
 $assets.Success = $false; Save-Fixture; Assert-Rejected 'Missing complete release validation'; $assets.Success = $true
 $assets.Validation.success = $false; Save-Fixture; Assert-Rejected 'Missing complete release validation'; $assets.Validation.success = $true

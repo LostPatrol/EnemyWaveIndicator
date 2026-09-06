@@ -1,6 +1,11 @@
-// Editor-only generator. Generated Blueprints depend solely on stock engine classes.
+// Editor-only generator. Cooked graphs use stock Engine and existing FSD reflection, never this module.
 #include "Modules/ModuleManager.h"
 #include "NwiValidation.h"
+#include "NwiFsdStubs.h"
+#include "K2Node_AddDelegate.h"
+#include "K2Node_RemoveDelegate.h"
+#include "K2Node_CreateDelegate.h"
+#include "Kismet/KismetArrayLibrary.h"
 #include "Misc/FileHelper.h"
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
@@ -13,6 +18,7 @@
 #include "K2Node_Event.h"
 #include "K2Node_CustomEvent.h"
 #include "K2Node_CallFunction.h"
+#include "K2Node_CallArrayFunction.h"
 #include "K2Node_CallParentFunction.h"
 #include "K2Node_VariableGet.h"
 #include "K2Node_VariableSet.h"
@@ -86,9 +92,11 @@ template<class T> T* Node(UEdGraph* Graph)
 }
 UK2Node_CallFunction* Call(UEdGraph* Graph, UClass* Owner, const TCHAR* Name)
 {
-    auto* Result = Node<UK2Node_CallFunction>(Graph);
     auto* Function = Owner->FindFunctionByName(FName(Name));
     checkf(Function, TEXT("Missing engine function %s"), Name);
+    // Array wildcard parameters need the same type propagation node used by the Blueprint editor.
+    UK2Node_CallFunction* Result = Function->HasMetaData(TEXT("ArrayParm"))
+        ? Node<UK2Node_CallArrayFunction>(Graph) : Node<UK2Node_CallFunction>(Graph);
     Result->SetFromFunction(Function);
     Result->AllocateDefaultPins();
     return Result;
@@ -548,10 +556,14 @@ void BuildVisualTest()
 }
 
 #include "NwiSettings.inl"
+#include "NwiCapture.inl"
 #include "NwiAutomatic.inl"
 
 void BuildValidationFixtures()
 {
+    auto* EventPackage = CreatePackage(TEXT("/Game/NwiValidation/EWC_EggHunt_Ambush"));
+    auto* EventBP = FKismetEditorUtilities::CreateBlueprint(UEnemyWaveController::StaticClass(), EventPackage, TEXT("EWC_EggHunt_Ambush"), BPTYPE_Normal, UBlueprint::StaticClass(), UBlueprintGeneratedClass::StaticClass());
+    Compile(EventBP); Save(EventBP);
     // Synthetic constants test the generated graph without loading or distributing game assets.
     for (const auto* Name : { TEXT("CF_TestScale"), TEXT("CF_TestAlpha") })
     {
@@ -614,6 +626,7 @@ public:
             Nwi::BuildVisualTest();
             Nwi::BuildSettings();
             Nwi::BuildAutomatic();
+            Nwi::BuildNativeInitializers();
             Nwi::BuildValidationFixtures();
             UE_LOG(LogTemp, Display, TEXT("NWI_AUTHORING_SUCCESS"));
         }
@@ -624,7 +637,7 @@ public:
             if (FParse::Value(FCommandLine::Get(), TEXT("NwiValidationResult="), ResultFile))
             {
                 FFileHelper::SaveStringToFile(Passed
-                    ? TEXT("{\"success\":true,\"worlds\":5,\"world_ticks\":813,\"automatic_pool_test\":true,\"settings_test\":true,\"async_resource_tests\":true,\"visual_no_controller_test\":true,\"edge_cases\":1452,\"red_material_test\":true,\"gpu_tested\":false,\"game_integration_tested\":false}")
+                    ? TEXT("{\"success\":true,\"capture_test\":true,\"content_only\":true,\"automatic_pool_test\":true,\"settings_test\":true,\"async_resource_tests\":true,\"visual_no_controller_test\":true,\"edge_cases\":1452,\"red_material_test\":true,\"gpu_tested\":false,\"game_integration_tested\":false}")
                     : TEXT("{\"success\":false}"), *ResultFile);
             }
             UE_LOG(LogTemp, Display, TEXT("NWI_VALIDATION_RESULT %s"), Passed ? TEXT("PASS") : TEXT("FAIL"));

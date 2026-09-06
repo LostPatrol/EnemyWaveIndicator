@@ -1,6 +1,8 @@
 <!-- Proposed game-owned event contract; this is not an existing FSD API or a loadable Mod implementation. -->
 # Proposed game API: successful natural normal-wave spawn
 
+Historical proposal for exact source attribution. The user explicitly accepts approximate all-spawn classification in 0.7.0, so the current content-only implementation does **not** depend on this API or game-developer cooperation. See [current release scope](RELEASE.md).
+
 Status: design proposal, 2026-09-07. **Not implemented in the current game or this Mod.** It requires a game update or an independently verified equivalent existing interface. No dummy declaration or packaged editor DLL can install it into the shipping game.
 
 ## Use case

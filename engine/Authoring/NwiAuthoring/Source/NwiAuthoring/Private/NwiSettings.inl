@@ -1,3 +1,5 @@
+// Shared formatting keeps custom prefix and per-region event context together.
+UK2Node_CallFunction* UpdateRegionLabel(UEdGraph* G, UClass* HudClass, int32 I);
 // Mod Hub interfaces and local SaveGame settings. No framework assets are packaged with this mod.
 UClass* HubInterface(const TCHAR* Name)
 {
@@ -28,7 +30,7 @@ UK2Node_VariableSet* WriteField(UEdGraph* G, UClass* Owner, const TCHAR* Name, U
 }
 
 const TCHAR* SettingNames[] = {TEXT("Label"), TEXT("Duration"), TEXT("Radius"), TEXT("Red"), TEXT("Green"), TEXT("Blue"), TEXT("Blink")};
-const TCHAR* SettingDefaults[] = {TEXT("[!] NORMAL WAVE"), TEXT("8"), TEXT("3.75"), TEXT("3"), TEXT("0.01"), TEXT("0.005"), TEXT("true")};
+const TCHAR* SettingDefaults[] = {TEXT("[!] SPAWN AREA"), TEXT("8"), TEXT("3.75"), TEXT("3"), TEXT("0.01"), TEXT("0.005"), TEXT("true")};
 void AddSettings(UBlueprint* BP)
 {
     for (int32 I = 0; I < 7; ++I) Variable(BP, SettingNames[I], Type(I == 0 ? UEdGraphSchema_K2::PC_String : I == 6 ? UEdGraphSchema_K2::PC_Boolean : UEdGraphSchema_K2::PC_Float), SettingDefaults[I]);
@@ -49,7 +51,7 @@ void BuildSettings()
         auto* T = BP->WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), Name); T->SetText(FText::FromString(Label));
         auto Font = T->Font; Font.Size = 16; T->SetFont(Font); Root->AddChildToVerticalBox(T); return T;
     };
-    AddText(TEXT("Title"), TEXT("Normal Wave Indicator  |  Host-local alpha 0.6.0"));
+    AddText(TEXT("Title"), TEXT("Normal Wave Indicator  |  All-spawn beta 0.7.0"));
     const TCHAR* Labels[] = {TEXT("Warning text (up to 64 characters)"), TEXT("Visibility after the last spawn (seconds, 1 - 30)"), TEXT("Sphere size (0.5 - 12; default 3.75)"), TEXT("Sphere red (linear intensity, 0 - 5)"), TEXT("Sphere green (0 - 5)"), TEXT("Sphere blue (0 - 5)"), TEXT("Gently pulse warning text (1.5 Hz)")};
     for (int32 I = 0; I < 7; ++I)
     {
@@ -115,7 +117,7 @@ void AddControllerSettings(UBlueprint* BP)
     check(FBlueprintEditorUtils::ImplementNewInterface(BP, HubInterface(TEXT("IHubMod"))->GetFName()));
     auto* Info = HubResult(BP, TEXT("GetModInfo"));
     const TCHAR* Names[] = {TEXT("ModName"), TEXT("ModAuthor"), TEXT("ModVersion")};
-    const TCHAR* Values[] = {TEXT("Normal Wave Indicator"), TEXT("LostPatrol"), TEXT("0.6.0 alpha")};
+    const TCHAR* Values[] = {TEXT("Normal Wave Indicator"), TEXT("LostPatrol"), TEXT("0.7.0 beta")};
     for (int32 I = 0; I < 3; ++I) GetDefault<UEdGraphSchema_K2>()->TrySetDefaultText(*Pin(Info, Names[I]), FText::FromString(Values[I]));
 }
 
@@ -127,7 +129,8 @@ void BuildControllerSettings(UBlueprint* BP, UEdGraph* G, UClass* PulseClass, UC
     // One tiny settings file read during world startup, never in spawn or frame callbacks.
     auto* Begin = Event(G, AActor::StaticClass(), TEXT("ReceiveBeginPlay"));
     auto* Parent = Node<UK2Node_CallParentFunction>(G); Parent->SetFromFunction(AActor::StaticClass()->FindFunctionByName(TEXT("ReceiveBeginPlay"))); Parent->AllocateDefaultPins(); Link(Begin, TEXT("then"), Parent, TEXT("execute"));
-    auto* Exists = Call(G, UGameplayStatics::StaticClass(), TEXT("DoesSaveGameExist")); Value(Exists, TEXT("SlotName"), TEXT("NormalWaveIndicator_v1")); Link(Parent, TEXT("then"), Exists, TEXT("execute"));
+    auto* Prepare = Call(G, BP->ParentClass, TEXT("PrepareResources")); Link(Parent, TEXT("then"), Prepare, TEXT("execute"));
+    auto* Exists = Call(G, UGameplayStatics::StaticClass(), TEXT("DoesSaveGameExist")); Value(Exists, TEXT("SlotName"), TEXT("NormalWaveIndicator_v1")); Link(Prepare, TEXT("then"), Exists, TEXT("execute"));
     auto* HasFile = Branch(G, Exists, TEXT("ReturnValue")); Link(Exists, TEXT("then"), HasFile, TEXT("execute"));
     auto* Load = Call(G, UGameplayStatics::StaticClass(), TEXT("LoadGameFromSlot")); Value(Load, TEXT("SlotName"), TEXT("NormalWaveIndicator_v1")); Link(HasFile, TEXT("then"), Load, TEXT("execute"));
     auto* LoadedCast = Node<UK2Node_DynamicCast>(G); LoadedCast->TargetType = SaveClass; LoadedCast->AllocateDefaultPins();
@@ -169,8 +172,7 @@ void BuildControllerSettings(UBlueprint* BP, UEdGraph* G, UClass* PulseClass, UC
     for (int32 I = 0; I < 8; ++I) {
         const FString H = FString::Printf(TEXT("AutoHud%d"), I), P = FString::Printf(TEXT("AutoPulse%d"), I);
         auto* Hud = Get(G, *H); auto* Pulse = Get(G, *P);
-        auto* Label = Field(G, SaveClass, TEXT("Label"), Config, TEXT("Settings")); auto* AsText = Call(G, UKismetTextLibrary::StaticClass(), TEXT("Conv_StringToText")); Link(Label, TEXT("Label"), AsText, TEXT("InString"));
-        auto* SetLabel = Call(G, HudClass, TEXT("SetMarkerLabel")); Link(Hud, *H, SetLabel, TEXT("self")); Link(AsText, TEXT("ReturnValue"), SetLabel, TEXT("Label")); Link(Exec, TEXT("then"), SetLabel, TEXT("execute"));
+        auto* SetLabel = UpdateRegionLabel(G, HudClass, I); Link(Exec, TEXT("then"), SetLabel, TEXT("execute"));
         auto* Blink = WriteField(G, HudClass, TEXT("BlinkEnabled"), Hud, *H); Link(Field(G, SaveClass, TEXT("Blink"), Config, TEXT("Settings")), TEXT("Blink"), Blink, TEXT("BlinkEnabled")); Link(SetLabel, TEXT("then"), Blink, TEXT("execute"));
         auto* Radius = WriteField(G, PulseClass, TEXT("RadiusScale"), Pulse, *P);
         auto* Limit = Call(G, UKismetMathLibrary::StaticClass(), TEXT("FClamp")); Link(Field(G, SaveClass, TEXT("Radius"), Config, TEXT("Settings")), TEXT("Radius"), Limit, TEXT("Value")); Value(Limit, TEXT("Min"), TEXT("0.5")); Value(Limit, TEXT("Max"), TEXT("12")); Link(Limit, TEXT("ReturnValue"), Radius, TEXT("RadiusScale")); Link(Blink, TEXT("then"), Radius, TEXT("execute"));

@@ -1,15 +1,16 @@
-# Assemble a verified native alpha; reject subscription-only packaging until its runtime exists.
+# Dispatch independently validated content-only beta or historical native-alpha packaging.
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory)][string]$BuildDirectory,
+    [string]$BuildDirectory,
     [Parameter(Mandatory)][string]$PresentationCook,
     [ValidateSet('NativeAlpha','Modio')][string]$Target = 'NativeAlpha'
 )
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
-# A cooked presentation Pak does not replace native provenance capture or bootstrap.
+# Dispatch the revised all-spawn content-only build separately from historical native alpha packaging.
 if ($Target -eq 'Modio') {
-    throw 'mod.io subscription-only release is blocked: native capture/UE4SSL and bootstrap are still required. See docs/MODIO-FEASIBILITY.md.'
+    & (Join-Path $PSScriptRoot 'Prepare-ModioRelease.ps1') -PresentationCook $PresentationCook
+    return
 }
 $native = Get-Content -LiteralPath (Join-Path $BuildDirectory 'verification.json') -Raw | ConvertFrom-Json
 $cook = Get-Content -LiteralPath (Join-Path $PresentationCook 'verification.json') -Raw | ConvertFrom-Json

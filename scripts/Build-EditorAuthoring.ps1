@@ -11,9 +11,11 @@ $buildRoot = Join-Path $projectRoot ('agent\codex\nwi-authoring-build-' + (Get-D
 $plugin = Join-Path $projectRoot 'engine\Authoring\NwiAuthoring\NwiAuthoring.uplugin'
 $uat = Join-Path $EngineRoot 'Engine\Build\BatchFiles\RunUAT.bat'
 $logPath = $buildRoot + '.log'
-& $uat BuildPlugin "-Plugin=$plugin" "-Package=$buildRoot" -TargetPlatforms=Win64 -VS2022 *> $logPath
+$sourceFiles = @(Get-ChildItem -LiteralPath (Split-Path $plugin) -Recurse -File | Get-FileHash)
+# FSD stubs must be runtime-visible to the cooker, but only editor binaries are needed on the developer PC.
+& $uat BuildPlugin "-Plugin=$plugin" "-Package=$buildRoot" -NoTargetPlatforms -VS2022 *> $logPath
 $buildExitCode = $LASTEXITCODE
-[pscustomobject]@{ ExitCode = $buildExitCode; Log = $logPath; Output = $buildRoot; DeployedToGame = $false } |
-    ConvertTo-Json | Set-Content -LiteralPath ($buildRoot + '.json') -Encoding utf8
+[pscustomobject]@{ ExitCode = $buildExitCode; Log = $logPath; Output = $buildRoot; SourceFiles = $sourceFiles; DeployedToGame = $false } |
+    ConvertTo-Json -Depth 5 | Set-Content -LiteralPath ($buildRoot + '.json') -Encoding utf8
 if ($buildExitCode -ne 0) { throw "Editor helper build failed with exit code $buildExitCode. See $logPath" }
 Write-Output $buildRoot

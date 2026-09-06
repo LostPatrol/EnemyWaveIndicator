@@ -5,5 +5,8 @@
     "FriendlyName": "Normal Wave Asset Authoring",
     "Description": "Editor-only generator; never included in the gameplay mod.",
     "CanContainContent": false,
-    "Modules": [{ "Name": "NwiAuthoring", "Type": "Editor", "LoadingPhase": "PostEngineInit" }]
+    "Modules": [
+        { "Name": "FSD", "Type": "Runtime", "LoadingPhase": "Default" },
+        { "Name": "NwiAuthoring", "Type": "Editor", "LoadingPhase": "PostEngineInit" }
+    ]
 }

@@ -1,6 +1,8 @@
 <!-- Evidence, scope and acceptance criteria for the subscription-only release decision. -->
 # mod.io subscription-only feasibility audit — 2026-09-07
 
+**Historical scope:** this audit concerns exact natural-wave attribution in 0.6.0. The user subsequently authorized approximate classification of all notified enemy spawns. The 0.7.0 implementation uses the existing spawn event and native Blueprint initialization; its content-only candidate no longer requires the proposed source-preserving API. See the current [README](../README.md) and [release procedure](RELEASE.md). Clean mod.io/game acceptance remains pending.
+
 **Decision: the current 0.6.0 architecture cannot satisfy subscription-only installation. No verified equivalent pure-Pak replacement has been found for its exact normal-wave attribution. Do not release it under that claim.** This is a conclusion about the current implementation and audited interfaces, not proof that every possible future technique is impossible.
 
 The required behavior remains: observe genuine normal-wave spawns, preserve their successful spawn positions and source identity, show smooth host-local markers, and require no player-installed DLL, UE4SSL, installer or PowerShell. Developer-side C++/PowerShell cooking is compatible with this goal; player-side native installation is not.
