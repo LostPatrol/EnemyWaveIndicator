@@ -1,10 +1,10 @@
-<!-- Native observation module overview; internal source directory retains its historical name. -->
-# Normal Wave Indicator — native component 0.6.0
+<!-- Native observation module; the directory keeps its historical name. -->
+# Native component — 0.8.0 test candidate
 
-This directory contains the native DLL source. It installs as `ue4ss/mods/NormalWaveIndicator/main.dll` and requires the matching presentation Pak. See the repository README for exact supported game/runtime hashes and source-build instructions.
+GameCapture.cpp observes four audited native sites and requires a six-return natural scheduler/source chain. Originals are forwarded once with unchanged arguments. SpawnAttribution.h stores source center and timestamps beside each queue entry; removal must match both index and key. Unknown sources never inherit active natural ownership.
 
-`GameCapture.cpp` observes four audited native sites, forwarding the original calls exactly once. `SpawnAttribution.h` tracks fixed-capacity queue provenance. `OriginRegions.h` groups successful origins within 8 m and applies configurable expiry. `AutomaticPresentation.cpp` writes only our own Blueprint properties on the verified game thread; pooled widgets and sphere components perform rendering.
+EnemyBuckets.h requires regular registration and excludes the small/critter buckets. AutomaticPresentation.cpp samples reflected bucket and descriptor fields on the verified game thread, accumulates successful base descriptor costs, and writes only the Mod's versioned Blueprint handoff. Its telemetry distinguishes filtered results, selected-center→spawn and queue→spawn timing from Blueprint handoff latency.
 
-`DispatchProbe.h` bootstraps and summarizes at low frequency. A callback on another thread performs no UObject work, retains the previous gameplay snapshot and can be followed by a later valid callback. Callback contexts and code remain alive for the process lifetime.
+Host Init actors own the replicated controller; native bootstrap only patches the Mod's NwiPoll function and no longer spawns a duplicate controller. Client local presentation needs the matching Pak. Real network, lifecycle and game integration remain unverified; all-source support and predictive markers are not implemented. See docs/TASK1-ACCEPTANCE.md.
 
-These APIs and layouts are version-specific. Do not weaken the compatibility checks or substitute estimated locations for successfully attributed events. Never reintroduce the retired JavaScript enemy-spawn hooks. Logs remain file-only and are not public release contents.
+The bridge is pinned to the game/runtime identities documented in docs/RELEASE.md. Never weaken those checks or restore the retired JavaScript spawning hooks. Low-frequency diagnostic snapshots have a 600-request limit; this limits telemetry, while per-frame Auto polling continues after binding. Recreated/garbage-collected Blueprint classes still require lifecycle acceptance.

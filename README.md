@@ -1,47 +1,47 @@
-<!-- Player-facing scope and developer build instructions for the filtered content-only spawn-area beta. -->
-# Normal Wave Indicator — 0.7.1 beta
+<!-- Current native test baseline; task1's all-source and prediction work is explicitly incomplete. -->
+# Normal Wave Indicator — 0.8.0 test candidate
 
-A Deep Rock Galactic **content-only** spawn-area indicator. Version 0.7.1 observes the game's enemy-spawn notifications, excluding its registered small-enemy and critter buckets. It does not modify enemy spawning or attempt exact natural-wave identification.
+DRG natural-wave center markers using **DLL + Pak**, installed through MintCat. This is an unpublished test candidate, not completion of every requirement in `task1-refine.md`.
 
-The intended player workflow is to subscribe and enable the Mod and its Mod Hub content dependency through the game's native mod.io support. **The candidate is not published, and clean mod.io subscription/gameplay acceptance is still pending.** No runtime DLL, UE4SSL, PowerShell or external installer is included in the new upload ZIP.
+## Implemented
 
-## Behavior
+- Natural provenance requires six exact native call-chain returns, including the natural scheduler. Ownership follows each accepted queue request through swap removal and successful actor creation; ambient/boss/event requests are not relabeled because a natural wave is active.
+- Only registered regular enemies qualify. The game's small-enemy and critter buckets override regular membership; unknown/unregistered actors are excluded. Hoarder/Huuli names are additionally excluded. Source attribution does not depend on the summoned enemy's descriptor, so changing a summon to a grunt does not make that summon natural.
+- The audited natural path supplies one actual game-selected center. Successful requests retain this center; unavailable centers fall back to the queued origin. Eight regions are supported. Distinct known centers and wave identities stay separate. Overflow is counted and dropped.
+- Sphere size uses the sum of successful enemies' **base descriptor `DifficultyRating`**, normalized to 200 and cube-root scaled (0.4–4 multiplier). It grows with count and cost. It does not claim to reproduce all runtime difficulty modifiers or precise combat threat.
+- Mod Hub: natural-wave enable/text, global size, duration, sphere RGB and opacity (default 0.4), text color A/B and frequency (default red/white, two complete cycles/second). Draft RGBA swatch and text previews update before Apply; Apply persists `NormalWaveIndicator_v2.sav`. Preview is a color swatch, not a 3D sphere/GPU preview. Old v1 preferences are left intact and not imported.
+- A host-created, always relevant Blueprint actor replicates region points, size, visibility and expiry. Clients with the matching Pak draw their own HUD/spheres and use synchronized server time. **Network transport and late-join behavior still need real two-peer testing.** Clients without the Pak cannot display these custom assets. The DLL is required on the host.
+- Diagnostic logs measure actual selected-center→spawn, queue→spawn and spawn→native handoff intervals. They do not represent a rendered GPU frame or a prediction.
 
-- Host-local red pulse spheres and screen/edge labels mark the enemy's location at its successful-spawn callback. The marker stays at that origin instead of following the enemy.
-- A single eligible notification can trigger a marker; there is no minimum wave size or Mission Control announcement requirement. Ambient spawns and some boss summons therefore qualify too.
-- Pawns in `EnemySpawnManager.ActiveSwarmerEnemies` or `ActiveCritters` are ignored before recording, merging or extending marker lifetimes. This follows the game's live counting buckets: swarmers, small naedocytes and hostile shredders are excluded when registered there. Large breeders remain eligible. Descriptor significance alone is not used, because it can differ from the Pawn's counting category. Unregistered or other-mod reclassified units remain a compatibility limitation.
-- Spawns within 8 metres of an active region's first point and with the same context label extend that region. At most eight regions are visible; a new distant region replaces the one with the earliest expiry when capacity is full.
-- When the wave manager exposes an active scripted controller, its readable class name is shown as `Event context: ...`. Multiple controllers are marked `Mixed events (first): ...`.
-- Otherwise the label says `Unknown / possible natural wave`. This is a guess, not proof of natural-wave provenance. Mission-specific events that are not in that active-controller list can receive this fallback too.
-- Mod Hub settings retain custom warning text, visibility duration (1–30 seconds), sphere size/colour, distance and optional text pulsing. Settings use `NormalWaveIndicator_v1.sav`.
+## Still required by task1
 
-This observes **the spawn manager's notifications**, not every possible actor creation in the game. Already-existing enemies, spawns before binding, and enemies created by paths or other mods that bypass that notification may not be marked. Spawn callback positions are not pre-spawn predictions or guaranteed terrain-surface projections. Context from overlapping events can be misleading; the UI labels it as context intentionally. Client synchronization is not implemented.
+Other wave sources (announced/scripted waves, individual events and direct boss summons), their independent custom labels/toggles, and all-source/multiple-center coverage are **not implemented**. No claim of universal source coverage or completed task1 is made. A future implementation must attach initiating source identity to each request; the retired active-controller guessing approach must not return.
+
+One-to-five-second exact position prediction is not established: the current game chooses a player, RNG and navigation location when triggering the wave. No early game function invocation, RNG consumption, enemy delay or spawning change is used. See [test instructions and acceptance gaps](docs/TASK1-ACCEPTANCE.md).
+
+## Player installation
+
+Close DRG, import the generated ZIP into MintCat using its local-file import, enable Mod Hub and apply/integrate. New players do not run PowerShell. Host and participating clients need matching content. This candidate is pinned to the audited game build and UE4SSL runtime; incompatible binaries do not install observation hooks.
+
+The old 0.6.0 manually installed DLL/Pak must be backed up and disabled before importing the new package. Updating through MintCat does not prove it removed a separately installed loose Pak. Detailed migration, testing and mod.io submission steps are in [RELEASE.md](docs/RELEASE.md).
 
 ## Developer build
 
-Required: Windows, Git, Visual Studio C++ x64 tools and Windows SDK, .NET Framework 4.8 SDK, Unreal Engine **4.27.2**, and Node.js for the cooked-import audit. The scripts use `node` on PATH or the Codex-bundled Node under `%LOCALAPPDATA%\hermes\node`.
+Windows PowerShell, Visual Studio C++ x64/Windows SDK/.NET Framework 4.8 SDK, UE **4.27.2**, and Node.js are required. Python used inside UE is its bundled project/editor interpreter; no global Python environment is needed.
 
 ```powershell
 .\scripts\Prepare-ModHubDevkit.ps1
-$build = .\scripts\Build-EditorAuthoring.ps1
-$check = .\scripts\Test-PresentationAssets.ps1 -AuthoringBuild $build
+$native = .\scripts\Build-NativeProbe.ps1
+$editor = .\scripts\Build-EditorAuthoring.ps1
+$check = .\scripts\Test-PresentationAssets.ps1 -AuthoringBuild $editor
 $cook = .\scripts\Cook-PresentationAssets.ps1 -VerificationDirectory $check
-.\scripts\Prepare-Release.ps1 -PresentationCook $cook -Target Modio
+.\scripts\Prepare-Release.ps1 -BuildDirectory $native -PresentationCook $cook
+.\scripts\Test-SpawnAttribution.ps1
 .\tests\modio-package.test.ps1
 ```
 
-The authoring plugin includes minimal `/Script/FSD` reflection stubs so the editor can compile calls to existing game APIs. They are development fixtures, not a new runtime bridge. The build creates editor binaries only; the packaged Mod contains **nine owned asset pairs / 18 entries** and never the stub DLL or any `NwiAuthoring` implementation. Mod Hub's pinned interface assets are development references and are excluded from the Pak. Original pulse curves are resolved from the installed game; game assets are not redistributed.
+The Pak contains nine owned asset pairs. There is no runtime FSD stub, authoring module, validation asset or copied game asset. The ZIP includes `main.dll`, `NormalWaveIndicator_P.pak`, and `LICENSES.txt`. The separate manifest remains `ReleaseReady=false` until missing functionality and in-game acceptance are addressed.
 
-The generated upload ZIP contains exactly `NormalWaveIndicator_P.pak`. The adjacent manifest records hashes, validation evidence and the fact that real native-subscription acceptance is still pending. Upload the ZIP, not the build folder or native-alpha archive. See [release checks](docs/RELEASE.md).
+## License and references
 
-## Validation and migration
-
-Cold editor tests execute saved Blueprint graphs and the FSD-shaped multicast delegate fixture. They cover event capture, exclusion of small enemies/critters, a 100-notification filtered burst that cannot create or extend regions, grouping, context/fallback, lifetime and initialization, along with the existing pooled display/settings checks. These tests do not run the real FSD game implementation and cannot substitute for a clean native mod.io test or GPU profiling. See the [spawn and boss-summon audit](docs/SPAWN-FILTER-AUDIT.md) for current-game static evidence and coverage limits.
-
-Users of the previous **0.6.0 DLL alpha** must remove/disable that old Mod loader and loose presentation Pak before testing this version. Do not mix the old native producer with these changed Blueprint assets. The new subscription Mod does not automatically remove files previously installed outside mod.io. Back up the old installation for rollback; do not remove loaders or other mods indiscriminately.
-
-The prior [exact-attribution audit](docs/MODIO-FEASIBILITY.md) and [Sandbox Utilities investigation](docs/SANDBOX-UTILITIES-RESEARCH.md) explain the original limitation. The user explicitly relaxed exact attribution for 0.7.0; this version does not claim to have solved the original missing-provenance problem.
-
-## Credits and license
-
-Original project source: MIT, LostPatrol. Historical native code includes MinHook under its own license in `third_party/MinHook/LICENSE.txt`. Mod Hub references: [trumank/drg-mods](https://github.com/trumank/drg-mods). DRG's native Blueprint initialization and dummy method are documented in the [modding handbook](https://drg-modding.github.io/docs/guides/blueprint-modding-guide.html). Deep Rock Galactic and its assets belong to Ghost Ship Games / their respective owners. This is an unofficial Mod.
+Original source: MIT, LostPatrol. MinHook's license is included in distributed ZIPs. Mod Hub interface references come from [trumank/drg-mods](https://github.com/trumank/drg-mods). DRG and its assets belong to Ghost Ship Games and their respective owners. This is an unofficial Mod. Historical architecture investigations in `docs` are evidence, not descriptions of current implementation.

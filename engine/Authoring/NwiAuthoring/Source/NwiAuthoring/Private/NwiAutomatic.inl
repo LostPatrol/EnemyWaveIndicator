@@ -30,17 +30,20 @@ void BuildAutomatic()
         Next[I] = Custom(G, *FString::Printf(TEXT("CleanupNext%d"), I));
     }
     Compile(BP);
-    BuildCapture(BP, G);
+
     auto* Self = Node<UK2Node_Self>(G); Self->AllocateDefaultPins();
     auto* Player = Call(G, UGameplayStatics::StaticClass(), TEXT("GetPlayerController"));
     auto* Ready = Get(G, TEXT("Ready")); auto* PlayerValid = Valid(G, Player, TEXT("ReturnValue"));
     auto* Host = Call(G, UKismetSystemLibrary::StaticClass(), TEXT("IsServer"));
     auto* Local = Call(G, UKismetMathLibrary::StaticClass(), TEXT("BooleanAND"));
-    Link(PlayerValid, TEXT("ReturnValue"), Local, TEXT("A")); Link(Host, TEXT("ReturnValue"), Local, TEXT("B"));
+    Link(PlayerValid, TEXT("ReturnValue"), Local, TEXT("A")); Value(Local, TEXT("B"), TEXT("true"));
     auto* CanRun = Call(G, UKismetMathLibrary::StaticClass(), TEXT("BooleanAND"));
     Link(Local, TEXT("ReturnValue"), CanRun, TEXT("A")); Link(Ready, TEXT("Ready"), CanRun, TEXT("B"));
     auto* Tick = Event(G, AActor::StaticClass(), TEXT("ReceiveTick"));
-    auto* TickGate = Branch(G, CanRun, TEXT("ReturnValue")); auto* Connect = Call(G, BP->GeneratedClass, TEXT("ConnectCapture")); Link(Tick, TEXT("then"), Connect, TEXT("execute")); Link(Connect, TEXT("then"), TickGate, TEXT("execute"));
+    auto* TickGate = Branch(G, CanRun, TEXT("ReturnValue"));
+    auto* Authority = Branch(G, Host, TEXT("ReturnValue")); Link(Tick,TEXT("then"),Authority,TEXT("execute"));
+    auto* Time = Set(G,TEXT("NativeTime")); Link(Call(G,UGameplayStatics::StaticClass(),TEXT("GetTimeSeconds")),TEXT("ReturnValue"),Time,TEXT("NativeTime")); Link(Authority,TEXT("then"),Time,TEXT("execute"));
+    auto* Poll = Call(G,BP->GeneratedClass,TEXT("NwiPoll")); Link(Time,TEXT("then"),Poll,TEXT("execute")); Link(Poll,TEXT("then"),TickGate,TEXT("execute")); Link(Authority,TEXT("else"),TickGate,TEXT("execute"));
     auto* CallSetup = Call(G, BP->GeneratedClass, TEXT("InitializePool")); Link(TickGate, TEXT("then"), CallSetup, TEXT("execute"));
     auto* Pool = Get(G, TEXT("PoolReady")); auto* PoolGate = Branch(G, Pool, TEXT("PoolReady")); Link(CallSetup, TEXT("then"), PoolGate, TEXT("execute"));
     auto* Refresh = Call(G, BP->GeneratedClass, TEXT("RefreshSettings")); Link(PoolGate, TEXT("then"), Refresh, TEXT("execute"));
@@ -91,16 +94,20 @@ void BuildAutomatic()
         auto* Changed = Branch(G, Different, TEXT("ReturnValue")); Link(Apply[I], TEXT("then"), Changed, TEXT("execute"));
         auto* SaveSerial = Set(G, *AppliedName); Link(Serial, *SerialName, SaveSerial, *AppliedName); Link(Changed, TEXT("then"), SaveSerial, TEXT("execute"));
         auto* RegionVisible = Get(G, *VisibleName); auto* IsVisible = Call(G, UKismetMathLibrary::StaticClass(), TEXT("Greater_IntInt")); Link(RegionVisible, *VisibleName, IsVisible, TEXT("A"));
-        auto* Remaining = Call(G, UKismetMathLibrary::StaticClass(), TEXT("Subtract_FloatFloat")); Link(Get(G, *FString::Printf(TEXT("RegionExpires%d"), I)), *FString::Printf(TEXT("RegionExpires%d"), I), Remaining, TEXT("A")); Link(Call(G, UGameplayStatics::StaticClass(), TEXT("GetTimeSeconds")), TEXT("ReturnValue"), Remaining, TEXT("B"));
+        auto* Remaining = Call(G, UKismetMathLibrary::StaticClass(), TEXT("Subtract_FloatFloat")); Link(Get(G, *FString::Printf(TEXT("RegionExpires%d"), I)), *FString::Printf(TEXT("RegionExpires%d"), I), Remaining, TEXT("A")); auto* GameState = Call(G,UGameplayStatics::StaticClass(),TEXT("GetGameState"));
+        auto* ServerTime = Call(G,AGameStateBase::StaticClass(),TEXT("GetServerWorldTimeSeconds")); Link(GameState,TEXT("ReturnValue"),ServerTime,TEXT("self"));
+        auto* Clock = Call(G,UKismetMathLibrary::StaticClass(),TEXT("SelectFloat")); Link(Call(G,UGameplayStatics::StaticClass(),TEXT("GetTimeSeconds")),TEXT("ReturnValue"),Clock,TEXT("A")); Link(ServerTime,TEXT("ReturnValue"),Clock,TEXT("B"));Link(Host,TEXT("ReturnValue"),Clock,TEXT("bPickA"));Link(Clock,TEXT("ReturnValue"),Remaining,TEXT("B"));
         auto* Fresh = Call(G, UKismetMathLibrary::StaticClass(), TEXT("Greater_FloatFloat")); Link(Remaining, TEXT("ReturnValue"), Fresh, TEXT("A"));
         auto* VisibleFresh = Call(G, UKismetMathLibrary::StaticClass(), TEXT("BooleanAND")); Link(IsVisible, TEXT("ReturnValue"), VisibleFresh, TEXT("A")); Link(Fresh, TEXT("ReturnValue"), VisibleFresh, TEXT("B"));
-        auto* ShowGate = Branch(G, VisibleFresh, TEXT("ReturnValue")); Link(SaveSerial, TEXT("then"), ShowGate, TEXT("execute"));
+        auto* Preference=Call(G,UKismetMathLibrary::StaticClass(),TEXT("BooleanAND"));Link(VisibleFresh,TEXT("ReturnValue"),Preference,TEXT("A"));auto* SaveClass=LoadClass<USaveGame>(nullptr,TEXT("/Game/NormalWaveIndicator/SG_NwiSettings.SG_NwiSettings_C"));Link(Field(G,SaveClass,TEXT("NaturalEnabled"),Get(G,TEXT("Settings")),TEXT("Settings")),TEXT("NaturalEnabled"),Preference,TEXT("B"));
+        auto* ShowGate = Branch(G, Preference, TEXT("ReturnValue")); Link(SaveSerial, TEXT("then"), ShowGate, TEXT("execute"));
         auto* HideCall = Call(G, BP->GeneratedClass, *HideName); Link(ShowGate, TEXT("else"), HideCall, TEXT("execute"));
         auto* ShowPair = Branch(G, Pair, TEXT("ReturnValue")); Link(ShowGate, TEXT("then"), ShowPair, TEXT("execute"));
         auto* Point = Get(G, *PointName); auto* Move = Call(G, AActor::StaticClass(), TEXT("K2_SetActorLocation"));
         Link(Pulse, *PulseName, Move, TEXT("self")); Link(Point, *PointName, Move, TEXT("NewLocation")); Value(Move, TEXT("bTeleport"), TEXT("true")); Link(ShowPair, TEXT("then"), Move, TEXT("execute"));
+        auto* ScaleWeight = WriteField(G,PulseClass,TEXT("WeightScale"),Pulse,*PulseName); const auto W=FString::Printf(TEXT("RegionScale%d"),I); Link(Get(G,*W),*W,ScaleWeight,TEXT("WeightScale")); Link(Move,TEXT("then"),ScaleWeight,TEXT("execute"));
         auto* Location = Node<UK2Node_VariableSet>(G); Location->VariableReference.SetExternalMember(TEXT("WorldLocation"), HudClass); Location->AllocateDefaultPins();
-        Link(Hud, *HudName, Location, TEXT("self")); Link(Point, *PointName, Location, TEXT("WorldLocation")); auto* LabelUpdate = UpdateRegionLabel(G, HudClass, I); Link(Move, TEXT("then"), LabelUpdate, TEXT("execute")); Link(LabelUpdate, TEXT("then"), Location, TEXT("execute"));
+        Link(Hud, *HudName, Location, TEXT("self")); Link(Point, *PointName, Location, TEXT("WorldLocation")); auto* LabelUpdate = UpdateRegionLabel(G, HudClass, I); Link(ScaleWeight, TEXT("then"), LabelUpdate, TEXT("execute")); Link(LabelUpdate, TEXT("then"), Location, TEXT("execute"));
         auto* Shown = Get(G, *ShownName); auto* WasVisible = Call(G, UKismetMathLibrary::StaticClass(), TEXT("Greater_IntInt")); Link(Shown, *ShownName, WasVisible, TEXT("A"));
         auto* Reuse = Branch(G, WasVisible, TEXT("ReturnValue")); Link(Location, TEXT("then"), Reuse, TEXT("execute"));
         auto* Reactivate = Call(G, PulseClass, TEXT("ReactivateVisual")); Link(Pulse, *PulseName, Reactivate, TEXT("self")); Link(Reuse, TEXT("else"), Reactivate, TEXT("execute"));
@@ -108,7 +115,7 @@ void BuildAutomatic()
         auto* Display = Call(G, UWidget::StaticClass(), TEXT("SetVisibility")); Link(Hud, *HudName, Display, TEXT("self")); Value(Display, TEXT("InVisibility"), TEXT("HitTestInvisible")); Link(MarkShown, TEXT("then"), Display, TEXT("execute"));
         auto* Timer = Call(G, UKismetSystemLibrary::StaticClass(), TEXT("K2_SetTimer")); Link(Self, TEXT("self"), Timer, TEXT("Object")); Value(Timer, TEXT("FunctionName"), *HideName); Link(Remaining, TEXT("ReturnValue"), Timer, TEXT("Time"));
         Link(Display, TEXT("then"), Timer, TEXT("execute")); Link(Reuse, TEXT("then"), Timer, TEXT("execute"));
-        auto* HidePair = Branch(G, Pair, TEXT("ReturnValue")); auto* ClearVisible = Set(G, *VisibleName); Value(ClearVisible, *VisibleName, TEXT("0")); Link(Hide[I], TEXT("then"), ClearVisible, TEXT("execute")); Link(ClearVisible, TEXT("then"), HidePair, TEXT("execute"));
+        auto* HidePair = Branch(G, Pair, TEXT("ReturnValue")); Link(Hide[I], TEXT("then"), HidePair, TEXT("execute"));
         auto* MarkHidden = Set(G, *ShownName); Value(MarkHidden, *ShownName, TEXT("0")); Link(HidePair, TEXT("then"), MarkHidden, TEXT("execute"));
         auto* Stop = Call(G, PulseClass, TEXT("DeactivateVisual")); Link(Pulse, *PulseName, Stop, TEXT("self")); Link(MarkHidden, TEXT("then"), Stop, TEXT("execute"));
         auto* Conceal = Call(G, UWidget::StaticClass(), TEXT("SetVisibility")); Link(Hud, *HudName, Conceal, TEXT("self")); Value(Conceal, TEXT("InVisibility"), TEXT("Collapsed")); Link(Stop, TEXT("then"), Conceal, TEXT("execute"));
@@ -124,12 +131,13 @@ void BuildAutomatic()
     }
     auto* ReadyPool = Set(G, TEXT("PoolReady")); Value(ReadyPool, TEXT("PoolReady"), TEXT("true")); Link(BuildExec, TEXT("then"), ReadyPool, TEXT("execute"));
     auto* End = Event(G, AActor::StaticClass(), TEXT("ReceiveEndPlay"));
-    auto* Clean = Call(G, BP->GeneratedClass, TEXT("CleanupPool")); auto* Unbind = Call(G, BP->GeneratedClass, TEXT("DisconnectCapture")); Link(End, TEXT("then"), Unbind, TEXT("execute")); Link(Unbind, TEXT("then"), Clean, TEXT("execute"));
+    auto* Clean = Call(G, BP->GeneratedClass, TEXT("CleanupPool")); Link(End, TEXT("then"), Clean, TEXT("execute"));
     auto* ParentEnd = Node<UK2Node_CallParentFunction>(G); ParentEnd->SetFromFunction(AActor::StaticClass()->FindFunctionByName(TEXT("ReceiveEndPlay"))); ParentEnd->AllocateDefaultPins();
     Link(End, TEXT("EndPlayReason"), ParentEnd, TEXT("EndPlayReason")); Link(Clean, TEXT("then"), ParentEnd, TEXT("execute"));
+    for (auto& V : BP->NewVariables) if (V.VarName.ToString().StartsWith(TEXT("Region"))) V.PropertyFlags |= CPF_Net;
     Compile(BP);
     auto* CDO = CastChecked<AActor>(BP->GeneratedClass->GetDefaultObject());
     CDO->PrimaryActorTick.bCanEverTick = true; CDO->PrimaryActorTick.bStartWithTickEnabled = true;
     CDO->PrimaryActorTick.TickGroup = TG_PostUpdateWork;
-    check(!CDO->GetIsReplicated()); Save(BP);
+    CDO->SetReplicates(true); CDO->bAlwaysRelevant=true; CDO->NetUpdateFrequency=20.f; CDO->MinNetUpdateFrequency=20.f; Save(BP);
 }

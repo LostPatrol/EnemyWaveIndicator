@@ -9,6 +9,7 @@
 #include "PresentationBootstrap.h"
 #include "GameCapture.h"
 #include "OriginRegions.h"
+#include "EnemyBuckets.h"
 
 namespace nwi::automatic {
 namespace {
@@ -27,8 +28,10 @@ void* activeController = nullptr; void* activeWorld = nullptr;
 std::atomic<bool> retired{false};
 int32_t* instanceCookie = nullptr;
 float* durationSec = nullptr; // Own Blueprint property; never a game-class field.
+float* worldTime = nullptr;
+int32_t* enabledNatural = nullptr;
 int32_t cookie = 0; // A fresh Blueprint instance has zero even when its allocator reuses an old address.
-struct Output { float* point = nullptr; int32_t* serial = nullptr; int32_t* visible = nullptr; };
+struct Output { float* point = nullptr; int32_t* serial = nullptr; int32_t* visible = nullptr; float* expires = nullptr; float* scale = nullptr; };
 Output output[OriginRegions::Capacity]{};
 
 template<class T> T resolve(HMODULE module, const char* symbol, uintptr_t rva) noexcept {
@@ -42,7 +45,10 @@ bool localAddress(void* actor, void* pointer, size_t bytes) noexcept {
 }
 bool bind(void* actor) {
     auto* abi = static_cast<int32_t*>(value(actor, L"NativeAbi"));
-    if (!localAddress(actor, abi, 4) || *abi != 0x60000) return false;
+    if (!localAddress(actor, abi, 4) || *abi != 0x80000) return false;
+    worldTime = static_cast<float*>(value(actor, L"NativeTime"));
+    enabledNatural = static_cast<int32_t*>(value(actor, L"NativeEnabled"));
+    if (!localAddress(actor, worldTime, 4) || !localAddress(actor, enabledNatural, 4)) return false;
     durationSec = static_cast<float*>(value(actor, L"DurationSec"));
     if (!localAddress(actor, durationSec, 4)) return false;
     instanceCookie = static_cast<int32_t*>(value(actor, L"NativeCookie"));
@@ -54,13 +60,33 @@ bool bind(void* actor) {
     if (length >= 256 || classifyWorldName(text, length) == WorldKind::Excluded) return false;
     for (uint32_t i = 0; i < OriginRegions::Capacity; ++i) {
         wchar_t field[48];
-        swprintf_s(field, L"NativePoint%u", i); output[i].point = static_cast<float*>(value(actor, field));
-        swprintf_s(field, L"NativeSerial%u", i); output[i].serial = static_cast<int32_t*>(value(actor, field));
-        swprintf_s(field, L"NativeVisible%u", i); output[i].visible = static_cast<int32_t*>(value(actor, field));
-        if (!localAddress(actor, output[i].point, 12) || !localAddress(actor, output[i].serial, 4) || !localAddress(actor, output[i].visible, 4)) return false;
+        swprintf_s(field, L"RegionPoint%u", i); output[i].point = static_cast<float*>(value(actor, field));
+        swprintf_s(field, L"RegionSerial%u", i); output[i].serial = static_cast<int32_t*>(value(actor, field));
+        swprintf_s(field, L"RegionVisible%u", i); output[i].visible = static_cast<int32_t*>(value(actor, field));
+        swprintf_s(field, L"RegionExpires%u", i); output[i].expires = static_cast<float*>(value(actor, field));
+        swprintf_s(field, L"RegionScale%u", i); output[i].scale = static_cast<float*>(value(actor, field));
+        if (!localAddress(actor, output[i].point, 12) || !localAddress(actor, output[i].serial, 4) || !localAddress(actor, output[i].visible, 4)
+            || !localAddress(actor, output[i].expires, 4) || !localAddress(actor, output[i].scale, 4)) return false;
     }
     activeController = actor; activeWorld = world; regions.reset(); ++counters.bindings;
     capture::setWorld(classifyWorldName(text, length) == WorldKind::Mission ? world : nullptr);
+    return true;
+}
+
+// Require successful registration as a regular enemy. Unknown/unregistered actors fail closed;
+// descriptor budget significance is deliberately not used as a substitute for Pawn counting tags.
+bool eligible(const SpawnEvent& event, float& cost) {
+    auto* manager = capture::spawnManager();
+    if (!manager) return false;
+    const auto* regular=static_cast<EnemyBucket*>(value(manager,L"ActiveEnemies"));
+    const auto* small=static_cast<EnemyBucket*>(value(manager,L"ActiveSwarmerEnemies"));
+    const auto* critters=static_cast<EnemyBucket*>(value(manager,L"ActiveCritters"));
+    if (!regular || !small || !critters || !eligibleEnemy(event.pawn,*regular,*small,*critters)) return false;
+    wchar_t pawnName[512]{}; const auto length = name(reinterpret_cast<void*>(event.pawn), pawnName, 512);
+    if (!length || length >= 512 || wcsstr(pawnName, L"Hoarder") || wcsstr(pawnName, L"Huuli")) return false;
+    auto* rating = static_cast<float*>(value(reinterpret_cast<void*>(event.origin.descriptor), L"DifficultyRating"));
+    if (!rating || !std::isfinite(*rating) || *rating < 0 || *rating > 1000000.f) return false;
+    cost = *rating; // Explicit base descriptor cost; runtime modifier budgeting is not reconstructed here.
     return true;
 }
 void update(void* actor) {
@@ -70,13 +96,28 @@ void update(void* actor) {
     const auto now = GetTickCount64(); SpawnEvent event;
     const float seconds = *durationSec;
     regions.lifetimeMs = seconds >= 1.0f && seconds <= 30.0f ? static_cast<uint64_t>(seconds * 1000.0f) : OriginRegions::LifetimeMs;
-    for (uint32_t i = 0; i < SpawnAttribution::Capacity && capture::pop(event); ++i) regions.add(event, now);
+    for (uint32_t i = 0; i < SpawnAttribution::Capacity && capture::pop(event); ++i) {
+        float cost = 0;
+        if (eligible(event, cost)) {
+            if (event.selectedMs && event.capturedMs >= event.selectedMs && event.capturedMs >= event.queuedMs) {
+                const auto lead=event.capturedMs-event.selectedMs;
+                if (!counters.timingSamples || lead<counters.centerMinMs) counters.centerMinMs=lead;
+                ++counters.timingSamples;
+                if (lead>counters.centerMaxMs) counters.centerMaxMs=lead;
+                if (event.capturedMs-event.queuedMs>counters.queueMaxMs) counters.queueMaxMs=event.capturedMs-event.queuedMs;
+                if (now-event.capturedMs>counters.handoffMaxMs) counters.handoffMaxMs=now-event.capturedMs;
+            }
+            if (*enabledNatural) regions.add(event, now, cost);
+        } else ++counters.filtered;
+    }
     regions.expire(now);
-    if (capture::stats().fault) for (auto& r : regions.items) if (r.visible) { r.visible = 0; ++r.serial; }
+    if (capture::stats().fault || !*enabledNatural) for (auto& r : regions.items) if (r.visible) { r.visible = 0; ++r.serial; }
     for (uint32_t i = 0; i < OriginRegions::Capacity; ++i) {
         const auto& r = regions.items[i];
         if (*output[i].serial == r.serial) continue;
         memcpy(output[i].point, &r.point.x, 12);
+        *output[i].expires = *worldTime + (r.expires > now ? static_cast<float>(r.expires - now) / 1000.f : 0.f);
+        *output[i].scale = r.scale();
         *output[i].visible = r.visible; *output[i].serial = r.serial;
     }
     counters.regionsDropped = regions.overflow; counters.stale = regions.stale;
@@ -122,7 +163,7 @@ bool configure(HMODULE runtime, HMODULE game, uint32_t gameThread) noexcept {
     binding.enqueueReturns[0] = base + 0x19dba4d; binding.enqueueReturns[1] = base + 0x19dbbf6;
     binding.actorReturn = base + 0x166132c; binding.shrinkReturn = base + 0x166161a;
     binding.imageBase = base; binding.imageEnd = base + 0x7000000;
-    binding.sourceChain = {base + 0x19dba4d, base + 0x19dbe76, base + 0x19db33d, base + 0x19db3c8, base + 0x16abe53};
+    binding.sourceChain = {base + 0x19dba4d, base + 0x19dbe76, base + 0x19db33d, base + 0x19db3c8, base + 0x16abe53, base + 0x16af697};
     binding.threadId = thread;
     configured = capture::install(binding); return configured;
 }

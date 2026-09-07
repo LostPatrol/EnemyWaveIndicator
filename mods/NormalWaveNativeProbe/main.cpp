@@ -90,6 +90,7 @@ void showPresentation(nwi::ThreadSample& sample) noexcept {
     sample.normalEntries = captured.normalEntries; sample.normalSiteMatches = captured.normalSiteMatches;
     sample.noMissionWorld = captured.noMissionWorld; sample.contextRejected = captured.contextRejected;
     sample.rejectedSourceFrames = captured.rejectedSourceFrames;
+    sample.timing = {automatic.timingSamples, automatic.centerMinMs, automatic.centerMaxMs, automatic.queueMaxMs, automatic.handoffMaxMs, automatic.filtered};
     sample.captureFault = captured.fault; sample.autoFault = automatic.fault; sample.hookStatus = captured.hookStatus;
 }
 
@@ -119,7 +120,7 @@ void configureDispatch() noexcept {
     objectName = resolve<ObjectName>(runtime, "ue4ssl_host_object_full_name_v1", 0x76a090);
     if (find && load && valid && spawn && findViewport && objectWorld && objectName) {
         activeWorld.configure({findViewport, valid, &readViewportWorld});
-        presentation.configure({find, load, valid, spawn, &currentWorld, &worldKind, &nwi::automatic::prepareClass}, GetTickCount64());
+        presentation.configure({find, load, valid, spawn, &currentWorld, &worldKind, &nwi::automatic::prepareClass, true}, GetTickCount64());
     }
     dispatchProbe.configure({dispatch, &sampleThread, &sampleClock, &showPresentation});
 }
@@ -140,7 +141,7 @@ void record(const char* event) noexcept {
     const auto& probe = dispatchProbe.stats;
     char line[4096];
     const int size = sprintf_s(line,
-        "{\"probe\":\"0.6.0\",\"event\":\"%s\",\"utc\":\"%04u-%02u-%02uT%02u:%02u:%02u.%03uZ\","
+        "{\"probe\":\"0.8.0\",\"event\":\"%s\",\"utc\":\"%04u-%02u-%02uT%02u:%02u:%02u.%03uZ\","
         "\"pid\":%lu,\"tid\":%lu,\"elapsed_ms\":%llu,\"updates\":%llu,\"thread_changes\":%llu,"
         "\"gap_min_ms\":%.6f,\"gap_max_ms\":%.6f,\"gap_mean_ms\":%.6f,"
         "\"dispatch_enabled\":%s,\"dispatch_pending\":%s,\"dispatch_disabled\":%s,"
@@ -159,6 +160,7 @@ void record(const char* event) noexcept {
         "\"source_rejected\":%llu,\"enqueue_without_append\":%llu,\"failed_spawns\":%llu,\"late_events\":%llu,\"auto_bindings\":%u,"
         "\"normal_entries\":%llu,\"normal_site_matches\":%llu,\"normal_no_mission_world\":%llu,\"normal_context_rejected\":%llu,"
         "\"rejected_source_rvas\":[%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu],"
+        "\"timing\":[%llu,%llu,%llu,%llu,%llu,%llu],"
         "\"capture_fault\":%u,\"auto_fault\":%u,\"hook_status\":%u}\n",
         event, utc.wYear, utc.wMonth, utc.wDay, utc.wHour, utc.wMinute, utc.wSecond, utc.wMilliseconds,
         GetCurrentProcessId(), GetCurrentThreadId(), GetTickCount64() - state.started,
@@ -177,6 +179,7 @@ void record(const char* event) noexcept {
         probe.normalEntries, probe.normalSiteMatches, probe.noMissionWorld, probe.contextRejected,
         probe.rejectedSourceFrames[0], probe.rejectedSourceFrames[1], probe.rejectedSourceFrames[2], probe.rejectedSourceFrames[3],
         probe.rejectedSourceFrames[4], probe.rejectedSourceFrames[5], probe.rejectedSourceFrames[6], probe.rejectedSourceFrames[7],
+        probe.timing[0],probe.timing[1],probe.timing[2],probe.timing[3],probe.timing[4],probe.timing[5],
         probe.captureFault, probe.autoFault, probe.hookStatus);
     DWORD written = 0;
     if (size <= 0 || !WriteFile(state.log, line, static_cast<DWORD>(size), &written, nullptr)

@@ -19,6 +19,8 @@ Actor originalActor = nullptr; Shrink originalShrink = nullptr;
 Binding binding; Stats counters; SpawnAttribution ledger;
 void* world = nullptr; void* manager = nullptr;
 uint64_t epoch = 0, frame = 0, scopeWave = 0; void* scopeWorld = nullptr;
+SpawnKey scopeCenter{};
+uint64_t scopeSelectedMs = 0;
 bool installed = false;
 std::atomic<bool> enabled{false}; // Loader-thread retirement never mutates the game-thread ledger.
 int64_t qpcFrequency = 0;
@@ -74,6 +76,19 @@ bool provenance(uintptr_t caller) noexcept {
     return matches;
 }
 
+// The audited natural selector passes exactly one FVector in this array. Never guess a center
+// from enemy positions when a different caller supplies multiple centers or an invalid layout.
+SpawnKey readCenter(void* locations) noexcept {
+    SpawnKey result{};
+    __try {
+        const auto& array = *static_cast<Array*>(locations);
+        if (array.count == 1 && array.capacity >= 1 && array.data) {
+            memcpy(&result.x, array.data, 12); result.descriptor = 1;
+        }
+    } __except(EXCEPTION_EXECUTE_HANDLER) { return {}; }
+    return result.valid() ? result : SpawnKey{};
+}
+
 void hookNormal(void* context, float difficulty, void* locations, bool a, bool b) {
     const auto caller = reinterpret_cast<uintptr_t>(_ReturnAddress());
     bool observe = enabled.load(std::memory_order_relaxed) && onThread() && !counters.fault;
@@ -87,10 +102,10 @@ void hookNormal(void* context, float difficulty, void* locations, bool a, bool b
         }
     }
     if (!observe) { originalNormal(context, difficulty, locations, a, b); return; }
-    const auto previousWave = scopeWave; auto* previousWorld = scopeWorld;
-    if (observe) { scopeWave = ++counters.waves; scopeWorld = world; }
+    const auto previousWave = scopeWave; auto* previousWorld = scopeWorld; const auto previousCenter = scopeCenter; const auto previousSelected = scopeSelectedMs;
+    if (observe) { scopeWave = ++counters.waves; scopeWorld = world; scopeCenter = readCenter(locations); scopeSelectedMs = GetTickCount64(); }
     originalNormal(context, difficulty, locations, a, b);
-    if (observe) { scopeWave = previousWave; scopeWorld = previousWorld; }
+    if (observe) { scopeWave = previousWave; scopeWorld = previousWorld; scopeCenter = previousCenter; scopeSelectedMs = previousSelected; }
 }
 bool hookEnqueue(void* owner, void* descriptor, const void* transform, const void* callback, bool a, bool b) {
     const auto caller = reinterpret_cast<uintptr_t>(_ReturnAddress());
@@ -108,7 +123,8 @@ bool hookEnqueue(void* owner, void* descriptor, const void* transform, const voi
         else if (after.count == before.count) ++counters.skipped; // Accepted/rejected request with no actual append.
         else if (after.count != before.count + 1 || !readKey(after, before.count, key)
             || key.descriptor != reinterpret_cast<uint64_t>(descriptor)
-            || !ledger.append(epoch, reinterpret_cast<uint64_t>(manager), before.count, after.count, key, normal ? scopeWave : 0)) fail(4);
+            || !ledger.append(epoch, reinterpret_cast<uint64_t>(manager), before.count, after.count, key, normal ? scopeWave : 0,
+                normal ? scopeCenter : SpawnKey{}, GetTickCount64(), normal ? scopeSelectedMs : 0)) fail(4);
         else if (normal) ++counters.tagged;
     }
     return result;
@@ -167,6 +183,7 @@ bool sourceMatches(const uintptr_t* frames, size_t count, const Binding& expecte
         if (address < expected.imageBase || address >= expected.imageEnd) continue;
         if (address != expected.sourceChain[matched] && !(matched == 0 && address == expected.enqueueReturns[1])) return false;
         ++matched;
+        if (matched < expected.sourceChain.size() && !expected.sourceChain[matched]) return true; // Short synthetic fixtures only.
     }
     return matched == expected.sourceChain.size();
 }
@@ -210,4 +227,5 @@ bool pop(SpawnEvent& event) noexcept {
     return true;
 }
 Stats stats() noexcept { return counters; } // Caller is the game thread; publish through DispatchProbe's snapshot.
+void* spawnManager() noexcept { return onThread() ? manager : nullptr; }
 } // namespace nwi::capture

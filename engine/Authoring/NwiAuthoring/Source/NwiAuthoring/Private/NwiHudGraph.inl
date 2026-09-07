@@ -1,3 +1,17 @@
+// Shared square-wave color preview and HUD rendering; Hz means complete A/B cycles per second.
+UK2Node_CallFunction* PaintWarning(UEdGraph* G, UEdGraphNode* Target, const TCHAR* TargetPin, UEdGraphNode* A, const TCHAR* APin, UEdGraphNode* B, const TCHAR* BPin, UEdGraphNode* Hz, const TCHAR* HzPin, UEdGraphNode* Enabled, const TCHAR* EnabledPin)
+{
+    auto* Frequency=Call(G,UKismetMathLibrary::StaticClass(),TEXT("FClamp")); Link(Hz,HzPin,Frequency,TEXT("Value"));Value(Frequency,TEXT("Min"),TEXT("0.1"));Value(Frequency,TEXT("Max"),TEXT("10"));
+    auto* Speed=Call(G,UKismetMathLibrary::StaticClass(),TEXT("Multiply_FloatFloat"));Link(Frequency,TEXT("ReturnValue"),Speed,TEXT("A"));Value(Speed,TEXT("B"),TEXT("6.2831853"));
+    auto* Phase=Call(G,UKismetMathLibrary::StaticClass(),TEXT("Multiply_FloatFloat"));Link(Call(G,UGameplayStatics::StaticClass(),TEXT("GetRealTimeSeconds")),TEXT("ReturnValue"),Phase,TEXT("A"));Link(Speed,TEXT("ReturnValue"),Phase,TEXT("B"));
+    auto* Cos=Call(G,UKismetMathLibrary::StaticClass(),TEXT("Cos"));Link(Phase,TEXT("ReturnValue"),Cos,TEXT("A"));
+    auto* Half=Call(G,UKismetMathLibrary::StaticClass(),TEXT("GreaterEqual_FloatFloat"));Link(Cos,TEXT("ReturnValue"),Half,TEXT("A"));
+    auto* Off=Call(G,UKismetMathLibrary::StaticClass(),TEXT("Not_PreBool"));Link(Enabled,EnabledPin,Off,TEXT("A"));
+    auto* Pick=Call(G,UKismetMathLibrary::StaticClass(),TEXT("BooleanOR"));Link(Half,TEXT("ReturnValue"),Pick,TEXT("A"));Link(Off,TEXT("ReturnValue"),Pick,TEXT("B"));
+    auto* Color=Call(G,UKismetMathLibrary::StaticClass(),TEXT("SelectColor"));Link(A,APin,Color,TEXT("A"));Link(B,BPin,Color,TEXT("B"));Link(Pick,TEXT("ReturnValue"),Color,TEXT("bPickA"));
+    auto* Slate=Node<UK2Node_MakeStruct>(G);Slate->StructType=FSlateColor::StaticStruct();Slate->AllocateDefaultPins();Link(Color,TEXT("ReturnValue"),Slate,TEXT("SpecifiedColor"));
+    auto* Paint=Call(G,UTextBlock::StaticClass(),TEXT("SetColorAndOpacity"));Link(Target,TargetPin,Paint,TEXT("self"));Link(Slate,TEXT("SlateColor"),Paint,TEXT("InColorAndOpacity"));return Paint;
+}
 // Build stock Blueprint arithmetic for a DPI-local edge indicator; no runtime plugin dependency.
 struct FHudValue { UEdGraphNode* Node = nullptr; FString Pin; FString Literal; };
 
@@ -80,13 +94,7 @@ void BuildWarningTick(UBlueprint* BP, UEdGraph* G)
 {
     auto* Start = Node<UK2Node_CustomEvent>(G); Start->CustomFunctionName = TEXT("UpdateWarning"); Start->AllocateDefaultPins();
     auto* Marker = Get(G, TEXT("MarkerText"));
-    auto* Time = Call(G, UGameplayStatics::StaticClass(), TEXT("GetRealTimeSeconds"));
-    auto* Phase = Call(G, UKismetMathLibrary::StaticClass(), TEXT("Multiply_FloatFloat")); Link(Time, TEXT("ReturnValue"), Phase, TEXT("A")); Value(Phase, TEXT("B"), TEXT("9.424778")); // 1.5 Hz, never fully invisible.
-    auto* Cos = Call(G, UKismetMathLibrary::StaticClass(), TEXT("Cos")); Link(Phase, TEXT("ReturnValue"), Cos, TEXT("A"));
-    auto* Amplitude = Call(G, UKismetMathLibrary::StaticClass(), TEXT("Multiply_FloatFloat")); Link(Cos, TEXT("ReturnValue"), Amplitude, TEXT("A")); Value(Amplitude, TEXT("B"), TEXT("0.225"));
-    auto* Level = Call(G, UKismetMathLibrary::StaticClass(), TEXT("Add_FloatFloat")); Link(Amplitude, TEXT("ReturnValue"), Level, TEXT("A")); Value(Level, TEXT("B"), TEXT("0.775"));
-    auto* Select = Call(G, UKismetMathLibrary::StaticClass(), TEXT("SelectFloat")); Link(Level, TEXT("ReturnValue"), Select, TEXT("A")); Value(Select, TEXT("B"), TEXT("1")); Link(Get(G, TEXT("BlinkEnabled")), TEXT("BlinkEnabled"), Select, TEXT("bPickA"));
-    auto* Fade = Call(G, UWidget::StaticClass(), TEXT("SetRenderOpacity")); Link(Marker, TEXT("MarkerText"), Fade, TEXT("self")); Link(Select, TEXT("ReturnValue"), Fade, TEXT("InOpacity")); Link(Start, TEXT("then"), Fade, TEXT("execute"));
+    auto* Fade=PaintWarning(G,Marker,TEXT("MarkerText"),Get(G,TEXT("BlinkA")),TEXT("BlinkA"),Get(G,TEXT("BlinkB")),TEXT("BlinkB"),Get(G,TEXT("BlinkHz")),TEXT("BlinkHz"),Get(G,TEXT("BlinkEnabled")),TEXT("BlinkEnabled"));Link(Start,TEXT("then"),Fade,TEXT("execute"));
     auto* Pawn = Call(G, UUserWidget::StaticClass(), TEXT("GetOwningPlayerPawn"));
     auto* ValidPawn = Call(G, UKismetSystemLibrary::StaticClass(), TEXT("IsValid")); Link(Pawn, TEXT("ReturnValue"), ValidPawn, TEXT("Object"));
     auto* Gate = Node<UK2Node_IfThenElse>(G); Gate->AllocateDefaultPins(); Link(ValidPawn, TEXT("ReturnValue"), Gate, TEXT("Condition")); Link(Fade, TEXT("then"), Gate, TEXT("execute"));

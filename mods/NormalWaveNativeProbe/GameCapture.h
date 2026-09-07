@@ -8,7 +8,7 @@ struct Binding {
     Target normal, enqueue, actor, shrink;
     uintptr_t normalReturn = 0, enqueueReturns[2]{}, actorReturn = 0, shrinkReturn = 0;
     uintptr_t imageBase = 0, imageEnd = 0;
-    std::array<uintptr_t, 5> sourceChain{}; // Exact game return addresses; first slot allows enqueueReturns[1].
+    std::array<uintptr_t, 6> sourceChain{}; // Includes the natural scheduler, not only its shared spawning helper.
     uint32_t threadId = 0;
 };
 struct Stats {
@@ -23,6 +23,7 @@ void setWorld(void* world) noexcept; // Called by our host-only renderer, on the
 void stop() noexcept;
 void poll(uint64_t frame) noexcept;
 bool pop(SpawnEvent&) noexcept;
+void* spawnManager() noexcept; // Game-thread consumer uses reflected counting buckets after registration.
 Stats stats() noexcept;
 // Pure matcher is separately tested; incomplete unwinds cannot establish provenance.
 bool sourceMatches(const uintptr_t* frames, size_t count, const Binding&) noexcept;

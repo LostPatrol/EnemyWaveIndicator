@@ -26,6 +26,7 @@ struct PresentationApi {
     void* (*activeWorld)() = nullptr;
     WorldKind (*worldKind)(void*) = nullptr;
     bool (*prepareClass)(void*) = nullptr;
+    bool prepareOnly = false; // Native Init actors own production controllers, including network replication.
 };
 class PresentationBootstrap {
 public:
@@ -35,6 +36,12 @@ public:
     WorldKind kind = WorldKind::Excluded;
     void configure(PresentationApi api, uint64_t now) noexcept { api_ = api; readyAt_ = now + 30000; status = 1; }
     void tick(uint64_t now) noexcept {
+        if (api_.prepareOnly) {
+            if (status == 3 || now < readyAt_) return;
+            readyAt_ = now + 1000;
+            if (api_.prepareClass && api_.prepareClass(nullptr)) status = 3;
+            return;
+        }
         if (!api_.find || !api_.activeWorld || !api_.worldKind || status == 4 || status == 5 || now < readyAt_) return;
         if (attempted >= MaxWorlds) { status = 5; return; }
         {

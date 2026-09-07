@@ -20,6 +20,9 @@ struct SpawnEvent {
     SpawnKey origin{};
     uint64_t capturedMs = 0; // Monotonic capture time, for delivery latency and stale-event rejection.
     int64_t capturedQpc = 0; // High-resolution delivery telemetry; never used as a gameplay deadline.
+    SpawnKey center{}; // Verified source center; invalid means use the actual queued origin.
+    uint64_t queuedMs = 0; // Actual admitted request time, not an estimated pre-spawn deadline.
+    uint64_t selectedMs = 0; // Source entry immediately after the game's center selection.
 };
 enum class AttributionFault : uint32_t { None, Context, Count, Key, Capacity };
 
@@ -53,12 +56,12 @@ public:
 
     // Call after a verified successful append. wave=0 means unknown/non-normal, not a guessed normal wave.
     bool append(uint64_t epoch, uint64_t manager, uint32_t before, uint32_t after,
-                const SpawnKey& key, uint64_t wave) noexcept {
+                const SpawnKey& key, uint64_t wave, const SpawnKey& center = {}, uint64_t queuedMs = 0, uint64_t selectedMs = 0) noexcept {
         if (!context(epoch, manager)) return false;
         if (before != count_ || after != before + 1) { stop(AttributionFault::Count); return false; }
         if (!key.valid()) { stop(AttributionFault::Key); return false; }
         if (count_ == Capacity) { stop(AttributionFault::Capacity); return false; }
-        entries_[count_++] = {key, wave}; ++stats.appended;
+        entries_[count_++] = {key, wave, center, queuedMs, selectedMs}; ++stats.appended;
         return true;
     }
 
@@ -76,7 +79,7 @@ public:
         if (!pawn) { ++stats.failed; return true; }
         if (!entry.wave) { ++stats.unclassified; return true; }
         if (size_ == Capacity) { ++stats.dropped; return true; } // Drop OUR event; never retry gameplay.
-        events_[(head_ + size_) % Capacity] = {epoch_, entry.wave, pawn, frame, key, capturedMs, capturedQpc};
+        events_[(head_ + size_) % Capacity] = {epoch_, entry.wave, pawn, frame, key, capturedMs, capturedQpc, entry.center, entry.queuedMs, entry.selectedMs};
         ++size_; ++stats.published;
         return true;
     }
@@ -107,7 +110,7 @@ public:
         return index < count_ && entries_[index].key == key;
     }
 private:
-    struct Entry { SpawnKey key; uint64_t wave; };
+    struct Entry { SpawnKey key; uint64_t wave; SpawnKey center{}; uint64_t queuedMs = 0, selectedMs = 0; };
     bool context(uint64_t epoch, uint64_t manager) noexcept {
         if (fault_ != AttributionFault::None) return false;
         if (epoch != epoch_ || manager != manager_) { stop(); return false; }
@@ -119,5 +122,5 @@ private:
     uint32_t count_ = 0, head_ = 0, size_ = 0;
     AttributionFault fault_ = AttributionFault::Context;
 };
-static_assert(sizeof(SpawnAttribution) < 64 * 1024, "Tracking must stay below a fixed 64 KiB budget.");
+static_assert(sizeof(SpawnAttribution) < 96 * 1024, "Tracking must stay below a fixed 96 KiB budget.");
 } // namespace nwi

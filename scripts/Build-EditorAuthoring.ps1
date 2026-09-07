@@ -12,7 +12,7 @@ $plugin = Join-Path $projectRoot 'engine\Authoring\NwiAuthoring\NwiAuthoring.upl
 $uat = Join-Path $EngineRoot 'Engine\Build\BatchFiles\RunUAT.bat'
 $logPath = $buildRoot + '.log'
 $sourceFiles = @(Get-ChildItem -LiteralPath (Split-Path $plugin) -Recurse -File | Get-FileHash)
-# FSD stubs must be runtime-visible to the cooker, but only editor binaries are needed on the developer PC.
+# Build the editor-only generator; gameplay receives its cooked assets and a separate native DLL.
 & $uat BuildPlugin "-Plugin=$plugin" "-Package=$buildRoot" -NoTargetPlatforms -VS2022 *> $logPath
 $buildExitCode = $LASTEXITCODE
 [pscustomobject]@{ ExitCode = $buildExitCode; Log = $logPath; Output = $buildRoot; SourceFiles = $sourceFiles; DeployedToGame = $false } |

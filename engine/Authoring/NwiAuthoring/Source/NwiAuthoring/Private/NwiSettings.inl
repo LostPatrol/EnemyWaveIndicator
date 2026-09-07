@@ -29,11 +29,11 @@ UK2Node_VariableSet* WriteField(UEdGraph* G, UClass* Owner, const TCHAR* Name, U
     Link(Object, Output, N, TEXT("self")); return N;
 }
 
-const TCHAR* SettingNames[] = {TEXT("Label"), TEXT("Duration"), TEXT("Radius"), TEXT("Red"), TEXT("Green"), TEXT("Blue"), TEXT("Blink")};
-const TCHAR* SettingDefaults[] = {TEXT("[!] SPAWN AREA"), TEXT("8"), TEXT("3.75"), TEXT("3"), TEXT("0.01"), TEXT("0.005"), TEXT("true")};
+const TCHAR* SettingNames[] = {TEXT("Label"), TEXT("Duration"), TEXT("Radius"), TEXT("Red"), TEXT("Green"), TEXT("Blue"), TEXT("Blink"), TEXT("Opacity"), TEXT("BlinkHz"), TEXT("TextAR"), TEXT("TextAG"), TEXT("TextAB"), TEXT("TextBR"), TEXT("TextBG"), TEXT("TextBB"), TEXT("NaturalEnabled")};
+const TCHAR* SettingDefaults[] = {TEXT("[!] NATURAL WAVE"), TEXT("8"), TEXT("3.75"), TEXT("3"), TEXT("0.01"), TEXT("0.005"), TEXT("true"), TEXT("0.4"), TEXT("2"), TEXT("1"), TEXT("0"), TEXT("0"), TEXT("1"), TEXT("1"), TEXT("1"), TEXT("true")};
 void AddSettings(UBlueprint* BP)
 {
-    for (int32 I = 0; I < 7; ++I) Variable(BP, SettingNames[I], Type(I == 0 ? UEdGraphSchema_K2::PC_String : I == 6 ? UEdGraphSchema_K2::PC_Boolean : UEdGraphSchema_K2::PC_Float), SettingDefaults[I]);
+    for (int32 I = 0; I < 16; ++I) Variable(BP, SettingNames[I], Type(I == 0 ? UEdGraphSchema_K2::PC_String : (I == 6 || I == 15) ? UEdGraphSchema_K2::PC_Boolean : UEdGraphSchema_K2::PC_Float), SettingDefaults[I]);
     Variable(BP, TEXT("Revision"), Type(UEdGraphSchema_K2::PC_Int), TEXT("1"));
 }
 
@@ -42,53 +42,64 @@ void BuildSettings()
     auto* SaveBP = Blueprint(TEXT("SG_NwiSettings"), false, USaveGame::StaticClass()); AddSettings(SaveBP); Compile(SaveBP); Save(SaveBP);
     auto* BP = CastChecked<UWidgetBlueprint>(Blueprint(TEXT("WBP_NwiSettings"), true));
     Variable(BP, TEXT("Settings"), Type(UEdGraphSchema_K2::PC_Object, SaveBP->GeneratedClass));
-    Variable(BP, TEXT("SaveSlot"), Type(UEdGraphSchema_K2::PC_String), TEXT("NormalWaveIndicator_v1"));
+    Variable(BP, TEXT("SaveSlot"), Type(UEdGraphSchema_K2::PC_String), TEXT("NormalWaveIndicator_v2"));
     check(FBlueprintEditorUtils::ImplementNewInterface(BP, HubInterface(TEXT("IHubPageWidget"))->GetFName()));
     auto* Info = HubResult(BP, TEXT("GetPageInfo")); GetDefault<UEdGraphSchema_K2>()->TrySetDefaultText(*Pin(Info, TEXT("PageName")), FText::FromString(TEXT("Indicator settings")));
     auto* Mode = HubResult(BP, TEXT("GetContainerMode")); Value(Mode, TEXT("bStretchToContainer"), TEXT("true"));
-    auto* Root = BP->WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("SettingsPanel")); BP->WidgetTree->RootWidget = Root;
+    auto* Root = BP->WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("SettingsPanel")); auto* Scroll=BP->WidgetTree->ConstructWidget<UScrollBox>(UScrollBox::StaticClass(),TEXT("SettingsScroll"));Scroll->AddChild(Root);auto* Frame=BP->WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(),TEXT("SettingsFrame"));BP->WidgetTree->RootWidget=Frame;
     auto AddText = [&](const TCHAR* Name, const TCHAR* Label) {
         auto* T = BP->WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), Name); T->SetText(FText::FromString(Label));
         auto Font = T->Font; Font.Size = 16; T->SetFont(Font); Root->AddChildToVerticalBox(T); return T;
     };
-    AddText(TEXT("Title"), TEXT("Normal Wave Indicator  |  Spawn-area beta 0.7.1"));
-    const TCHAR* Labels[] = {TEXT("Warning text (up to 64 characters)"), TEXT("Visibility after the last spawn (seconds, 1 - 30)"), TEXT("Sphere size (0.5 - 12; default 3.75)"), TEXT("Sphere red (linear intensity, 0 - 5)"), TEXT("Sphere green (0 - 5)"), TEXT("Sphere blue (0 - 5)"), TEXT("Gently pulse warning text (1.5 Hz)")};
-    for (int32 I = 0; I < 7; ++I)
+    AddText(TEXT("Title"), TEXT("Normal Wave Indicator  |  Native natural-wave test 0.8.0"));
+    const TCHAR* Labels[] = {TEXT("Warning text (up to 64 characters)"), TEXT("Visibility after the last spawn (seconds, 1 - 30)"), TEXT("Sphere size (0.5 - 12; default 3.75)"), TEXT("Sphere red (linear intensity, 0 - 5)"), TEXT("Sphere green (0 - 5)"), TEXT("Sphere blue (0 - 5)"), TEXT("Flash text between colors A and B"), TEXT("Sphere opacity (0 transparent - 1 opaque; default 0.4)"), TEXT("Text flash cycles per second (0.1 - 10; default 2)"), TEXT("Text A red"), TEXT("Text A green"), TEXT("Text A blue"), TEXT("Text B red"), TEXT("Text B green"), TEXT("Text B blue"), TEXT("Show natural waves")};
+    for (int32 I = 0; I < 16; ++I)
     {
         AddText(*FString::Printf(TEXT("Caption%d"), I), Labels[I]);
         const FName Name(*FString::Printf(TEXT("Input%s"), SettingNames[I])); UWidget* Input = nullptr;
         if (I == 0) Input = BP->WidgetTree->ConstructWidget<UEditableTextBox>(UEditableTextBox::StaticClass(), Name);
-        else if (I == 6) Input = BP->WidgetTree->ConstructWidget<UCheckBox>(UCheckBox::StaticClass(), Name);
+        else if ((I == 6 || I == 15)) Input = BP->WidgetTree->ConstructWidget<UCheckBox>(UCheckBox::StaticClass(), Name);
         else {
             auto* Spin = BP->WidgetTree->ConstructWidget<USpinBox>(USpinBox::StaticClass(), Name);
-            Spin->SetMinValue(I == 1 ? 1.f : I == 2 ? 0.5f : 0.f); Spin->SetMaxValue(I == 1 ? 30.f : I == 2 ? 12.f : 5.f);
-            Spin->SetMinSliderValue(I == 1 ? 1.f : I == 2 ? .5f : 0.f); Spin->SetMaxSliderValue(I == 1 ? 30.f : I == 2 ? 12.f : 5.f);
+            Spin->SetMinValue(I == 1 ? 1.f : I == 2 ? 0.5f : I == 8 ? .1f : 0.f); Spin->SetMaxValue(I == 1 ? 30.f : I == 2 ? 12.f : I == 8 ? 10.f : I >= 7 ? 1.f : 5.f);
+            Spin->SetMinSliderValue(I == 1 ? 1.f : I == 2 ? .5f : I == 8 ? .1f : 0.f); Spin->SetMaxSliderValue(I == 1 ? 30.f : I == 2 ? 12.f : I == 8 ? 10.f : I >= 7 ? 1.f : 5.f);
             Spin->SetDelta(.1f); Input = Spin;
         }
         Input->bIsVariable = true; Root->AddChildToVerticalBox(Input);
     }
+    AddText(TEXT("PreviewCaption"),TEXT("Live sphere RGBA swatch and text preview (edits are saved with Apply)"));
+    auto* Swatch=BP->WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(),TEXT("SpherePreview"));Swatch->bIsVariable=true;Swatch->Brush.ImageSize=FVector2D(160,60);Frame->AddChildToVerticalBox(Swatch);
+    auto* Preview=BP->WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(),TEXT("TextPreview"));Preview->SetText(FText::FromString(TEXT("[!] NATURAL WAVE")));Preview->bIsVariable=true;Frame->AddChildToVerticalBox(Preview);auto* ScrollSlot=Frame->AddChildToVerticalBox(Scroll);ScrollSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
     auto* Button = BP->WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("ApplyButton")); Button->bIsVariable = true;
-    auto* ButtonText = BP->WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("ApplyText")); ButtonText->SetText(FText::FromString(TEXT("Apply and save"))); Button->AddChild(ButtonText); Root->AddChildToVerticalBox(Button);
+    auto* ButtonText = BP->WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("ApplyText")); ButtonText->SetText(FText::FromString(TEXT("Apply and save"))); Button->AddChild(ButtonText); Frame->AddChildToVerticalBox(Button);
     auto* Status = AddText(TEXT("SaveStatus"), TEXT("Distance is straight-line meters. Duration changes apply to new spawn events.")); Status->bIsVariable = true;
     Compile(BP); auto* G = Graph(BP);
     auto* Config = Get(G, TEXT("Settings"));
     auto* Construct = Event(G, UUserWidget::StaticClass(), TEXT("Construct")); auto* Gate = Branch(G, Valid(G, Config, TEXT("Settings")), TEXT("ReturnValue")); Link(Construct, TEXT("then"), Gate, TEXT("execute"));
     UEdGraphNode* Exec = Gate;
-    for (int32 I = 0; I < 7; ++I) {
+    for (int32 I = 0; I < 16; ++I) {
         auto* Input = Get(G, *FString::Printf(TEXT("Input%s"), SettingNames[I]));
         auto* Read = Field(G, SaveBP->GeneratedClass, SettingNames[I], Config, TEXT("Settings"));
-        auto* SetInput = Call(G, I == 0 ? UEditableTextBox::StaticClass() : I == 6 ? UCheckBox::StaticClass() : USpinBox::StaticClass(), I == 0 ? TEXT("SetText") : I == 6 ? TEXT("SetIsChecked") : TEXT("SetValue"));
+        auto* SetInput = Call(G, I == 0 ? UEditableTextBox::StaticClass() : (I == 6 || I == 15) ? UCheckBox::StaticClass() : USpinBox::StaticClass(), I == 0 ? TEXT("SetText") : (I == 6 || I == 15) ? TEXT("SetIsChecked") : TEXT("SetValue"));
         Link(Input, *FString::Printf(TEXT("Input%s"), SettingNames[I]), SetInput, TEXT("self"));
         if (I == 0) { auto* T = Call(G, UKismetTextLibrary::StaticClass(), TEXT("Conv_StringToText")); Link(Read, SettingNames[I], T, TEXT("InString")); Link(T, TEXT("ReturnValue"), SetInput, TEXT("InText")); }
-        else Link(Read, SettingNames[I], SetInput, I == 6 ? TEXT("InIsChecked") : TEXT("NewValue"));
+        else Link(Read, SettingNames[I], SetInput, (I == 6 || I == 15) ? TEXT("InIsChecked") : TEXT("NewValue"));
         Link(Exec, TEXT("then"), SetInput, TEXT("execute")); Exec = SetInput;
     }
+    // Preview reads draft controls every widget tick, without saving or changing gameplay.
+    auto Draft=[&](int32 I) { auto* R=Call(G,USpinBox::StaticClass(),TEXT("GetValue"));const auto N=FString::Printf(TEXT("Input%s"),SettingNames[I]);Link(Get(G,*N),*N,R,TEXT("self"));return R; };
+    auto DraftColor=[&](int32 First) { auto* C=Call(G,UKismetMathLibrary::StaticClass(),TEXT("MakeColor"));for(int32 J=0;J<3;++J)Link(Draft(First+J),TEXT("ReturnValue"),C,J==0?TEXT("R"):J==1?TEXT("G"):TEXT("B"));Value(C,TEXT("A"),TEXT("1"));return C; };
+    auto* Tick=Event(G,UUserWidget::StaticClass(),TEXT("Tick"));
+    auto* DraftTint=DraftColor(3);Link(Draft(7),TEXT("ReturnValue"),DraftTint,TEXT("A"));
+    auto* SwatchColor=Call(G,UImage::StaticClass(),TEXT("SetColorAndOpacity"));Link(Get(G,TEXT("SpherePreview")),TEXT("SpherePreview"),SwatchColor,TEXT("self"));Link(DraftTint,TEXT("ReturnValue"),SwatchColor,TEXT("InColorAndOpacity"));Link(Tick,TEXT("then"),SwatchColor,TEXT("execute"));
+    auto* DraftBlink=Call(G,UCheckBox::StaticClass(),TEXT("IsChecked"));Link(Get(G,TEXT("InputBlink")),TEXT("InputBlink"),DraftBlink,TEXT("self"));
+    auto* Paint=PaintWarning(G,Get(G,TEXT("TextPreview")),TEXT("TextPreview"),DraftColor(9),TEXT("ReturnValue"),DraftColor(12),TEXT("ReturnValue"),Draft(8),TEXT("ReturnValue"),DraftBlink,TEXT("ReturnValue"));Link(SwatchColor,TEXT("then"),Paint,TEXT("execute"));
     auto* Click = Node<UK2Node_ComponentBoundEvent>(G);
     Click->InitializeComponentBoundEventParams(FindFProperty<FObjectProperty>(BP->GeneratedClass, TEXT("ApplyButton")), FindFProperty<FMulticastDelegateProperty>(UButton::StaticClass(), TEXT("OnClicked"))); Click->AllocateDefaultPins();
     auto* ApplyGate = Branch(G, Valid(G, Config, TEXT("Settings")), TEXT("ReturnValue")); Link(Click, TEXT("then"), ApplyGate, TEXT("execute")); Exec = ApplyGate;
-    for (int32 I = 0; I < 7; ++I) {
+    for (int32 I = 0; I < 16; ++I) {
         auto* Input = Get(G, *FString::Printf(TEXT("Input%s"), SettingNames[I]));
-        auto* Read = Call(G, I == 0 ? UEditableTextBox::StaticClass() : I == 6 ? UCheckBox::StaticClass() : USpinBox::StaticClass(), I == 0 ? TEXT("GetText") : I == 6 ? TEXT("IsChecked") : TEXT("GetValue"));
+        auto* Read = Call(G, I == 0 ? UEditableTextBox::StaticClass() : (I == 6 || I == 15) ? UCheckBox::StaticClass() : USpinBox::StaticClass(), I == 0 ? TEXT("GetText") : (I == 6 || I == 15) ? TEXT("IsChecked") : TEXT("GetValue"));
         Link(Input, *FString::Printf(TEXT("Input%s"), SettingNames[I]), Read, TEXT("self"));
         UEdGraphNode* Source = Read;
         if (I == 0) {
@@ -117,7 +128,7 @@ void AddControllerSettings(UBlueprint* BP)
     check(FBlueprintEditorUtils::ImplementNewInterface(BP, HubInterface(TEXT("IHubMod"))->GetFName()));
     auto* Info = HubResult(BP, TEXT("GetModInfo"));
     const TCHAR* Names[] = {TEXT("ModName"), TEXT("ModAuthor"), TEXT("ModVersion")};
-    const TCHAR* Values[] = {TEXT("Normal Wave Indicator"), TEXT("LostPatrol"), TEXT("0.7.1 beta")};
+    const TCHAR* Values[] = {TEXT("Normal Wave Indicator"), TEXT("LostPatrol"), TEXT("0.8.0 test")};
     for (int32 I = 0; I < 3; ++I) GetDefault<UEdGraphSchema_K2>()->TrySetDefaultText(*Pin(Info, Names[I]), FText::FromString(Values[I]));
 }
 
@@ -130,9 +141,9 @@ void BuildControllerSettings(UBlueprint* BP, UEdGraph* G, UClass* PulseClass, UC
     auto* Begin = Event(G, AActor::StaticClass(), TEXT("ReceiveBeginPlay"));
     auto* Parent = Node<UK2Node_CallParentFunction>(G); Parent->SetFromFunction(AActor::StaticClass()->FindFunctionByName(TEXT("ReceiveBeginPlay"))); Parent->AllocateDefaultPins(); Link(Begin, TEXT("then"), Parent, TEXT("execute"));
     auto* Prepare = Call(G, BP->ParentClass, TEXT("PrepareResources")); Link(Parent, TEXT("then"), Prepare, TEXT("execute"));
-    auto* Exists = Call(G, UGameplayStatics::StaticClass(), TEXT("DoesSaveGameExist")); Value(Exists, TEXT("SlotName"), TEXT("NormalWaveIndicator_v1")); Link(Prepare, TEXT("then"), Exists, TEXT("execute"));
+    auto* Exists = Call(G, UGameplayStatics::StaticClass(), TEXT("DoesSaveGameExist")); Value(Exists, TEXT("SlotName"), TEXT("NormalWaveIndicator_v2")); Link(Prepare, TEXT("then"), Exists, TEXT("execute"));
     auto* HasFile = Branch(G, Exists, TEXT("ReturnValue")); Link(Exists, TEXT("then"), HasFile, TEXT("execute"));
-    auto* Load = Call(G, UGameplayStatics::StaticClass(), TEXT("LoadGameFromSlot")); Value(Load, TEXT("SlotName"), TEXT("NormalWaveIndicator_v1")); Link(HasFile, TEXT("then"), Load, TEXT("execute"));
+    auto* Load = Call(G, UGameplayStatics::StaticClass(), TEXT("LoadGameFromSlot")); Value(Load, TEXT("SlotName"), TEXT("NormalWaveIndicator_v2")); Link(HasFile, TEXT("then"), Load, TEXT("execute"));
     auto* LoadedCast = Node<UK2Node_DynamicCast>(G); LoadedCast->TargetType = SaveClass; LoadedCast->AllocateDefaultPins();
     check(GetDefault<UEdGraphSchema_K2>()->TryCreateConnection(Pin(Load, TEXT("ReturnValue")), LoadedCast->GetCastSourcePin())); Link(Load, TEXT("then"), LoadedCast, TEXT("execute"));
     auto* Store = Set(G, TEXT("Settings")); check(GetDefault<UEdGraphSchema_K2>()->TryCreateConnection(LoadedCast->GetCastResultPin(), Pin(Store, TEXT("Settings")))); Link(LoadedCast, TEXT("then"), Store, TEXT("execute"));
@@ -169,13 +180,19 @@ void BuildControllerSettings(UBlueprint* BP, UEdGraph* G, UClass* PulseClass, UC
         auto* Channel = Field(G, SaveClass, SettingNames[I], Config, TEXT("Settings")); auto* Clamp = Call(G, UKismetMathLibrary::StaticClass(), TEXT("FClamp")); Link(Channel, SettingNames[I], Clamp, TEXT("Value")); Value(Clamp, TEXT("Max"), TEXT("5")); Link(Clamp, TEXT("ReturnValue"), Tint, I == 3 ? TEXT("R") : I == 4 ? TEXT("G") : TEXT("B"));
     }
     Value(Tint, TEXT("A"), TEXT("1"));
+    auto* Natural=Call(G,UKismetMathLibrary::StaticClass(),TEXT("SelectInt"));Value(Natural,TEXT("A"),TEXT("1"));Value(Natural,TEXT("B"),TEXT("0"));Link(Field(G,SaveClass,TEXT("NaturalEnabled"),Config,TEXT("Settings")),TEXT("NaturalEnabled"),Natural,TEXT("bPickA"));
+    auto* Enabled=Set(G,TEXT("NativeEnabled"));Link(Natural,TEXT("ReturnValue"),Enabled,TEXT("NativeEnabled"));Link(Exec,TEXT("then"),Enabled,TEXT("execute"));Exec=Enabled;
+    auto TextColor=[&](int32 First) { auto* C=Call(G,UKismetMathLibrary::StaticClass(),TEXT("MakeColor"));for(int32 J=0;J<3;++J)Link(Field(G,SaveClass,SettingNames[First+J],Config,TEXT("Settings")),SettingNames[First+J],C,J==0?TEXT("R"):J==1?TEXT("G"):TEXT("B"));Value(C,TEXT("A"),TEXT("1"));return C; };
     for (int32 I = 0; I < 8; ++I) {
         const FString H = FString::Printf(TEXT("AutoHud%d"), I), P = FString::Printf(TEXT("AutoPulse%d"), I);
         auto* Hud = Get(G, *H); auto* Pulse = Get(G, *P);
-        auto* SetLabel = UpdateRegionLabel(G, HudClass, I); Link(Exec, TEXT("then"), SetLabel, TEXT("execute"));
+        auto* Reapply=Set(G,*FString::Printf(TEXT("AppliedSerial%d"),I));Value(Reapply,*FString::Printf(TEXT("AppliedSerial%d"),I),TEXT("-1"));Link(Exec,TEXT("then"),Reapply,TEXT("execute"));
+        auto* SetLabel = UpdateRegionLabel(G, HudClass, I); Link(Reapply, TEXT("then"), SetLabel, TEXT("execute"));
         auto* Blink = WriteField(G, HudClass, TEXT("BlinkEnabled"), Hud, *H); Link(Field(G, SaveClass, TEXT("Blink"), Config, TEXT("Settings")), TEXT("Blink"), Blink, TEXT("BlinkEnabled")); Link(SetLabel, TEXT("then"), Blink, TEXT("execute"));
         auto* Radius = WriteField(G, PulseClass, TEXT("RadiusScale"), Pulse, *P);
-        auto* Limit = Call(G, UKismetMathLibrary::StaticClass(), TEXT("FClamp")); Link(Field(G, SaveClass, TEXT("Radius"), Config, TEXT("Settings")), TEXT("Radius"), Limit, TEXT("Value")); Value(Limit, TEXT("Min"), TEXT("0.5")); Value(Limit, TEXT("Max"), TEXT("12")); Link(Limit, TEXT("ReturnValue"), Radius, TEXT("RadiusScale")); Link(Blink, TEXT("then"), Radius, TEXT("execute"));
-        auto* Material = Field(G, PulseClass, TEXT("PulseMaterial"), Pulse, *P); auto* Color = Call(G, UMaterialInstanceDynamic::StaticClass(), TEXT("SetVectorParameterValue")); Link(Material, TEXT("PulseMaterial"), Color, TEXT("self")); Value(Color, TEXT("ParameterName"), TEXT("Tint")); Link(Tint, TEXT("ReturnValue"), Color, TEXT("Value")); Link(Radius, TEXT("then"), Color, TEXT("execute")); Exec = Color;
+        auto* Limit = Call(G, UKismetMathLibrary::StaticClass(), TEXT("FClamp")); Link(Field(G, SaveClass, TEXT("Radius"), Config, TEXT("Settings")), TEXT("Radius"), Limit, TEXT("Value")); Value(Limit, TEXT("Min"), TEXT("0.5")); Value(Limit, TEXT("Max"), TEXT("12")); Link(Limit, TEXT("ReturnValue"), Radius, TEXT("RadiusScale")); auto* Hz=WriteField(G,HudClass,TEXT("BlinkHz"),Hud,*H);Link(Field(G,SaveClass,TEXT("BlinkHz"),Config,TEXT("Settings")),TEXT("BlinkHz"),Hz,TEXT("BlinkHz"));Link(Blink,TEXT("then"),Hz,TEXT("execute"));
+        auto* A=WriteField(G,HudClass,TEXT("BlinkA"),Hud,*H);Link(TextColor(9),TEXT("ReturnValue"),A,TEXT("BlinkA"));Link(Hz,TEXT("then"),A,TEXT("execute"));
+        auto* B=WriteField(G,HudClass,TEXT("BlinkB"),Hud,*H);Link(TextColor(12),TEXT("ReturnValue"),B,TEXT("BlinkB"));Link(A,TEXT("then"),B,TEXT("execute"));Link(B,TEXT("then"),Radius,TEXT("execute"));
+        auto* Material = Field(G, PulseClass, TEXT("PulseMaterial"), Pulse, *P); auto* Color = Call(G, UMaterialInstanceDynamic::StaticClass(), TEXT("SetVectorParameterValue")); Link(Material, TEXT("PulseMaterial"), Color, TEXT("self")); Value(Color, TEXT("ParameterName"), TEXT("Tint")); Link(Tint, TEXT("ReturnValue"), Color, TEXT("Value")); Link(Radius, TEXT("then"), Color, TEXT("execute")); auto* Opacity=Call(G,UMaterialInstanceDynamic::StaticClass(),TEXT("SetScalarParameterValue"));Link(Material,TEXT("PulseMaterial"),Opacity,TEXT("self"));Value(Opacity,TEXT("ParameterName"),TEXT("Opacity"));Link(Field(G,SaveClass,TEXT("Opacity"),Config,TEXT("Settings")),TEXT("Opacity"),Opacity,TEXT("Value"));Link(Color,TEXT("then"),Opacity,TEXT("execute"));Exec=Opacity;
     }
 }

@@ -1,15 +1,12 @@
-<!-- Developer-only Blueprint authoring project and packaging boundary. -->
-# Presentation authoring
+<!-- Native handoff and editor-only Blueprint build boundary. -->
+# Presentation authoring — 0.8.0
 
-Open FSD.uproject with Unreal Engine 4.27.2. The project name FSD is required by the game content mount path. The editor-only NwiAuthoring plugin generates seven Blueprints and one material under Content/NormalWaveIndicator.
+Open FSD.uproject in UE4.27.2. FSD is the required content mount name, not a shipped native module. The editor-only NwiAuthoring plugin emits nine production assets: Auto, Resources, Pulse, Marker, Settings page, Settings SaveGame, Red Material, InitCave and InitSpacerig.
 
-- BP_NwiAuto owns a fixed pool of eight sphere/widget pairs and implements Mod Hub's IHubMod interface.
-- WBP_NwiSettings implements IHubPageWidget. SG_NwiSettings persists local options.
-- WBP_NwiMarker updates projection each frame and formats distance only when rounded meters change. Text emphasis is a bounded 1.5 Hz opacity pulse.
-- BP_NwiPulse reuses its material instance, has no collision, overlap, shadow, navigation or replication, and disables Tick while hidden.
-- BP_NwiResources asynchronously loads the installed game's mini-MULE Scale/Alpha curves and our own material. It does not spawn a mini-MULE.
-- BP_NwiVisualTest is an internal bootstrap/resource base and optional F5 visual diagnostic. It does not run the retired one-second HUD.
+Auto is an always-relevant replicated actor created by host initializers. The native DLL binds only Auto.NwiPoll (zero arguments), validates NativeAbi=0x80000, and writes owned region fields. Clients skip native polling and render replicated regions. Clock expiry uses server world time; display preferences and visual pools remain local. Each pulse owns one reusable MID and has no collision, gameplay navigation or replication.
 
-Run Prepare-ModHubDevkit.ps1 before authoring. Its three pinned interface assets are local editor references only. Never include Content/_ModHub, Content/NwiValidation, editor binaries, original game assets or shared FSD shader libraries in a release Pak. Cook-PresentationAssets.ps1 allows only the sixteen original runtime files.
+Settings use a fixed preview above a scrolling page, RGBA swatch, red/white 2 Hz color alternation by default, editable A/B colors and local v2 SaveGame. The preview checks draft values without saving. Native source, filtering and measured timing are described in the repository README.
 
-Test-PresentationAssets.ps1 generates assets and validates them in a fresh process using isolated UWorld instances. Tests cover 1,452 edge cases, five worlds / 813 world ticks, pooled native calls, resource lifetime, the actual settings button and disk round trip, Mod Hub page return/reuse, actual pawn distance text, and disabling pulsing. H-menu discovery in the installed game and final GPU appearance still require playtesting.
+Prepare-ModHubDevkit.ps1 installs pinned development interface references. Never package _ModHub, NwiValidation, editor binaries or original game assets. The cook admits exactly 18 owned files and verifies their Pak hashes. The obsolete FSD reflection stub and approximate content-capture graph have been removed. BP_NwiVisualTest remains an unshipped resource/display regression fixture, not Auto's parent.
+
+Test-PresentationAssets.ps1 generates assets and cold-loads them in another editor process. It tests 1,452 HUD edge cases, actual saved-graph settings/preview/save/reload, material opacity, pool reuse, expiry, distance formatting, native ABI, replicated property metadata and initializer ownership. These tests do not establish gameplay source coverage, MintCat installation, actual network traffic or GPU appearance.

@@ -16,7 +16,7 @@ function inspect(file){
 }
 const root=process.argv[2];assert(root,'Provide a cooked content directory');
 const wanted=['BP_NwiAuto','BP_NwiResources','BP_NwiPulse','WBP_NwiMarker','SG_NwiSettings','WBP_NwiSettings','M_NwiRedPulse','InitCave','InitSpacerig'];
-const result=[],nativePackages=new Set(['/Script/CoreUObject','/Script/Engine','/Script/FSD','/Script/SlateCore','/Script/UMG']);
-for(const base of wanted){const p=inspect(path.join(root,base+'.uasset'));for(const n of [...p.names,...p.imports])assert(!/NwiAuthoring|NwiValidation|FixtureWaveManager|NwiPoll|NativeAbi|BP_NwiVisualTest/.test(n),'Unexpected runtime reference: '+n);for(const n of p.imports)if(n.startsWith('/Script/'))assert(nativePackages.has(n.split('.')[0]),'Unexpected native module: '+n);result.push({asset:base,imports:p.imports});}
-const capture=result.find(x=>x.asset==='BP_NwiAuto');for(const n of ['EnemySpawnManager','EnemyWaveManager','FSDGameMode'])assert(capture.imports.some(x=>x==='/Script/FSD.'+n),'Missing game interface '+n);
-console.log(JSON.stringify({passed:true,contentOnly:true,assets:result.length,packages:result}));
+const result=[],nativePackages=new Set(['/Script/CoreUObject','/Script/Engine','/Script/SlateCore','/Script/UMG']);
+for(const base of wanted){const p=inspect(path.join(root,base+'.uasset'));for(const n of [...p.names,...p.imports])assert(!/NwiAuthoring|NwiValidation|FixtureWaveManager|BP_NwiVisualTest/.test(n),'Unexpected runtime reference: '+n);for(const n of p.imports)if(n.startsWith('/Script/'))assert(nativePackages.has(n.split('.')[0]),'Unexpected native module: '+n);result.push({asset:base,imports:p.imports});}
+const auto=inspect(path.join(root,'BP_NwiAuto.uasset'));for(const field of ['NwiPoll','NativeAbi','NativeTime','RegionScale0'])assert(auto.names.includes(field),'Missing native handoff '+field);for(const old of ['ObserveEnemy','ActiveScriptedWaves','RecordSpawn'])assert(!auto.names.includes(old),'Obsolete approximate capture '+old);
+console.log(JSON.stringify({passed:true,contentOnly:false,nativeAbi:524288,assets:result.length,packages:result}));

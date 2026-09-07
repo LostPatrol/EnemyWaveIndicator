@@ -1,4 +1,4 @@
-// Editor-only generator dependencies; FSD declarations compile references to the game's existing API.
+// Editor-only dependencies; generated assets use standard Engine reflection and the native handoff.
 using UnrealBuildTool;
 public class NwiAuthoring : ModuleRules
 {
@@ -6,7 +6,7 @@ public class NwiAuthoring : ModuleRules
     {
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
         PrivateDependencyModuleNames.AddRange(new string[] {
-            "Core", "CoreUObject", "Engine", "UnrealEd", "KismetCompiler", "FSD",
+            "Core", "CoreUObject", "Engine", "UnrealEd", "KismetCompiler",
             "BlueprintGraph", "UMG", "UMGEditor", "SlateCore", "InputCore"
         });
     }

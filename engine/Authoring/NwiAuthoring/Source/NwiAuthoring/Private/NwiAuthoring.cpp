@@ -1,7 +1,6 @@
 // Editor-only generator. Cooked graphs use stock Engine and existing FSD reflection, never this module.
 #include "Modules/ModuleManager.h"
 #include "NwiValidation.h"
-#include "NwiFsdStubs.h"
 #include "K2Node_AddDelegate.h"
 #include "K2Node_RemoveDelegate.h"
 #include "K2Node_CreateDelegate.h"
@@ -30,6 +29,7 @@
 #include "K2Node_FunctionResult.h"
 #include "K2Node_FunctionEntry.h"
 #include "K2Node_MakeArray.h"
+#include "K2Node_MakeStruct.h"
 #include "K2Node_ComponentBoundEvent.h"
 #include "K2Node_SpawnActorFromClass.h"
 #include "Blueprint/WidgetBlueprintLibrary.h"
@@ -43,11 +43,15 @@
 #include "Blueprint/WidgetLayoutLibrary.h"
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
+#include "Components/VerticalBoxSlot.h"
 #include "Components/EditableTextBox.h"
 #include "Components/SpinBox.h"
 #include "Components/CheckBox.h"
 #include "Components/Button.h"
 #include "GameFramework/SaveGame.h"
+#include "GameFramework/GameStateBase.h"
+#include "Components/ScrollBox.h"
+#include "Components/Image.h"
 #include "Kismet/KismetStringLibrary.h"
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
@@ -175,6 +179,9 @@ void BuildHud()
     Variable(BP, TEXT("WorldLocation"), Type(UEdGraphSchema_K2::PC_Struct, TBaseStructure<FVector>::Get()));
     Variable(BP, TEXT("BaseLabel"), Type(UEdGraphSchema_K2::PC_Text));
     Variable(BP, TEXT("LastMeters"), Type(UEdGraphSchema_K2::PC_Int), TEXT("-1"));
+    Variable(BP, TEXT("BlinkHz"), Type(UEdGraphSchema_K2::PC_Float), TEXT("2"));
+    Variable(BP, TEXT("BlinkA"), Type(UEdGraphSchema_K2::PC_Struct, TBaseStructure<FLinearColor>::Get()), TEXT("(R=1,G=0,B=0,A=1)"));
+    Variable(BP, TEXT("BlinkB"), Type(UEdGraphSchema_K2::PC_Struct, TBaseStructure<FLinearColor>::Get()), TEXT("(R=1,G=1,B=1,A=1)"));
     Variable(BP, TEXT("BlinkEnabled"), Type(UEdGraphSchema_K2::PC_Boolean), TEXT("true"));
     auto* Text = BP->WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("MarkerText"));
     Text->SetText(FText::FromString(TEXT("[+] NWI VISUAL TEST")));
@@ -227,8 +234,9 @@ void BuildRedMaterial()
     Alpha->ParameterName = TEXT("Alpha"); Alpha->DefaultValue = 1.0f;
     auto* Rim = NewObject<UMaterialExpressionFresnel>(Material);
     Rim->Exponent = 3.0f; Rim->BaseReflectFraction = 0.08f;
+    auto* Opacity = NewObject<UMaterialExpressionScalarParameter>(Material); Opacity->ParameterName=TEXT("Opacity"); Opacity->DefaultValue=.4f; Material->Expressions.Add(Opacity);
     auto* Strength = NewObject<UMaterialExpressionMultiply>(Material);
-    Strength->A.Expression = Rim; Strength->ConstB = 0.4f; // Limit opacity as the larger sphere approaches the camera.
+    Strength->A.Expression = Rim; Strength->B.Expression = Opacity; // Limit opacity as the larger sphere approaches the camera.
     auto* Fade = NewObject<UMaterialExpressionMultiply>(Material);
     Fade->A.Expression = Strength; Fade->B.Expression = Alpha;
     Material->Expressions.Add(Tint); Material->Expressions.Add(Alpha); Material->Expressions.Add(Rim);
@@ -249,6 +257,7 @@ void BuildPulse()
     Variable(BP, TEXT("AlphaCurve"), CurveType);
     Variable(BP, TEXT("PulseMaterial"), Type(UEdGraphSchema_K2::PC_Object, UMaterialInstanceDynamic::StaticClass()));
     // Marker scale is configurable and is NOT claimed to be the original mini-mule's final world radius.
+    Variable(BP, TEXT("WeightScale"), Type(UEdGraphSchema_K2::PC_Float), TEXT("1"));
     Variable(BP, TEXT("RadiusScale"), Type(UEdGraphSchema_K2::PC_Float), TEXT("3.75")); // Three times the previous linear size.
     Variable(BP, TEXT("StartedAt"), Type(UEdGraphSchema_K2::PC_Float));
     auto* G = Graph(BP);
@@ -320,7 +329,7 @@ void BuildPulse()
     }
     auto* Radius = Get(G, TEXT("RadiusScale"));
     auto* Multiply = Call(G, UKismetMathLibrary::StaticClass(), TEXT("Multiply_FloatFloat"));
-    Link(ScaleValue, TEXT("ReturnValue"), Multiply, TEXT("A")); Link(Radius, TEXT("RadiusScale"), Multiply, TEXT("B"));
+    Link(ScaleValue, TEXT("ReturnValue"), Multiply, TEXT("A")); auto* Weighted=Call(G,UKismetMathLibrary::StaticClass(),TEXT("Multiply_FloatFloat")); Link(Radius,TEXT("RadiusScale"),Weighted,TEXT("A")); Link(Get(G,TEXT("WeightScale")),TEXT("WeightScale"),Weighted,TEXT("B")); Link(Weighted,TEXT("ReturnValue"),Multiply,TEXT("B"));
     auto* Vector = Call(G, UKismetMathLibrary::StaticClass(), TEXT("MakeVector"));
     for (const auto* Axis : { TEXT("X"), TEXT("Y"), TEXT("Z") }) Link(Multiply, TEXT("ReturnValue"), Vector, Axis);
     auto* Resize = Call(G, AActor::StaticClass(), TEXT("SetActorScale3D"));
@@ -561,9 +570,6 @@ void BuildVisualTest()
 
 void BuildValidationFixtures()
 {
-    auto* EventPackage = CreatePackage(TEXT("/Game/NwiValidation/EWC_EggHunt_Ambush"));
-    auto* EventBP = FKismetEditorUtilities::CreateBlueprint(UEnemyWaveController::StaticClass(), EventPackage, TEXT("EWC_EggHunt_Ambush"), BPTYPE_Normal, UBlueprint::StaticClass(), UBlueprintGeneratedClass::StaticClass());
-    Compile(EventBP); Save(EventBP);
     // Synthetic constants test the generated graph without loading or distributing game assets.
     for (const auto* Name : { TEXT("CF_TestScale"), TEXT("CF_TestAlpha") })
     {
@@ -637,7 +643,7 @@ public:
             if (FParse::Value(FCommandLine::Get(), TEXT("NwiValidationResult="), ResultFile))
             {
                 FFileHelper::SaveStringToFile(Passed
-                    ? TEXT("{\"success\":true,\"capture_test\":true,\"small_enemy_filter_test\":true,\"content_only\":true,\"automatic_pool_test\":true,\"settings_test\":true,\"async_resource_tests\":true,\"visual_no_controller_test\":true,\"edge_cases\":1452,\"red_material_test\":true,\"gpu_tested\":false,\"game_integration_tested\":false}")
+                    ? TEXT("{\"success\":true,\"capture_test\":true,\"native_contract_test\":true,\"replication_metadata_test\":true,\"content_only\":false,\"automatic_pool_test\":true,\"settings_test\":true,\"async_resource_tests\":true,\"visual_no_controller_test\":true,\"edge_cases\":1452,\"red_material_test\":true,\"gpu_tested\":false,\"game_integration_tested\":false}")
                     : TEXT("{\"success\":false}"), *ResultFile);
             }
             UE_LOG(LogTemp, Display, TEXT("NWI_VALIDATION_RESULT %s"), Passed ? TEXT("PASS") : TEXT("FAIL"));

@@ -1,6 +1,5 @@
 // Headless integration tests follow UE's EngineAutomationTests transient UWorld lifecycle.
 #include "NwiValidation.h"
-#include "NwiFsdStubs.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "Engine/StaticMeshActor.h"
@@ -19,6 +18,7 @@
 #include "Components/SpinBox.h"
 #include "Components/EditableTextBox.h"
 #include "Components/Button.h"
+#include "Components/Image.h"
 #include "Engine/LocalPlayer.h"
 #include "Engine/GameInstance.h"
 #include "GameFramework/DefaultPawn.h"
@@ -290,11 +290,11 @@ bool ValidateAutomatic(UClass* PulseClass, UClass* WidgetClass)
     auto* Class = LoadClass<AActor>(nullptr, TEXT("/Game/NormalWaveIndicator/BP_NwiAuto.BP_NwiAuto_C"));
     NWI_REQUIRE(Test.World && Class);
     auto* Controller = Test.World->SpawnActor<AActor>(Class);
-    NWI_REQUIRE(!Class->FindFunctionByName(TEXT("NwiPoll")));
+    NWI_REQUIRE(Class->FindFunctionByName(TEXT("NwiPoll")));
     auto* Service = Class->FindFunctionByName(TEXT("ServiceRegions"));
     auto* Attempted = FindFProperty<FBoolProperty>(Class, TEXT("PoolAttempted"));
     NWI_REQUIRE(Controller && Service && Attempted);
-    NWI_REQUIRE(Controller->IsActorTickEnabled() && !Controller->GetIsReplicated());
+    NWI_REQUIRE(Controller->IsActorTickEnabled() && Controller->GetIsReplicated());
     ++GFrameCounter; Test.World->Tick(LEVELTICK_All, 0.1f);
     NWI_REQUIRE(!Attempted->GetPropertyValue_InContainer(Controller));
     auto* Material = LoadObject<UMaterial>(nullptr, TEXT("/Game/NormalWaveIndicator/M_NwiRedPulse.M_NwiRedPulse"));
@@ -369,12 +369,20 @@ bool ValidateAutomatic(UClass* PulseClass, UClass* WidgetClass)
     auto* Button = Cast<UButton>(Page->WidgetTree->FindWidget(TEXT("ApplyButton")));
     NWI_REQUIRE(LabelInput && RadiusInput && TimeInput && Button);
     LabelInput->SetText(FText::FromString(TEXT("WATCH OUT"))); RadiusInput->SetValue(6.f); TimeInput->SetValue(12.f);
+    auto* OpacityInput=Cast<USpinBox>(Page->WidgetTree->FindWidget(TEXT("InputOpacity")));auto* HzInput=Cast<USpinBox>(Page->WidgetTree->FindWidget(TEXT("InputBlinkHz")));NWI_REQUIRE(OpacityInput && HzInput);
+    OpacityInput->SetValue(.65f);HzInput->SetValue(2.f);
+    auto* PageTick=PageClass->FindFunctionByName(TEXT("Tick"));NWI_REQUIRE(PageTick);
+    FStructOnScope TickParams(PageTick);Page->ProcessEvent(PageTick,TickParams.GetStructMemory());
+    auto* Swatch=Cast<UImage>(Page->WidgetTree->FindWidget(TEXT("SpherePreview")));NWI_REQUIRE(Swatch && Swatch->ColorAndOpacity.A==.65f);
+    NWI_REQUIRE(FindFProperty<FFloatProperty>(Settings->GetClass(),TEXT("Opacity"))->GetPropertyValue_InContainer(Settings)==.4f); // Preview has no save side effects.
     Button->OnClicked.Broadcast();
     NWI_REQUIRE(FindFProperty<FStrProperty>(Settings->GetClass(), TEXT("Label"))->GetPropertyValue_InContainer(Settings) == TEXT("WATCH OUT"));
     auto* Reloaded = UGameplayStatics::LoadGameFromSlot(Slot, 0);
     NWI_REQUIRE(Reloaded && UGameplayStatics::DeleteGameInSlot(Slot, 0));
     NWI_REQUIRE(FindFProperty<FFloatProperty>(Reloaded->GetClass(), TEXT("Duration"))->GetPropertyValue_InContainer(Reloaded) == 12.f);
+    NWI_REQUIRE(FindFProperty<FFloatProperty>(Reloaded->GetClass(),TEXT("Opacity"))->GetPropertyValue_InContainer(Reloaded)==.65f);
     Controller->ProcessEvent(Class->FindFunctionByName(TEXT("RefreshSettings")), nullptr);
+    float SavedOpacity=0; NWI_REQUIRE(Cast<UMaterialInstanceDynamic>(Mids[0])->GetScalarParameterValue(FMaterialParameterInfo(TEXT("Opacity")),SavedOpacity) && SavedOpacity==.65f);
     NWI_REQUIRE(FindFProperty<FFloatProperty>(Class, TEXT("DurationSec"))->GetPropertyValue_InContainer(Controller) == 12.f);
     for (int32 I = 0; I < 8; ++I) NWI_REQUIRE(FindFProperty<FFloatProperty>(PulseClass, TEXT("RadiusScale"))->GetPropertyValue_InContainer(Pulses[I]) == 6.f && Mid->GetObjectPropertyValue_InContainer(Pulses[I]) == Mids[I]);
     auto* Pc = Test.World->SpawnActor<APlayerController>(); auto* Pawn = Test.World->SpawnActor<ADefaultPawn>();
@@ -385,11 +393,13 @@ bool ValidateAutomatic(UClass* PulseClass, UClass* WidgetClass)
     *FindFProperty<FStructProperty>(WidgetClass, TEXT("WorldLocation"))->ContainerPtrToValuePtr<FVector>(Huds[0]) = FVector(300, 400, 0);
     Huds[0]->ProcessEvent(WidgetClass->FindFunctionByName(TEXT("UpdateWarning")), nullptr);
     auto* MarkerText = Cast<UTextBlock>(Huds[0]->WidgetTree->FindWidget(TEXT("MarkerText")));
-    NWI_REQUIRE(MarkerText && MarkerText->GetText().ToString() == TEXT("WATCH OUT | Unknown / possible natural wave  |  5 m"));
-    NWI_REQUIRE(MarkerText->GetRenderOpacity() >= .55f && MarkerText->GetRenderOpacity() <= 1.f);
+    NWI_REQUIRE(MarkerText && MarkerText->GetText().ToString() == TEXT("WATCH OUT  |  5 m"));
+    NWI_REQUIRE(MarkerText->GetRenderOpacity()==1.f);
+    NWI_REQUIRE(MarkerText->ColorAndOpacity.GetSpecifiedColor()==FLinearColor::Red || MarkerText->ColorAndOpacity.GetSpecifiedColor()==FLinearColor::White);
+    NWI_REQUIRE(FindFProperty<FFloatProperty>(WidgetClass,TEXT("BlinkHz"))->GetPropertyValue_InContainer(Huds[0])==2.f);
     FindFProperty<FBoolProperty>(WidgetClass, TEXT("BlinkEnabled"))->SetPropertyValue_InContainer(Huds[0], false);
     Huds[0]->ProcessEvent(WidgetClass->FindFunctionByName(TEXT("UpdateWarning")), nullptr);
-    NWI_REQUIRE(MarkerText->GetRenderOpacity() == 1.f);
+    NWI_REQUIRE(MarkerText->GetRenderOpacity() == 1.f && MarkerText->ColorAndOpacity.GetSpecifiedColor()==FLinearColor::Red);
     auto* PagesFunction = Class->FindFunctionByName(TEXT("GetModPages")); NWI_REQUIRE(PagesFunction);
     FStructOnScope PageParams(PagesFunction); Controller->ProcessEvent(PagesFunction, PageParams.GetStructMemory());
     auto* PagesProperty = FindFProperty<FArrayProperty>(PagesFunction, TEXT("HubPages")); NWI_REQUIRE(PagesProperty);

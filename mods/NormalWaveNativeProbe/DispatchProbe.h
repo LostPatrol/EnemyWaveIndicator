@@ -20,6 +20,7 @@ struct ThreadSample {
     uint64_t sourceRejected = 0, skipped = 0, failedSpawns = 0, lateEvents = 0;
     uint64_t normalEntries = 0, normalSiteMatches = 0, noMissionWorld = 0, contextRejected = 0;
     std::array<uint64_t, 8> rejectedSourceFrames{};
+    std::array<uint64_t, 6> timing{}; // count, center minimum/maximum, queue maximum, handoff maximum, excluded.
 };
 using Callback = void (*)(void*);
 struct ProbeApi {
@@ -51,6 +52,7 @@ public:
         uint64_t sourceRejected = 0, skipped = 0, failedSpawns = 0, lateEvents = 0;
         uint64_t normalEntries = 0, normalSiteMatches = 0, noMissionWorld = 0, contextRejected = 0;
         std::array<uint64_t, 8> rejectedSourceFrames{};
+    std::array<uint64_t, 6> timing{}; // count, center minimum/maximum, queue maximum, handoff maximum, excluded.
         bool disabled = false;
     } stats;
 
@@ -95,7 +97,7 @@ public:
                 stats.failedSpawns = result_.failedSpawns; stats.lateEvents = result_.lateEvents; stats.autoBindings = result_.autoBindings;
                 stats.normalEntries = result_.normalEntries; stats.normalSiteMatches = result_.normalSiteMatches;
                 stats.noMissionWorld = result_.noMissionWorld; stats.contextRejected = result_.contextRejected;
-                stats.rejectedSourceFrames = result_.rejectedSourceFrames;
+                stats.rejectedSourceFrames = result_.rejectedSourceFrames; stats.timing = result_.timing;
                 }
                 if (result_.runtimeInitialized) ++stats.runtimeInitialized;
                 if (!result_.identityReadOk) { ++stats.identityReadFailures; stats.disabled = true; }
