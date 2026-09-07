@@ -1,6 +1,8 @@
 <!-- Public-beta upload steps and two distinct installation routes, with measured acceptance boundaries. -->
 # 0.9.0 公开测试版：发布与安装
 
+GitHub公开测试发行使用标签 **v0.9.0-beta.1**，在Releases标记为 **Pre-release**，下载文件为 `EnemyWaveIndicator-0.9.0-beta.1.zip`。它与下述已验证0.9.0本地包内容完全一致；游戏内版本暂保留0.9.0 test，ABI不变。GitHub发行不代表mod.io条目已创建或上传。
+
 公开名称已改为 **Enemy Wave Indicator**，Mod Hub名称与设置页标题同步更新。发布使用 `dist/EnemyWaveIndicator-0.9.0.zip` 和 `docs/media/enemy-wave-indicator-cover-v1.png`。Pak内部路径、存档槽、GitHub仓库地址保留原名以兼容现有安装；本机MintCat已有条目继续引用字节一致的 `dist/NormalWaveIndicator-0.9.0.zip`，避免添加第二份DLL。
 
 用户此前反馈主要功能正常，随后报告只有光球、没有文字。2026-09-08修复包补上文字控件脱离视口后的恢复，并提高默认显示层级；真实Slate视口回归通过，实机文字恢复仍待确认。发布前先复测此问题。当前仍定位为**已有36类虫潮功能的公开测试版**，不要称为完整task1或稳定版。后续计划统一在[TODO issue #1](https://github.com/LostPatrol/NormalWaveIndicator/issues/1)，发布说明草稿见[MODIO-DESCRIPTION.md](MODIO-DESCRIPTION.md)。

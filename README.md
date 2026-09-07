@@ -1,9 +1,19 @@
 <!-- Current native test baseline; task1's all-source and prediction work is explicitly incomplete. -->
-# Enemy Wave Indicator — 0.9.0 test candidate
+# Enemy Wave Indicator — 0.9.0 Beta
 
-DRG enemy-wave spawn markers using **DLL + Pak**, installed through MintCat. This is an unpublished test candidate, not completion of every requirement in `task1-refine.md`.
+![Enemy Wave Indicator cover](docs/media/enemy-wave-indicator-cover-v1.png)
 
-Previously named Normal Wave Indicator. The public name and Mod Hub page now use Enemy Wave Indicator; existing asset paths, DLL identifiers and save slots retain their original names for compatibility. Upload package: `dist/EnemyWaveIndicator-0.9.0.zip`. [Publication cover](docs/media/enemy-wave-indicator-cover-v1.png).
+DRG enemy-wave spawn markers using **DLL + Pak**, installed through MintCat. Supports natural waves and 35 scripted wave types, with configurable spheres, text and distance indicators.
+
+**[Download 0.9.0 Beta 1](https://github.com/LostPatrol/NormalWaveIndicator/releases/tag/v0.9.0-beta.1)** · [Installation guide](docs/RELEASE.md) · [Supported wave types](docs/WAVE-TYPES.md)
+
+This is a public beta; full task1 acceptance and multiplayer validation remain incomplete. Previously named Normal Wave Indicator. The public name and Mod Hub page now use Enemy Wave Indicator; existing asset paths, DLL identifiers and save slots retain their original names for compatibility.
+
+## Gameplay preview
+
+![Enemy Wave Indicator gameplay demonstration](docs/media/normalwaveindicator-720x400.gif)
+
+Gameplay recording supplied by the author. The cover above is promotional artwork. Original media and generation prompts are kept in [docs/media](docs/media).
 
 ## Implemented
 
@@ -25,7 +35,7 @@ Future work is tracked in [TODO issue #1](https://github.com/LostPatrol/NormalWa
 
 ## Player installation
 
-Close DRG, import the generated ZIP into MintCat using its local-file import, enable Mod Hub and apply/integrate. New players do not run PowerShell. Host and participating clients need matching content. This candidate is pinned to the audited game build and UE4SSL runtime; incompatible binaries do not install observation hooks.
+Download `EnemyWaveIndicator-0.9.0-beta.1.zip` from the linked GitHub Release. Close DRG, import the ZIP into MintCat using its local-file import, enable Mod Hub and apply/integrate. If you already installed a local test copy, update that entry or disable it before importing this archive to avoid duplicate DLLs. New players do not run PowerShell. Host and participating clients need matching content. This beta targets Steam Windows 1.40 (build24903151) and UE4SSL0.31.0; incompatible binaries do not install observation hooks.
 
 The old 0.6.0 manually installed DLL/Pak must be backed up and disabled before importing the new package. Updating through MintCat does not prove it removed a separately installed loose Pak. Detailed migration, testing and mod.io submission steps are in [RELEASE.md](docs/RELEASE.md).
 
