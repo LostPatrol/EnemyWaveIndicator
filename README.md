@@ -5,13 +5,11 @@
 
 DRG enemy-wave spawn markers using **DLL + Pak**, installed through MintCat. Supports natural waves and 35 scripted wave types, with configurable spheres, text and distance indicators.
 
+<img src="https://raw.githubusercontent.com/LostPatrol/NormalWaveIndicator/main/docs/media/normalwaveindicator-720x400.gif" alt="Enemy Wave Indicator gameplay demonstration" width="719" height="408">
+
 **[Download 0.9.0 Beta 1](https://github.com/LostPatrol/NormalWaveIndicator/releases/tag/v0.9.0-beta.1)** · [Installation guide](docs/RELEASE.md) · [Supported wave types](docs/WAVE-TYPES.md)
 
 This is a public beta; full task1 acceptance and multiplayer validation remain incomplete. Previously named Normal Wave Indicator. The public name and Mod Hub page now use Enemy Wave Indicator; existing asset paths, DLL identifiers and save slots retain their original names for compatibility.
-
-## Gameplay preview
-
-![Enemy Wave Indicator gameplay demonstration](docs/media/normalwaveindicator-720x400.gif)
 
 Gameplay recording supplied by the author. The cover above is promotional artwork. Original media and generation prompts are kept in [docs/media](docs/media).
 
