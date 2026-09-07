@@ -21,8 +21,17 @@ bool ValidateCapture()
     Attach(Wave); Attach(Wave); // Rebinding must leave exactly one copy of our subscriber.
     NWI_REQUIRE(Manager->OnEnemySpawned.IsBound());
     Manager->OnEnemySpawned.Broadcast(nullptr, Descriptor); NWI_REQUIRE(Count() == 0);
+    Manager->ActiveSwarmerEnemies.Add(Enemy); Emit(1000); NWI_REQUIRE(Count() == 0 && Expires(0) == 0.f);
+    Manager->ActiveSwarmerEnemies.Reset(); Manager->ActiveCritters.Add(Enemy); Emit(1000); NWI_REQUIRE(Count() == 0);
+    Manager->ActiveCritters.Reset();
     Emit(1000); NWI_REQUIRE(Count() == 1 && Point(0).Equals(FVector(1000,0,100)));
     NWI_REQUIRE(Label(0) == TEXT("Unknown / possible natural wave"));
+    // A dense small-enemy burst at matching and distant positions must not touch any existing region.
+    const float OriginalExpiry = Expires(0);
+    Manager->ActiveSwarmerEnemies.Add(Enemy);
+    for (int32 I=0; I<100; ++I) { ++GFrameCounter; Test.World->Tick(LEVELTICK_All, .01f); Emit(I%2 ? 1000.f : 30000.f+I*2000.f); }
+    NWI_REQUIRE(Count() == 1 && Expires(0) == OriginalExpiry && Expires(1) == 0.f && Point(0).Equals(FVector(1000,0,100)));
+    Manager->ActiveSwarmerEnemies.Reset();
     Emit(1799); NWI_REQUIRE(Count() == 2 && Point(0).Equals(FVector(1000,0,100)) && Expires(1) == 0.f);
     Emit(1801); NWI_REQUIRE(Count() == 3 && Point(1).Equals(FVector(1801,0,100)));
     // Context is read from the active controller class, and kept separate from nearby unknown spawns.
@@ -55,7 +64,7 @@ bool ValidateCapture()
     TArray<AActor*> Controllers; UGameplayStatics::GetAllActorsOfClass(Test.World,Class,Controllers); NWI_REQUIRE(Controllers.Num()==1);
     NWI_REQUIRE(OwningEntry->Destroy() && Controllers[0]->IsActorBeingDestroyed());
     Controllers.Reset(); UGameplayStatics::GetAllActorsOfClass(Test.World,Class,Controllers); NWI_REQUIRE(Controllers.Num()==0);
-    UE_LOG(LogTemp, Display, TEXT("NWI_TEST content capture: real delegate -> saved Blueprint; null guard, repeated bind, 8m boundary, context/fallback/mixed labels, stable origins, expiry, 8-slot cap, manager replacement, EndPlay and native initializer ownership/deduplication passed"));
+    UE_LOG(LogTemp, Display, TEXT("NWI_TEST content capture: real delegate -> saved Blueprint; small/critter bucket exclusion, 100 filtered notifications cannot create/extend/evict regions, null guard, repeated bind, 8m boundary, context/fallback/mixed labels, stable origins, expiry, 8-slot cap, manager replacement, EndPlay and native initializer ownership/deduplication passed"));
     return true;
 }
 }

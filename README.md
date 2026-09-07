@@ -1,13 +1,15 @@
-<!-- Player-facing scope and developer build instructions for the content-only all-spawn beta. -->
-# Normal Wave Indicator — 0.7.0 beta
+<!-- Player-facing scope and developer build instructions for the filtered content-only spawn-area beta. -->
+# Normal Wave Indicator — 0.7.1 beta
 
-A Deep Rock Galactic **content-only** spawn-area indicator. Version 0.7.0 observes all enemy spawns reported by the game's spawn manager instead of trying to identify natural normal waves exactly. It does not modify enemy spawning.
+A Deep Rock Galactic **content-only** spawn-area indicator. Version 0.7.1 observes the game's enemy-spawn notifications, excluding its registered small-enemy and critter buckets. It does not modify enemy spawning or attempt exact natural-wave identification.
 
 The intended player workflow is to subscribe and enable the Mod and its Mod Hub content dependency through the game's native mod.io support. **The candidate is not published, and clean mod.io subscription/gameplay acceptance is still pending.** No runtime DLL, UE4SSL, PowerShell or external installer is included in the new upload ZIP.
 
 ## Behavior
 
 - Host-local red pulse spheres and screen/edge labels mark the enemy's location at its successful-spawn callback. The marker stays at that origin instead of following the enemy.
+- A single eligible notification can trigger a marker; there is no minimum wave size or Mission Control announcement requirement. Ambient spawns and some boss summons therefore qualify too.
+- Pawns in `EnemySpawnManager.ActiveSwarmerEnemies` or `ActiveCritters` are ignored before recording, merging or extending marker lifetimes. This follows the game's live counting buckets: swarmers, small naedocytes and hostile shredders are excluded when registered there. Large breeders remain eligible. Descriptor significance alone is not used, because it can differ from the Pawn's counting category. Unregistered or other-mod reclassified units remain a compatibility limitation.
 - Spawns within 8 metres of an active region's first point and with the same context label extend that region. At most eight regions are visible; a new distant region replaces the one with the earliest expiry when capacity is full.
 - When the wave manager exposes an active scripted controller, its readable class name is shown as `Event context: ...`. Multiple controllers are marked `Mixed events (first): ...`.
 - Otherwise the label says `Unknown / possible natural wave`. This is a guess, not proof of natural-wave provenance. Mission-specific events that are not in that active-controller list can receive this fallback too.
@@ -34,7 +36,7 @@ The generated upload ZIP contains exactly `NormalWaveIndicator_P.pak`. The adjac
 
 ## Validation and migration
 
-Cold editor tests execute saved Blueprint graphs and the FSD-shaped multicast delegate fixture. They cover event capture, grouping, context/fallback, lifetime and initialization, along with the existing pooled display/settings checks. These tests do not run the real FSD game implementation and cannot substitute for a clean native mod.io test or GPU profiling.
+Cold editor tests execute saved Blueprint graphs and the FSD-shaped multicast delegate fixture. They cover event capture, exclusion of small enemies/critters, a 100-notification filtered burst that cannot create or extend regions, grouping, context/fallback, lifetime and initialization, along with the existing pooled display/settings checks. These tests do not run the real FSD game implementation and cannot substitute for a clean native mod.io test or GPU profiling. See the [spawn and boss-summon audit](docs/SPAWN-FILTER-AUDIT.md) for current-game static evidence and coverage limits.
 
 Users of the previous **0.6.0 DLL alpha** must remove/disable that old Mod loader and loose presentation Pak before testing this version. Do not mix the old native producer with these changed Blueprint assets. The new subscription Mod does not automatically remove files previously installed outside mod.io. Back up the old installation for rollback; do not remove loaders or other mods indiscriminately.
 

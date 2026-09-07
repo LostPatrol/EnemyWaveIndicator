@@ -51,7 +51,7 @@ void BuildSettings()
         auto* T = BP->WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), Name); T->SetText(FText::FromString(Label));
         auto Font = T->Font; Font.Size = 16; T->SetFont(Font); Root->AddChildToVerticalBox(T); return T;
     };
-    AddText(TEXT("Title"), TEXT("Normal Wave Indicator  |  All-spawn beta 0.7.0"));
+    AddText(TEXT("Title"), TEXT("Normal Wave Indicator  |  Spawn-area beta 0.7.1"));
     const TCHAR* Labels[] = {TEXT("Warning text (up to 64 characters)"), TEXT("Visibility after the last spawn (seconds, 1 - 30)"), TEXT("Sphere size (0.5 - 12; default 3.75)"), TEXT("Sphere red (linear intensity, 0 - 5)"), TEXT("Sphere green (0 - 5)"), TEXT("Sphere blue (0 - 5)"), TEXT("Gently pulse warning text (1.5 Hz)")};
     for (int32 I = 0; I < 7; ++I)
     {
@@ -117,7 +117,7 @@ void AddControllerSettings(UBlueprint* BP)
     check(FBlueprintEditorUtils::ImplementNewInterface(BP, HubInterface(TEXT("IHubMod"))->GetFName()));
     auto* Info = HubResult(BP, TEXT("GetModInfo"));
     const TCHAR* Names[] = {TEXT("ModName"), TEXT("ModAuthor"), TEXT("ModVersion")};
-    const TCHAR* Values[] = {TEXT("Normal Wave Indicator"), TEXT("LostPatrol"), TEXT("0.7.0 beta")};
+    const TCHAR* Values[] = {TEXT("Normal Wave Indicator"), TEXT("LostPatrol"), TEXT("0.7.1 beta")};
     for (int32 I = 0; I < 3; ++I) GetDefault<UEdGraphSchema_K2>()->TrySetDefaultText(*Pin(Info, Names[I]), FText::FromString(Values[I]));
 }
 

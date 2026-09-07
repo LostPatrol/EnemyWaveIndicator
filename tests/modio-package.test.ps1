@@ -11,8 +11,8 @@ $names=@('BP_NwiAuto','BP_NwiResources','BP_NwiPulse','WBP_NwiMarker','SG_NwiSet
 $files=@($names | ForEach-Object { foreach($extension in @('uasset','uexp')) { $p=Join-Path $cookDir "$_.${extension}"; Set-Content $p 'fixture cooked bytes'; Get-FileHash $p } })
 $pak=Join-Path $cookDir 'NormalWavePresentation-assets-only.pak'; Set-Content $pak 'fixture Pak payload'
 $audit=Join-Path $cookDir 'dependency-audit.json'; @{passed=$true;contentOnly=$true;assets=9} | ConvertTo-Json | Set-Content $audit
-$assets=@{Success=$true;SourceFiles=@(Get-FileHash $source);Assets=@(Get-FileHash $asset);Validation=@{success=$true;capture_test=$true;content_only=$true;automatic_pool_test=$true;settings_test=$true;async_resource_tests=$true;red_material_test=$true;edge_cases=1452}}
-$cook=@{Success=$true;ContentOnly=$true;Version='0.7.0';SeparateNativeBootstrapRequired=$false;AssetsOnly=$true;ContainsGameAssetCopies=$false;InlineMaterialShaders=$true;PakHashesVerified=$true;Files=$files;Verification=$assetsDir;Pak=Get-FileHash $pak;DependencyAudit=Get-FileHash $audit;PackagingConfig=Get-FileHash $config}
+$assets=@{Success=$true;SourceFiles=@(Get-FileHash $source);Assets=@(Get-FileHash $asset);Validation=@{success=$true;capture_test=$true;small_enemy_filter_test=$true;content_only=$true;automatic_pool_test=$true;settings_test=$true;async_resource_tests=$true;red_material_test=$true;edge_cases=1452}}
+$cook=@{Success=$true;ContentOnly=$true;Version='0.7.1';SeparateNativeBootstrapRequired=$false;AssetsOnly=$true;ContainsGameAssetCopies=$false;InlineMaterialShaders=$true;PakHashesVerified=$true;Files=$files;Verification=$assetsDir;Pak=Get-FileHash $pak;DependencyAudit=Get-FileHash $audit;PackagingConfig=Get-FileHash $config}
 function Save-Fixture { $assets | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $assetsDir 'verification.json'); $cook | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $cookDir 'verification.json') }
 $script=Join-Path $testRoot 'scripts\Prepare-ModioRelease.ps1'
 $rejections=0
@@ -29,6 +29,7 @@ foreach($flag in @('Success','ContentOnly','AssetsOnly','InlineMaterialShaders',
 $cook.SeparateNativeBootstrapRequired=$true; Save-Fixture; Assert-Rejected 'Missing complete content-only'; $cook.SeparateNativeBootstrapRequired=$false
 $cook.ContainsGameAssetCopies=$true; Save-Fixture; Assert-Rejected 'Missing complete content-only'; $cook.ContainsGameAssetCopies=$false
 $assets.Validation.capture_test=$false; Save-Fixture; Assert-Rejected 'Missing content-only Blueprint'; $assets.Validation.capture_test=$true
+$assets.Validation.small_enemy_filter_test=$false; Save-Fixture; Assert-Rejected 'Missing content-only Blueprint'; $assets.Validation.small_enemy_filter_test=$true
 $assets.Validation.content_only=$false; Save-Fixture; Assert-Rejected 'Missing content-only Blueprint'; $assets.Validation.content_only=$true
 $oldSources=$assets.SourceFiles; $assets.SourceFiles=@(); Save-Fixture; Assert-Rejected 'Missing content-only input hashes'; $assets.SourceFiles=$oldSources
 Save-Fixture

@@ -82,11 +82,23 @@ void BuildCapture(UBlueprint* BP, UEdGraph* G)
     auto* Manager = Call(G, AFSDGameMode::StaticClass(), TEXT("GetWaveManager")); check(GetDefault<UEdGraphSchema_K2>()->TryCreateConnection(Cast->GetCastResultPin(), Pin(Manager, TEXT("self"))));
     auto* DoAttach = Call(G, BP->GeneratedClass, TEXT("AttachCapture")); Link(Manager, TEXT("ReturnValue"), DoAttach, TEXT("Manager")); Link(Cast, TEXT("then"), DoAttach, TEXT("execute"));
 
-    // Snapshot the Pawn before looking at optional event context; never spawn, move or modify an enemy.
+    // Filter the game's registered small-enemy/critter buckets before any aggregation or TTL update.
+    // RegisterSpawnedEnemy classifies by gameplay tags; a descriptor's spawn-budget significance can differ.
     auto* EnemyValid = Branch(G, Valid(G, Observe, TEXT("enemy")), TEXT("ReturnValue")); Link(Observe, TEXT("then"), EnemyValid, TEXT("execute"));
     auto* Authority = Branch(G, Call(G, UKismetSystemLibrary::StaticClass(), TEXT("IsServer")), TEXT("ReturnValue")); Link(EnemyValid, TEXT("then"), Authority, TEXT("execute"));
+    auto* FilterReady = Branch(G, HaveBound, TEXT("ReturnValue")); Link(Authority, TEXT("then"), FilterReady, TEXT("execute"));
+    UEdGraphNode* FilterExec = FilterReady;
+    const TCHAR* FilterPin = TEXT("then");
+    for (const TCHAR* Bucket : {TEXT("ActiveSwarmerEnemies"), TEXT("ActiveCritters")}) {
+        auto* Contains = Call(G, UKismetArrayLibrary::StaticClass(), TEXT("Array_Contains"));
+        Link(Field(G, UEnemySpawnManager::StaticClass(), Bucket, Bound, TEXT("CaptureManager")), Bucket, Contains, TEXT("TargetArray"));
+        Link(Observe, TEXT("enemy"), Contains, TEXT("ItemToFind"));
+        auto* Excluded = Branch(G, Contains, TEXT("ReturnValue")); Link(FilterExec, FilterPin, Excluded, TEXT("execute"));
+        FilterExec = Excluded; FilterPin = TEXT("else");
+    }
+    // Snapshot only eligible Pawn notifications; never spawn, move or modify an enemy.
     auto* Position = Call(G, AActor::StaticClass(), TEXT("K2_GetActorLocation")); Link(Observe, TEXT("enemy"), Position, TEXT("self"));
-    auto* Point = Set(G, TEXT("SamplePoint")); Link(Position, TEXT("ReturnValue"), Point, TEXT("SamplePoint")); Link(Authority, TEXT("then"), Point, TEXT("execute"));
+    auto* Point = Set(G, TEXT("SamplePoint")); Link(Position, TEXT("ReturnValue"), Point, TEXT("SamplePoint")); Link(FilterExec, FilterPin, Point, TEXT("execute"));
     auto* Stamp = Set(G, TEXT("SampleTime")); Link(Now, TEXT("ReturnValue"), Stamp, TEXT("SampleTime")); Link(Point, TEXT("then"), Stamp, TEXT("execute"));
     auto* Fallback = Set(G, TEXT("SampleLabel")); Value(Fallback, TEXT("SampleLabel"), TEXT("Unknown / possible natural wave")); Link(Stamp, TEXT("then"), Fallback, TEXT("execute"));
     auto* ContextGate = Branch(G, Valid(G, Wave, TEXT("WaveManager")), TEXT("ReturnValue")); Link(Fallback, TEXT("then"), ContextGate, TEXT("execute"));

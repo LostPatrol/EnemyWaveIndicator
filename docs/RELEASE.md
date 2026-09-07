@@ -1,7 +1,7 @@
-<!-- Release procedure for the revised all-spawn content-only candidate; distinguish offline and game acceptance. -->
-# Release preparation — 0.7.0 content-only beta
+<!-- Release procedure for filtered spawn notifications; distinguish offline and game acceptance. -->
+# Release preparation — 0.7.1 content-only beta
 
-The user explicitly accepts approximate wave classification. The 0.7.0 candidate therefore uses the existing `EnemySpawnManager.OnEnemySpawned` event, records callback-time locations, and attaches optional active-wave context. The source-preserving game API in earlier research is **not required for this revised scope**.
+The user explicitly accepts approximate wave classification and excludes small enemies. The 0.7.1 candidate uses the existing `EnemySpawnManager.OnEnemySpawned` event, ignores the manager's `ActiveSwarmerEnemies` and `ActiveCritters` buckets, records eligible callback-time locations, and attaches optional active-wave context. The source-preserving game API in earlier research is **not required for this revised scope**.
 
 ## What to publish
 
@@ -13,13 +13,14 @@ Build with the README's developer commands and `Prepare-Release.ps1 -Target Modi
 
 No DLL, native loader, install script, FSD stub module, authoring plugin, test asset, original game asset or copied Mod Hub interface belongs in the upload. Dependencies resolve to stock Engine/FSD implementations, owned Blueprints and the separately subscribed Mod Hub interface. Cooking uses inline material shaders.
 
-The packager requires cold Blueprint capture/display/settings checks, source/asset/cooked/config hashes, an exact entry list and a cooked-import audit. It marks the architecture as content-only but keeps `ModioSubscriptionTested=false` and `ReleaseReady=false`. Passing these checks does not grant moderation approval or prove that every game spawn path is covered.
+The packager requires cold Blueprint capture/small-enemy-filter/display/settings checks, source/asset/cooked/config hashes, an exact entry list and a cooked-import audit. It marks the architecture as content-only but keeps `ModioSubscriptionTested=false` and `ReleaseReady=false`. Passing these checks does not grant moderation approval or prove that every game spawn path is covered.
 
 ## Required acceptance before public release
 
 1. Use a backed-up clean game environment with the old Normal Wave Indicator DLL/Pak disabled and no Mint/MintCat injection or UE4SSL. Do not uninstall unrelated mods or erase saves. The previous alpha installation requires a one-time migration; a new subscriber does not.
 2. Upload the candidate privately only with the owner's authorization. Declare Mod Hub as a content dependency. Subscribe through the game, enable, restart and enter a host mission. Verify both native entry actors initialize exactly one controller. Then verify disable/re-enable and another mission/world.
 3. Check normal, scripted, egg ambush, extraction/defence and overlapping spawns. Points must correspond to newly notified enemy locations; context may be uncertain. Missing notifications from a particular game path must be reported, not hidden behind an “all actors” claim.
+   Check swarmer biome/egg/tunnel variants, both small naedocyte families and hostile shredders: they must neither create markers nor extend nearby regular-enemy markers. Large breeders, Hiveguard sentinels and Caretaker patrol bots remain eligible when notified. Caretaker tentacles use direct creation and are not covered by this observer. Compare the [static audit](SPAWN-FILTER-AUDIT.md) against actual gameplay, especially registration timing and other-mod interactions.
 4. Check the eight-region capacity policy, 8 m merge boundary, stationary origins, configured expiry, distance, blink, Mod Hub H discovery and save/restart. Confirm long sessions/travel without the old native bootstrap's time/world limits.
 5. Measure frame time under dense spawns. The fixed pool bounds rendering objects, but the per-enemy Blueprint work still needs actual-game profiling. Check the current mod.io category with moderation; no Verified/Approved status is claimed here.
 

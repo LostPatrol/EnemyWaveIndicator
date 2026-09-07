@@ -637,7 +637,7 @@ public:
             if (FParse::Value(FCommandLine::Get(), TEXT("NwiValidationResult="), ResultFile))
             {
                 FFileHelper::SaveStringToFile(Passed
-                    ? TEXT("{\"success\":true,\"capture_test\":true,\"content_only\":true,\"automatic_pool_test\":true,\"settings_test\":true,\"async_resource_tests\":true,\"visual_no_controller_test\":true,\"edge_cases\":1452,\"red_material_test\":true,\"gpu_tested\":false,\"game_integration_tested\":false}")
+                    ? TEXT("{\"success\":true,\"capture_test\":true,\"small_enemy_filter_test\":true,\"content_only\":true,\"automatic_pool_test\":true,\"settings_test\":true,\"async_resource_tests\":true,\"visual_no_controller_test\":true,\"edge_cases\":1452,\"red_material_test\":true,\"gpu_tested\":false,\"game_integration_tested\":false}")
                     : TEXT("{\"success\":false}"), *ResultFile);
             }
             UE_LOG(LogTemp, Display, TEXT("NWI_VALIDATION_RESULT %s"), Passed ? TEXT("PASS") : TEXT("FAIL"));

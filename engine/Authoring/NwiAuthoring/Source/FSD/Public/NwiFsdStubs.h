@@ -19,6 +19,9 @@ class FSD_API UEnemySpawnManager : public UActorComponent
     GENERATED_BODY()
 public:
     UPROPERTY(BlueprintAssignable, Category="Spawning") FEnemySpawnedSignature OnEnemySpawned;
+    // Stock manager buckets are filled from Pawn gameplay tags, not descriptor names or body size.
+    UPROPERTY(BlueprintReadOnly, Category="Spawning") TArray<APawn*> ActiveSwarmerEnemies;
+    UPROPERTY(BlueprintReadOnly, Category="Spawning") TArray<APawn*> ActiveCritters;
 };
 
 UCLASS(BlueprintType)
