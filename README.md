@@ -13,11 +13,13 @@ DRG natural-wave center markers using **DLL + Pak**, installed through MintCat. 
 - A host-created, always relevant Blueprint actor replicates source type, region points, size, visibility and expiry. Clients with the matching Pak draw their own HUD/spheres and use synchronized server time. **Network transport and late-join behavior still need real two-peer testing.** Clients without the Pak cannot display these custom assets. The DLL is required on the host.
 - Diagnostic logs measure actual selected-center→spawn, queue→spawn and spawn→native handoff intervals. They do not represent a rendered GPU frame or a prediction.
 
-## Still required by task1
+## Planned work
 
 The 35 concrete stock EWC types and natural waves have independent toggles/text and request provenance; see [the complete type catalog](docs/WAVE-TYPES.md). Non-EWC boss/direct summons, machine-event spawning components and new Mod-defined controller classes are not covered by this catalog. Generic controllers reused by several triggers remain one code type. This is not universal enemy-source coverage or completed task1.
 
 One-to-five-second exact position prediction is not established: the current game chooses a player, RNG and navigation location when triggering the wave. No early game function invocation, RNG consumption, enemy delay or spawning change is used. See [test instructions and acceptance gaps](docs/TASK1-ACCEPTANCE.md).
+
+Future work is tracked in [TODO issue #1](https://github.com/LostPatrol/NormalWaveIndicator/issues/1). The author reports the main 0.9.0 gameplay features work; the local ZIP has passed actual MintCat import/integration and DLL/18-asset hash checks. Online mod.io delivery and clean native subscription/manual-loader installation remain to be tested.
 
 ## Player installation
 
@@ -40,7 +42,7 @@ $cook = .\scripts\Cook-PresentationAssets.ps1 -VerificationDirectory $check
 .\tests\modio-package.test.ps1
 ```
 
-The Pak contains nine owned asset pairs. There is no runtime FSD stub, authoring module, validation asset or copied game asset. The ZIP includes `main.dll`, `NormalWaveIndicator_P.pak`, and `LICENSES.txt`. The separate manifest remains `ReleaseReady=false` until missing functionality and in-game acceptance are addressed.
+The Pak contains nine owned asset pairs. There is no runtime FSD stub, authoring module, validation asset or copied game asset. The ZIP includes `main.dll`, `NormalWaveIndicator_P.pak`, and `LICENSES.txt`. The original build manifest remains `ReleaseReady=false` for full stable-release acceptance. Public beta preparation and measured local MintCat import results are documented in [RELEASE.md](docs/RELEASE.md).
 
 ## License and references
 

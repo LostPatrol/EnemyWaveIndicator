@@ -1,36 +1,78 @@
-<!-- DLL/Pak delivery, migration and moderation instructions; no publication is claimed. -->
-# 发布与安装准备 — 0.9.0 测试候选
+<!-- Public-beta upload steps and two distinct installation routes, with measured acceptance boundaries. -->
+# 0.9.0 公开测试版：发布与安装
 
-当前路线是 MintCat 自动安装 DLL+Pak。**task1 尚未全部实现，当前包仅供测试，不应以完整发行版发布。** 源码不再提供旧版手工 PowerShell 安装器。
+用户已实机测试并反馈主要功能正常。当前可按**已有36类虫潮功能的公开测试版**准备发布，无需把未来TODO全部实现后才提供测试；不要称为完整task1或稳定版。后续计划统一在[TODO issue #1](https://github.com/LostPatrol/NormalWaveIndicator/issues/1)，发布说明草稿见[MODIO-DESCRIPTION.md](MODIO-DESCRIPTION.md)。
 
-0.9.0新增35种脚本虫潮，加自然潮共36项独立开关和文字配置，见[类型目录](WAVE-TYPES.md)。默认仅自然潮开启，测试矿骡伏击需启用 **Salvage: mini-MULE ambush** 并Apply。新NativeAbi=0x90000，必须同时更新DLL和Pak。原v2配置继续使用，新增类型默认关闭。
+## 作者：在 mod.io 发布
 
-## 本次本机测试操作
+1. 登录[DRG mod.io](https://mod.io/g/drg)，使用添加Mod入口创建条目。名称建议 `Normal Wave Indicator`，摘要说明虫潮生成位置、HUD/光球提示和36类开关。首次版本写 `0.9.0`，说明中明确“公开测试版”。
+2. 填写描述，上传一张封面和实际游戏截图；可直接使用本仓库的发布说明草稿。添加[Mod Hub](https://mod.io/g/drg/m/mod-hub)作为内容依赖；MintCat与UE4SSL作为安装/运行要求写入说明。不要把开发用接口包设为依赖。
+3. 在文件管理入口上传 `dist/NormalWaveIndicator-0.9.0.zip`，选择Windows，填写版本号及更新说明，并将该文件设为当前可下载版本。ZIP根目录必须是 `main.dll`、`NormalWaveIndicator_P.pak`、`LICENSES.txt`；不上传manifest、游戏文件或整个工作目录。
+4. 初次可使用Hidden供本人检查条目和文件，再切换Public提供测试。是否需要平台审核取决于DRG规则；Hidden也有访问限制，不能保证任意测试者拿链接就能下载。[mod.io状态和可见性说明](https://docs.mod.io/restapi/status-and-visibility)。
+5. 发布后，订阅自己的条目，在MintCat“添加Mod→mod.io订阅”选择它，或“在线”粘贴页面URL，然后保存更改。先禁用本地测试条目，避免两份同资产/DLL同时加载。验证真实线上首次下载、更新及禁用流程。
+6. 再验证下方的非MintCat路线。它需要一个没有MintCat合并包参与的安装环境；不要仅凭本机已有加载器就宣称干净环境订阅测试通过。
 
-1. 关闭 DRG。以下是安装/迁移流程；本机实际已安装版本以最新部署报告及 MEMORY.md 为准。
-2. 用资源管理器把旧 `D:\Steam\steamapps\common\Deep Rock Galactic\FSD\Content\Paks\NormalWaveIndicator_P.pak` 和 `FSD\Binaries\Win64\ue4ss\mods\NormalWaveIndicator\main.dll` 备份到游戏目录之外，并从原位置移走，避免同名蓝图和旧 DLL 混用。不要移动其他 Mod、加载器或存档。
-3. 在 MintCat 中使用“添加本地文件”导入新的 ZIP，保留/启用 Mod Hub，执行应用/集成。压缩包包含 `main.dll`、`NormalWaveIndicator_P.pak`、`LICENSES.txt`；不要导入旁边的 manifest，也不要再同时启用 0.7.1 纯 Pak 候选。
-4. 手动启动游戏。0.8.0 初始化修复版的 DLL 会在启动后至少30秒、世界稳定至少5秒时加载并执行对应 Init 入口；入口负责房主检查及控制器去重，直接本机部署也能启动。进入空间站后等待约40秒，再重新打开 Mod Hub 验证页面和默认自然潮提示，然后执行 [TASK1-ACCEPTANCE.md](TASK1-ACCEPTANCE.md) 的排除与联机测试。此步骤由用户操作，不自动启动游戏。
-5. 联机测试时房主与客机均安装匹配的 Pak；可都通过同一 ZIP 安装。未安装 Pak 的客机没有自定义蓝图、HUD和材质，不能显示同款效果。安装行为与双机显示尚未实测。
-6. 如果出现问题，关闭游戏，在 MintCat 禁用新候选并重新集成，再恢复步骤 2 的两份旧文件。不要把两个版本同时启用。
+截至2026-09-07，本轮只创建了GitHub TODO issue；没有代为创建mod.io条目、上传或公开文件。原构建manifest里的ReleaseReady=false表示完整稳定发行验收未完成，不阻止明确标注范围的公开测试计划。
 
-代码目前核对游戏 EXE SHA256 `9B005BB6E1072F3CD98FCFAA75698316DC47B808D83A99DDF96DE529D00BAC13` 和已审计的 UE4SSL 运行时 SHA256 `D1AC7156B8C8C16E46CE5CE06667457274816358329C5641CE1D2F80B53B4EB7`。这不等于兼容任意 MintCat/UE4SSL 版本；不匹配应重新审计，不能关闭校验强行加载。
+上传包SHA256：`3F28D1438B46530B150C4B2483DEB7901D4E7B5F51A3C4877BC980D8A7C1C611`。
 
-## mod.io 发布时的操作
+## 玩家路线 A：订阅后由 MintCat 安装
 
-完成剩余来源类型与实机验收后：
+1. 在mod.io订阅本Mod及Mod Hub，关闭游戏。
+2. MintCat登录相同mod.io账号，点“添加Mod→mod.io订阅”，选择本Mod加入列表。也可以在“在线”粘贴本Mod的mod.io页面链接；订阅本身不会自动把未导入的条目加入当前配置。
+3. 确认本Mod和Mod Hub开启，点击左上角保存更改，等到“安装完成”。MintCat会安装ZIP中的DLL，并把Pak内容合并进它管理的Pak。玩家不用手动复制文件或运行脚本。
+4. 启动DRG，进入空间站等待约40秒，再打开Mod Hub。默认只开自然潮；其他类型需要勾选并Apply and save。矿骡伏击对应 `Show Salvage: mini-MULE ambush`。
+5. 更新时在MintCat更新该条目并保存更改；不要同时再导入第二份本地包。
 
-1. 登录 [DRG 的 mod.io 页面](https://mod.io/g/drg)，创建 Mod 条目（Add mod/添加 Mod）。填写名称、摘要、完整说明、封面与实机截图。
-2. 在说明中明确：DLL+Pak、推荐 MintCat 导入链接后应用、房主运行 DLL、显示端需要匹配 Pak、Mod Hub 依赖、实际支持的来源类型和构建兼容范围。不要写原生菜单订阅自动运行 DLL，也不要承诺全部敌人、提前五秒准确预测或未经验证的联机效果。
-3. 在文件/版本页面上传经验证的 ZIP，填写版本号、Windows 平台与更新日志。保留 `LICENSES.txt`。不要上传整个构建目录、第三方游戏资产、报告中的私有过程数据或凭据。
-4. 为该条目添加 Mod Hub 内容依赖；MintCat/UE4SSL 是安装与运行环境要求，在描述中写清楚。
-5. 使用真实发布链接在 MintCat 验证首次安装、更新、禁用、重新集成、切图以及房主/客机行为。由你决定何时公开；本次没有创建条目、上传文件或发布 GitHub 二进制 Release。
-6. 等待 DRG 社区/开发方审核分类；需要调整时按官方说明申请复核。
+此路线与Enemy Wave Timer作者说明中的“粘贴mod.io URL并Apply Changes自动安装DLL”相同。[Enemy Wave Timer](https://mod.io/g/drg/m/enemy-wave-timer)、[MintCat源码](https://github.com/iris-cat-dev/mintcat)。
 
-以上页面按钮名称可能随 mod.io 界面变化；上传前再核对当前页面。打包命令见根目录 README。
+### 当前本地 ZIP 已验证
 
-## Verified / Approved / Sandbox
+2026-09-07 22:59，MintCat0.5.5从 `E:\DRGModDev\dist\NormalWaveIndicator-0.9.0.zip` 导入、启用并集成成功。界面显示名称已改为NormalWaveIndicator。内部安装路径仍取本地文件原名称：
 
-根据 [DRG 官方 FAQ](https://www.deeprockgalactic.com/modding-support-faq)（2026-09-07 查询），新提交的 Mod **默认 Sandbox**，审核人员随后根据内容调整分类；不是作者自行决定。官方把 Verified 限定为不会显著改变其他玩家体验的本地音效或生活质量类功能。
+- DLL：`FSD\Binaries\Win64\ue4ss\mods\NormalWaveIndicator-0.9.0.zip\main.dll`。
+- 内容：合并在 `FSD\Content\Paks\FSD-WindowsNoEditor_Mods.pak`，没有额外的 `NormalWaveIndicator_P.pak`。
+- DLL与原测试包hash一致，合并包内本Mod18项资产逐项hash一致；Mod Hub接口也存在。禁用并应用后确认0个本Mod DLL/资产；重新启用并应用后再次确认DLL与18项资产一致，最终保持启用。
 
-本 Mod 提供游戏未直接展示的刷怪中心信息，并可向客机同步；未来若加入提前提示，影响还会增加。因此**不能承诺 Verified，也不能保证 Approved**。初始按 Sandbox 预期，最终由审核决定。是否含 DLL 并非在这份 FAQ 中列出的唯一分类依据。详细规则入口为 [官方分类指南](https://mod.io/g/drg/r/mod-guidelines-and-status-categories)；该网页当前需要 JavaScript，未将无法读取的细则当作已验证事实。
+原直装文件已移到 `agent/codex/publish-mintcat-20260907-2253/before-import` 保留。图片中的警告正是原来手动放在Paks目录的独立Pak触发的，并非Mod本身损坏。以后由MintCat管理时，不要再复制同一Pak回游戏目录。导入后未自动启动游戏；线上mod.io链接流程尚待条目发布后测试。
+
+## 玩家路线 B：原生订阅 + 手动 DLL 安装（不用 MintCat）
+
+这条路线需要**原生菜单启用Pak，以及外部加载器加载DLL**。仅点订阅不会自动执行DLL。当前DLL兼容经过审计的UE4SSL 0.31.0，不是任意版本的标准UE4SS。手动文件安装可按以下步骤完成，无需运行MintCat：
+
+1. 在游戏原生Mod菜单订阅、下载并启用本Mod及Mod Hub，然后完全退出游戏。原生订阅负责本Mod的Pak内容；不要同时保留MintCat合并的同一份内容。
+2. 在Steam“管理→浏览本地文件”打开DRG目录，进入 `FSD\Binaries\Win64`。
+3. 下载[兼容运行时 UE4SSL 0.31.0](https://yuri-oss-hz.oss-cn-hangzhou.aliyuncs.com/releases/ue4ssl/windows/stable/0.31.0/UE4SSL.zip)，保持目录结构解压到上述Win64目录。它包含 `dwmapi.dll` 和 `ue4ss` 文件夹，不是把所有文件平铺。此下载来自MintCat官方更新清单，本轮重新下载校验；不必安装MintCat程序。
+4. 从本Mod的mod.io文件页面手动下载**与订阅版本一致**的ZIP。取其中 `main.dll`，放到 `FSD\Binaries\Win64\ue4ss\mods\NormalWaveIndicator\main.dll`，缺少目录则创建。Pak已由原生菜单启用，不要额外复制一份到Paks目录。
+5. 启动游戏，在空间站等约40秒，再打开Mod Hub确认版本与设置；做一次自然潮测试。更新Mod时，订阅Pak更新后还须手动同步替换DLL。禁用时退出游戏，将本Mod的DLL移到游戏目录外，再在原生菜单禁用内容；不要移走其他Mod共用的加载器。
+
+最终应有：
+
+```text
+FSD/Binaries/Win64/
+  dwmapi.dll
+  ue4ss/
+    UE4SSL.dll
+    mods/
+      UE4SSL.JavaScript/main.dll
+      UE4SSL.JavaScript.Framework/js/main.js
+      NormalWaveIndicator/main.dll
+```
+
+如果目录已有不同的dwmapi.dll或不同运行时，先确认其归属及兼容性，不要覆盖其他加载器。当前支持Steam Windows游戏build24903151；游戏或加载器更新后，需要重新核对兼容范围。
+
+手动路线证据边界：运行时下载包、目录结构和DLL兼容hash已核对；此前本机直装DLL+Pak已由用户测试主要功能。**尚未完成新mod.io条目在干净原生订阅环境中的端到端验证**，因此发布说明需保留此状态，不能把它写成实测通过。
+
+### 兼容校验值
+
+- 游戏EXE：`9B005BB6E1072F3CD98FCFAA75698316DC47B808D83A99DDF96DE529D00BAC13`。
+- UE4SSL.dll：`D1AC7156B8C8C16E46CE5CE06667457274816358329C5641CE1D2F80B53B4EB7`。
+- 本Mod main.dll：`F4BB94269AD83761D8C3A8EEE976E49B5A6938C8D4CA2A508064F3872F3CFFCC`。
+- 本Mod Pak：`017217E6FFEDA0B2A72816C8A987A6413F2670899726F310946779D9AD3A9938`。
+- 运行时ZIP MD5：`B715F195B448481BBF28FAF53EAC8AE8`（官方清单提供值，下载复核一致）。
+
+## 联机与审核分类
+
+显示端需要同版Pak；房主需要DLL。代码有同步支持，但双机、晚加入和切图尚未完整实测，不把它们作为0.9.0已验收功能宣传。客户端无Pak不能显示自定义HUD/光球。
+
+[DRG官方FAQ](https://www.deeprockgalactic.com/modding-support-faq)说明新Mod默认Sandbox，再由审核人员调整分类。刷怪中心提示会增加游戏信息，不能保证Verified或Approved。公开测试版可以先按Sandbox预期准备，最终以实际审核为准。
