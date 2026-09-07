@@ -22,6 +22,10 @@
 #include "Components/Image.h"
 #include "Engine/LocalPlayer.h"
 #include "Engine/GameInstance.h"
+#include "Engine/GameViewportClient.h"
+#include "Widgets/SOverlay.h"
+#include "Framework/Application/SlateApplication.h"
+#include "Interfaces/ISlateNullRendererModule.h"
 #include "GameFramework/DefaultPawn.h"
 #include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
@@ -287,6 +291,11 @@ bool ValidatePlacement(UClass* WidgetClass)
 namespace {
 bool ValidateAutomatic(UClass* PulseClass, UClass* WidgetClass)
 {
+    // Commandlets have no Slate application; use a real widget tree with a non-rendering backend.
+    if (!FSlateApplication::IsInitialized()) {
+        auto& NullRenderer = FModuleManager::LoadModuleChecked<ISlateNullRendererModule>(TEXT("SlateNullRenderer"));
+        FSlateApplication::InitializeAsStandaloneApplication(NullRenderer.CreateSlateNullRenderer());
+    }
     FTestWorld Test;
     auto* Class = LoadClass<AActor>(nullptr, TEXT("/Game/NormalWaveIndicator/BP_NwiAuto.BP_NwiAuto_C"));
     NWI_REQUIRE(Test.World && Class);
@@ -433,6 +442,26 @@ bool ValidateAutomatic(UClass* PulseClass, UClass* WidgetClass)
         NWI_REQUIRE(FindFProperty<FIntProperty>(Class,*FString::Printf(TEXT("NativeEnabled%u"),I))->GetPropertyValue_InContainer(Controller)==int32(I%2));
     }
     UE_LOG(LogTemp,Display,TEXT("NWI_TEST 36 wave types: default natural only, independent checkbox/text persistence, native enable fields, replicated source label/visibility selection passed"));
+    // Real Slate attachment matters: visibility alone cannot recover a viewport cleared after Init.
+    auto* Viewport = NewObject<UGameViewportClient>(GEngine);
+    auto Overlay = SNew(SOverlay);
+    Viewport->SetViewportOverlayWidget(TSharedPtr<SWindow>(), Overlay);
+    GEngine->GetWorldContextFromWorldChecked(Test.World).GameViewport = Viewport;
+    Huds[0]->AddToViewport();
+    UE_LOG(LogTemp,Display,TEXT("NWI_TEST real viewport attached=%d slots=%d before simulated HUD cleanup"),Huds[0]->IsInViewport(),Overlay->GetChildren()->Num());
+    NWI_REQUIRE(Huds[0]->IsInViewport() && Overlay->GetChildren()->Num() == 1);
+    Huds[0]->RemoveFromParent();
+    NWI_REQUIRE(!Huds[0]->IsInViewport() && !Pulses[0]->IsHidden());
+    const auto SerialBefore = FindFProperty<FIntProperty>(Class,TEXT("AppliedSerial0"))->GetPropertyValue_InContainer(Controller);
+    const auto PulseStartBefore = Started->GetPropertyValue_InContainer(Pulses[0]);
+    Controller->ProcessEvent(Service, nullptr); // No new spawn/serial: recovery must still run.
+    NWI_REQUIRE(Huds[0]->IsInViewport() && Overlay->GetChildren()->Num() == 1);
+    for (int32 I=0; I<10; ++I) Controller->ProcessEvent(Service, nullptr);
+    NWI_REQUIRE(Overlay->GetChildren()->Num() == 1);
+    NWI_REQUIRE(FindFProperty<FIntProperty>(Class,TEXT("AppliedSerial0"))->GetPropertyValue_InContainer(Controller) == SerialBefore);
+    NWI_REQUIRE(Started->GetPropertyValue_InContainer(Pulses[0]) == PulseStartBefore);
+    Huds[0]->RemoveFromParent();
+    UE_LOG(LogTemp,Display,TEXT("NWI_TEST removed viewport HUD reattached without a new serial, duplicate Slate slot or pulse restart"));
     NWI_REQUIRE(Pawn->Destroy() && Pc->Destroy());
     UE_LOG(LogTemp, Display, TEXT("NWI_TEST settings button/save/reload, pooled radius update, actual pawn 3-4-5 distance text and blink disable passed; Mod Hub H discovery still requires game testing"));
     NWI_REQUIRE(Controller->Destroy());

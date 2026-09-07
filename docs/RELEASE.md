@@ -1,7 +1,7 @@
 <!-- Public-beta upload steps and two distinct installation routes, with measured acceptance boundaries. -->
 # 0.9.0 公开测试版：发布与安装
 
-用户已实机测试并反馈主要功能正常。当前可按**已有36类虫潮功能的公开测试版**准备发布，无需把未来TODO全部实现后才提供测试；不要称为完整task1或稳定版。后续计划统一在[TODO issue #1](https://github.com/LostPatrol/NormalWaveIndicator/issues/1)，发布说明草稿见[MODIO-DESCRIPTION.md](MODIO-DESCRIPTION.md)。
+用户此前反馈主要功能正常，随后报告只有光球、没有文字。2026-09-08修复包补上文字控件脱离视口后的恢复，并提高默认显示层级；真实Slate视口回归通过，实机文字恢复仍待确认。发布前先复测此问题。当前仍定位为**已有36类虫潮功能的公开测试版**，不要称为完整task1或稳定版。后续计划统一在[TODO issue #1](https://github.com/LostPatrol/NormalWaveIndicator/issues/1)，发布说明草稿见[MODIO-DESCRIPTION.md](MODIO-DESCRIPTION.md)。
 
 ## 作者：在 mod.io 发布
 
@@ -14,7 +14,7 @@
 
 截至2026-09-07，本轮只创建了GitHub TODO issue；没有代为创建mod.io条目、上传或公开文件。原构建manifest里的ReleaseReady=false表示完整稳定发行验收未完成，不阻止明确标注范围的公开测试计划。
 
-上传包SHA256：`3F28D1438B46530B150C4B2483DEB7901D4E7B5F51A3C4877BC980D8A7C1C611`。
+当前本地0.9.0文字修复包（2026-09-08）SHA256：`13714FB15529CD826D8A03354A6C5DF8E090D6FC3AE73D7FA19FCE94D5E136E2`。尚未发布，版本号沿用0.9.0；旧本地ZIP已备份。
 
 ## 玩家路线 A：订阅后由 MintCat 安装
 
@@ -35,6 +35,8 @@
 - DLL与原测试包hash一致，合并包内本Mod18项资产逐项hash一致；Mod Hub接口也存在。禁用并应用后确认0个本Mod DLL/资产；重新启用并应用后再次确认DLL与18项资产一致，最终保持启用。
 
 原直装文件已移到 `agent/codex/publish-mintcat-20260907-2253/before-import` 保留。图片中的警告正是原来手动放在Paks目录的独立Pak触发的，并非Mod本身损坏。以后由MintCat管理时，不要再复制同一Pak回游戏目录。导入后未自动启动游戏；线上mod.io链接流程尚待条目发布后测试。
+
+2026-09-08 00:03，沿用同一本地条目重新应用文字修复ZIP，MintCat显示“安装完成”。游戏合并Pak的18项资产与新Cook逐项一致，DLL保持原hash，只有一个本Mod DLL目录，v2设置存档hash未改变。备份与安装核对记录在 `agent/codex/hud-recovery-20260908-0003`。此次未启动游戏，文字修复的实机效果仍待复测。
 
 ## 玩家路线 B：原生订阅 + 手动 DLL 安装（不用 MintCat）
 
@@ -68,7 +70,7 @@ FSD/Binaries/Win64/
 - 游戏EXE：`9B005BB6E1072F3CD98FCFAA75698316DC47B808D83A99DDF96DE529D00BAC13`。
 - UE4SSL.dll：`D1AC7156B8C8C16E46CE5CE06667457274816358329C5641CE1D2F80B53B4EB7`。
 - 本Mod main.dll：`F4BB94269AD83761D8C3A8EEE976E49B5A6938C8D4CA2A508064F3872F3CFFCC`。
-- 本Mod Pak：`017217E6FFEDA0B2A72816C8A987A6413F2670899726F310946779D9AD3A9938`。
+- 本Mod Pak（2026-09-08文字修复）：`7F3DBB260F30B8ADEE61292592AF0638CF71CEE5D4647007B944FD6865435F30`。
 - 运行时ZIP MD5：`B715F195B448481BBF28FAF53EAC8AE8`（官方清单提供值，下载复核一致）。
 
 ## 联机与审核分类

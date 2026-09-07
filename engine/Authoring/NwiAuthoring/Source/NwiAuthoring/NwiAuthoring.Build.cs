@@ -7,7 +7,7 @@ public class NwiAuthoring : ModuleRules
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
         PrivateDependencyModuleNames.AddRange(new string[] {
             "Core", "CoreUObject", "Engine", "UnrealEd", "KismetCompiler",
-            "BlueprintGraph", "UMG", "UMGEditor", "SlateCore", "InputCore"
+            "BlueprintGraph", "UMG", "UMGEditor", "SlateCore", "Slate", "SlateNullRenderer", "InputCore"
         });
     }
 }

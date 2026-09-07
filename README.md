@@ -19,7 +19,7 @@ The 35 concrete stock EWC types and natural waves have independent toggles/text 
 
 One-to-five-second exact position prediction is not established: the current game chooses a player, RNG and navigation location when triggering the wave. No early game function invocation, RNG consumption, enemy delay or spawning change is used. See [test instructions and acceptance gaps](docs/TASK1-ACCEPTANCE.md).
 
-Future work is tracked in [TODO issue #1](https://github.com/LostPatrol/NormalWaveIndicator/issues/1). The author reports the main 0.9.0 gameplay features work; the local ZIP has passed actual MintCat import/integration and DLL/18-asset hash checks. Online mod.io delivery and clean native subscription/manual-loader installation remain to be tested.
+Future work is tracked in [TODO issue #1](https://github.com/LostPatrol/NormalWaveIndicator/issues/1). Following broad positive gameplay feedback, the author reported missing text with spheres still visible. The September 8 HUD fix restores active widgets detached during HUD cleanup and places them above the default viewport layer. A real Slate attachment regression passes; gameplay confirmation of this fix is pending. Online mod.io delivery and clean native subscription/manual-loader installation remain to be tested.
 
 ## Player installation
 

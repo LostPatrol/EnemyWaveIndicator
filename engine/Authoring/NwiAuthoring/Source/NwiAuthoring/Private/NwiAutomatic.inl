@@ -1,4 +1,4 @@
-// Generate one host-local automatic controller with eight prewarmed reusable pulse/widget pairs.
+// Generate a replicated controller with reusable visual pairs and local HUD attachment recovery.
 void BuildAutomatic()
 {
     auto* Parent = LoadClass<AActor>(nullptr, TEXT("/Game/NormalWaveIndicator/BP_NwiResources.BP_NwiResources_C"));
@@ -23,11 +23,12 @@ void BuildAutomatic()
     auto* Setup = Custom(G, TEXT("InitializePool"));
     auto* Cleanup = Custom(G, TEXT("CleanupPool"));
     BuildControllerSettings(BP, G, PulseClass, HudClass);
-    UK2Node_CustomEvent* Apply[8]{}; UK2Node_CustomEvent* Hide[8]{}; UK2Node_CustomEvent* Next[8]{};
+    UK2Node_CustomEvent* Apply[8]{}; UK2Node_CustomEvent* Hide[8]{}; UK2Node_CustomEvent* Next[8]{}; UK2Node_CustomEvent* Maintain[8]{};
     for (int32 I = 0; I < 8; ++I) {
         Apply[I] = Custom(G, *FString::Printf(TEXT("ApplyRegion%d"), I));
         Hide[I] = Custom(G, *FString::Printf(TEXT("HideRegion%d"), I));
         Next[I] = Custom(G, *FString::Printf(TEXT("CleanupNext%d"), I));
+        Maintain[I] = Custom(G, *FString::Printf(TEXT("MaintainHud%d"), I));
     }
     Compile(BP);
 
@@ -82,6 +83,7 @@ void BuildAutomatic()
         Link(ValidPair, TEXT("then"), Init, TEXT("execute"));
         auto* Deactivate = Call(G, PulseClass, TEXT("DeactivateVisual")); Link(Pulse, *PulseName, Deactivate, TEXT("self")); Link(Init, TEXT("then"), Deactivate, TEXT("execute"));
         auto* Add = Call(G, UUserWidget::StaticClass(), TEXT("AddToViewport")); Link(Hud, *HudName, Add, TEXT("self")); Link(Deactivate, TEXT("then"), Add, TEXT("execute"));
+        Value(Add, TEXT("ZOrder"), TEXT("10")); // Above the default HUD layer; independent of initializer load order.
         auto* Label = Call(G, HudClass, TEXT("SetMarkerLabel")); Link(Hud, *HudName, Label, TEXT("self"));
         GetDefault<UEdGraphSchema_K2>()->TrySetDefaultText(*Pin(Label, TEXT("Label")), FText::FromString(TEXT("[!] SPAWN AREA")));
         Link(Add, TEXT("then"), Label, TEXT("execute"));
@@ -89,6 +91,7 @@ void BuildAutomatic()
         BuildExec = Collapse;
 
         auto* ApplyCall = Call(G, BP->GeneratedClass, *FString::Printf(TEXT("ApplyRegion%d"), I)); Link(ServiceExec, TEXT("then"), ApplyCall, TEXT("execute")); ServiceExec = ApplyCall;
+        auto* MaintainCall = Call(G, BP->GeneratedClass, *FString::Printf(TEXT("MaintainHud%d"), I)); Link(ApplyCall, TEXT("then"), MaintainCall, TEXT("execute")); ServiceExec = MaintainCall;
         auto* Serial = Get(G, *SerialName); auto* Applied = Get(G, *AppliedName);
         auto* Different = Call(G, UKismetMathLibrary::StaticClass(), TEXT("NotEqual_IntInt")); Link(Serial, *SerialName, Different, TEXT("A")); Link(Applied, *AppliedName, Different, TEXT("B"));
         auto* Changed = Branch(G, Different, TEXT("ReturnValue")); Link(Apply[I], TEXT("then"), Changed, TEXT("execute"));
@@ -119,6 +122,20 @@ void BuildAutomatic()
         auto* MarkHidden = Set(G, *ShownName); Value(MarkHidden, *ShownName, TEXT("0")); Link(HidePair, TEXT("then"), MarkHidden, TEXT("execute"));
         auto* Stop = Call(G, PulseClass, TEXT("DeactivateVisual")); Link(Pulse, *PulseName, Stop, TEXT("self")); Link(MarkHidden, TEXT("then"), Stop, TEXT("execute"));
         auto* Conceal = Call(G, UWidget::StaticClass(), TEXT("SetVisibility")); Link(Hud, *HudName, Conceal, TEXT("self")); Value(Conceal, TEXT("InVisibility"), TEXT("Collapsed")); Link(Stop, TEXT("then"), Conceal, TEXT("execute"));
+
+        // Game HUD rebuilds can detach a live widget after MintCat's early Init. Repair from
+        // the actor, not the detached widget's Tick, and do not depend on another spawn serial.
+        auto* Active = Call(G, UKismetMathLibrary::StaticClass(), TEXT("BooleanAND")); Link(WasVisible, TEXT("ReturnValue"), Active, TEXT("A")); Link(Fresh, TEXT("ReturnValue"), Active, TEXT("B"));
+        auto* ActiveGate = Branch(G, Active, TEXT("ReturnValue")); Link(Maintain[I], TEXT("then"), ActiveGate, TEXT("execute"));
+        auto* RepairPair = Branch(G, Pair, TEXT("ReturnValue")); Link(ActiveGate, TEXT("then"), RepairPair, TEXT("execute"));
+        auto* RepairPlayer = Branch(G, PlayerValid, TEXT("ReturnValue")); Link(RepairPair, TEXT("then"), RepairPlayer, TEXT("execute"));
+        auto* Attached = Call(G, UUserWidget::StaticClass(), TEXT("IsInViewport")); Link(Hud, *HudName, Attached, TEXT("self"));
+        auto* AttachGate = Branch(G, Attached, TEXT("ReturnValue")); Link(RepairPlayer, TEXT("then"), AttachGate, TEXT("execute"));
+        auto* Own = Call(G, UUserWidget::StaticClass(), TEXT("SetOwningPlayer")); Link(Hud, *HudName, Own, TEXT("self")); Link(Player, TEXT("ReturnValue"), Own, TEXT("LocalPlayerController")); Link(AttachGate, TEXT("else"), Own, TEXT("execute"));
+        auto* Reattach = Call(G, UUserWidget::StaticClass(), TEXT("AddToViewport")); Link(Hud, *HudName, Reattach, TEXT("self")); Value(Reattach, TEXT("ZOrder"), TEXT("10")); Link(Own, TEXT("then"), Reattach, TEXT("execute"));
+        auto* VisibleHud = Call(G, UWidget::StaticClass(), TEXT("IsVisible")); Link(Hud, *HudName, VisibleHud, TEXT("self"));
+        auto* VisibilityGate = Branch(G, VisibleHud, TEXT("ReturnValue")); Link(AttachGate, TEXT("then"), VisibilityGate, TEXT("execute")); Link(Reattach, TEXT("then"), VisibilityGate, TEXT("execute"));
+        auto* Restore = Call(G, UWidget::StaticClass(), TEXT("SetVisibility")); Link(Hud, *HudName, Restore, TEXT("self")); Value(Restore, TEXT("InVisibility"), TEXT("HitTestInvisible")); Link(VisibilityGate, TEXT("else"), Restore, TEXT("execute"));
 
         auto* Clear = Call(G, UKismetSystemLibrary::StaticClass(), TEXT("K2_ClearTimer")); Link(Self, TEXT("self"), Clear, TEXT("Object")); Value(Clear, TEXT("FunctionName"), *HideName); Link(CleanupExec, TEXT("then"), Clear, TEXT("execute"));
         auto* CleanHud = Branch(G, HudValid, TEXT("ReturnValue")); Link(Clear, TEXT("then"), CleanHud, TEXT("execute"));
