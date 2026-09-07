@@ -31,9 +31,14 @@ UK2Node_VariableSet* WriteField(UEdGraph* G, UClass* Owner, const TCHAR* Name, U
 
 const TCHAR* SettingNames[] = {TEXT("Label"), TEXT("Duration"), TEXT("Radius"), TEXT("Red"), TEXT("Green"), TEXT("Blue"), TEXT("Blink"), TEXT("Opacity"), TEXT("BlinkHz"), TEXT("TextAR"), TEXT("TextAG"), TEXT("TextAB"), TEXT("TextBR"), TEXT("TextBG"), TEXT("TextBB"), TEXT("NaturalEnabled")};
 const TCHAR* SettingDefaults[] = {TEXT("[!] NATURAL WAVE"), TEXT("8"), TEXT("3.75"), TEXT("3"), TEXT("0.01"), TEXT("0.005"), TEXT("true"), TEXT("0.4"), TEXT("2"), TEXT("1"), TEXT("0"), TEXT("0"), TEXT("1"), TEXT("1"), TEXT("1"), TEXT("true")};
+constexpr int32 SettingCount = 16 + 2 * (nwi::WaveTypeCount - 1);
+FString SettingName(int32 I) { return I < 16 ? FString(SettingNames[I]) : (I % 2 == 0 ? FString::Printf(TEXT("EnabledType%d"), (I-16)/2+1) : FString::Printf(TEXT("LabelType%d"), (I-16)/2+1)); }
+FString SettingDefault(int32 I) { return I < 16 ? FString(SettingDefaults[I]) : I % 2 == 0 ? FString(TEXT("false")) : FString(TEXT("[!] ")) + nwi::WaveTypes[(I-16)/2+1].title; }
+bool IsTextSetting(int32 I) { return I == 0 || (I >= 16 && I % 2 == 1); }
+bool IsBoolSetting(int32 I) { return I == 6 || I == 15 || (I >= 16 && I % 2 == 0); }
 void AddSettings(UBlueprint* BP)
 {
-    for (int32 I = 0; I < 16; ++I) Variable(BP, SettingNames[I], Type(I == 0 ? UEdGraphSchema_K2::PC_String : (I == 6 || I == 15) ? UEdGraphSchema_K2::PC_Boolean : UEdGraphSchema_K2::PC_Float), SettingDefaults[I]);
+    for (int32 I = 0; I < SettingCount; ++I) Variable(BP, *SettingName(I), Type(IsTextSetting(I) ? UEdGraphSchema_K2::PC_String : IsBoolSetting(I) ? UEdGraphSchema_K2::PC_Boolean : UEdGraphSchema_K2::PC_Float), *SettingDefault(I));
     Variable(BP, TEXT("Revision"), Type(UEdGraphSchema_K2::PC_Int), TEXT("1"));
 }
 
@@ -51,14 +56,15 @@ void BuildSettings()
         auto* T = BP->WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), Name); T->SetText(FText::FromString(Label));
         auto Font = T->Font; Font.Size = 16; T->SetFont(Font); Root->AddChildToVerticalBox(T); return T;
     };
-    AddText(TEXT("Title"), TEXT("Normal Wave Indicator  |  Native natural-wave test 0.8.0"));
-    const TCHAR* Labels[] = {TEXT("Warning text (up to 64 characters)"), TEXT("Visibility after the last spawn (seconds, 1 - 30)"), TEXT("Sphere size (0.5 - 12; default 3.75)"), TEXT("Sphere red (linear intensity, 0 - 5)"), TEXT("Sphere green (0 - 5)"), TEXT("Sphere blue (0 - 5)"), TEXT("Flash text between colors A and B"), TEXT("Sphere opacity (0 transparent - 1 opaque; default 0.4)"), TEXT("Text flash cycles per second (0.1 - 10; default 2)"), TEXT("Text A red"), TEXT("Text A green"), TEXT("Text A blue"), TEXT("Text B red"), TEXT("Text B green"), TEXT("Text B blue"), TEXT("Show natural waves")};
-    for (int32 I = 0; I < 16; ++I)
+    AddText(TEXT("Title"), TEXT("Normal Wave Indicator  |  Wave types test 0.9.0"));
+    const TCHAR* Labels[] = {TEXT("Natural wave text (up to 64 characters)"), TEXT("Visibility after the last spawn (seconds, 1 - 30)"), TEXT("Sphere size (0.5 - 12; default 3.75)"), TEXT("Sphere red (linear intensity, 0 - 5)"), TEXT("Sphere green (0 - 5)"), TEXT("Sphere blue (0 - 5)"), TEXT("Flash text between colors A and B"), TEXT("Sphere opacity (0 transparent - 1 opaque; default 0.4)"), TEXT("Text flash cycles per second (0.1 - 10; default 2)"), TEXT("Text A red"), TEXT("Text A green"), TEXT("Text A blue"), TEXT("Text B red"), TEXT("Text B green"), TEXT("Text B blue"), TEXT("Show natural waves")};
+    for (int32 I = 0; I < SettingCount; ++I)
     {
-        AddText(*FString::Printf(TEXT("Caption%d"), I), Labels[I]);
-        const FName Name(*FString::Printf(TEXT("Input%s"), SettingNames[I])); UWidget* Input = nullptr;
-        if (I == 0) Input = BP->WidgetTree->ConstructWidget<UEditableTextBox>(UEditableTextBox::StaticClass(), Name);
-        else if ((I == 6 || I == 15)) Input = BP->WidgetTree->ConstructWidget<UCheckBox>(UCheckBox::StaticClass(), Name);
+        const FString Caption = I < 16 ? FString(Labels[I]) : (I % 2 == 0 ? FString(TEXT("Show ")) + nwi::WaveTypes[(I-16)/2+1].title : FString(nwi::WaveTypes[(I-16)/2+1].title) + TEXT(" text (up to 64 characters)"));
+        AddText(*FString::Printf(TEXT("Caption%d"), I), *Caption);
+        const FName Name(*FString::Printf(TEXT("Input%s"), *SettingName(I))); UWidget* Input = nullptr;
+        if (IsTextSetting(I)) Input = BP->WidgetTree->ConstructWidget<UEditableTextBox>(UEditableTextBox::StaticClass(), Name);
+        else if (IsBoolSetting(I)) Input = BP->WidgetTree->ConstructWidget<UCheckBox>(UCheckBox::StaticClass(), Name);
         else {
             auto* Spin = BP->WidgetTree->ConstructWidget<USpinBox>(USpinBox::StaticClass(), Name);
             Spin->SetMinValue(I == 1 ? 1.f : I == 2 ? 0.5f : I == 8 ? .1f : 0.f); Spin->SetMaxValue(I == 1 ? 30.f : I == 2 ? 12.f : I == 8 ? 10.f : I >= 7 ? 1.f : 5.f);
@@ -77,17 +83,17 @@ void BuildSettings()
     auto* Config = Get(G, TEXT("Settings"));
     auto* Construct = Event(G, UUserWidget::StaticClass(), TEXT("Construct")); auto* Gate = Branch(G, Valid(G, Config, TEXT("Settings")), TEXT("ReturnValue")); Link(Construct, TEXT("then"), Gate, TEXT("execute"));
     UEdGraphNode* Exec = Gate;
-    for (int32 I = 0; I < 16; ++I) {
-        auto* Input = Get(G, *FString::Printf(TEXT("Input%s"), SettingNames[I]));
-        auto* Read = Field(G, SaveBP->GeneratedClass, SettingNames[I], Config, TEXT("Settings"));
-        auto* SetInput = Call(G, I == 0 ? UEditableTextBox::StaticClass() : (I == 6 || I == 15) ? UCheckBox::StaticClass() : USpinBox::StaticClass(), I == 0 ? TEXT("SetText") : (I == 6 || I == 15) ? TEXT("SetIsChecked") : TEXT("SetValue"));
-        Link(Input, *FString::Printf(TEXT("Input%s"), SettingNames[I]), SetInput, TEXT("self"));
-        if (I == 0) { auto* T = Call(G, UKismetTextLibrary::StaticClass(), TEXT("Conv_StringToText")); Link(Read, SettingNames[I], T, TEXT("InString")); Link(T, TEXT("ReturnValue"), SetInput, TEXT("InText")); }
-        else Link(Read, SettingNames[I], SetInput, (I == 6 || I == 15) ? TEXT("InIsChecked") : TEXT("NewValue"));
+    for (int32 I = 0; I < SettingCount; ++I) {
+        auto* Input = Get(G, *FString::Printf(TEXT("Input%s"), *SettingName(I)));
+        auto* Read = Field(G, SaveBP->GeneratedClass, *SettingName(I), Config, TEXT("Settings"));
+        auto* SetInput = Call(G, IsTextSetting(I) ? UEditableTextBox::StaticClass() : IsBoolSetting(I) ? UCheckBox::StaticClass() : USpinBox::StaticClass(), IsTextSetting(I) ? TEXT("SetText") : IsBoolSetting(I) ? TEXT("SetIsChecked") : TEXT("SetValue"));
+        Link(Input, *FString::Printf(TEXT("Input%s"), *SettingName(I)), SetInput, TEXT("self"));
+        if (IsTextSetting(I)) { auto* T = Call(G, UKismetTextLibrary::StaticClass(), TEXT("Conv_StringToText")); Link(Read, *SettingName(I), T, TEXT("InString")); Link(T, TEXT("ReturnValue"), SetInput, TEXT("InText")); }
+        else Link(Read, *SettingName(I), SetInput, IsBoolSetting(I) ? TEXT("InIsChecked") : TEXT("NewValue"));
         Link(Exec, TEXT("then"), SetInput, TEXT("execute")); Exec = SetInput;
     }
     // Preview reads draft controls every widget tick, without saving or changing gameplay.
-    auto Draft=[&](int32 I) { auto* R=Call(G,USpinBox::StaticClass(),TEXT("GetValue"));const auto N=FString::Printf(TEXT("Input%s"),SettingNames[I]);Link(Get(G,*N),*N,R,TEXT("self"));return R; };
+    auto Draft=[&](int32 I) { auto* R=Call(G,USpinBox::StaticClass(),TEXT("GetValue"));const auto N=FString::Printf(TEXT("Input%s"),*SettingName(I));Link(Get(G,*N),*N,R,TEXT("self"));return R; };
     auto DraftColor=[&](int32 First) { auto* C=Call(G,UKismetMathLibrary::StaticClass(),TEXT("MakeColor"));for(int32 J=0;J<3;++J)Link(Draft(First+J),TEXT("ReturnValue"),C,J==0?TEXT("R"):J==1?TEXT("G"):TEXT("B"));Value(C,TEXT("A"),TEXT("1"));return C; };
     auto* Tick=Event(G,UUserWidget::StaticClass(),TEXT("Tick"));
     auto* DraftTint=DraftColor(3);Link(Draft(7),TEXT("ReturnValue"),DraftTint,TEXT("A"));
@@ -97,16 +103,16 @@ void BuildSettings()
     auto* Click = Node<UK2Node_ComponentBoundEvent>(G);
     Click->InitializeComponentBoundEventParams(FindFProperty<FObjectProperty>(BP->GeneratedClass, TEXT("ApplyButton")), FindFProperty<FMulticastDelegateProperty>(UButton::StaticClass(), TEXT("OnClicked"))); Click->AllocateDefaultPins();
     auto* ApplyGate = Branch(G, Valid(G, Config, TEXT("Settings")), TEXT("ReturnValue")); Link(Click, TEXT("then"), ApplyGate, TEXT("execute")); Exec = ApplyGate;
-    for (int32 I = 0; I < 16; ++I) {
-        auto* Input = Get(G, *FString::Printf(TEXT("Input%s"), SettingNames[I]));
-        auto* Read = Call(G, I == 0 ? UEditableTextBox::StaticClass() : (I == 6 || I == 15) ? UCheckBox::StaticClass() : USpinBox::StaticClass(), I == 0 ? TEXT("GetText") : (I == 6 || I == 15) ? TEXT("IsChecked") : TEXT("GetValue"));
-        Link(Input, *FString::Printf(TEXT("Input%s"), SettingNames[I]), Read, TEXT("self"));
+    for (int32 I = 0; I < SettingCount; ++I) {
+        auto* Input = Get(G, *FString::Printf(TEXT("Input%s"), *SettingName(I)));
+        auto* Read = Call(G, IsTextSetting(I) ? UEditableTextBox::StaticClass() : IsBoolSetting(I) ? UCheckBox::StaticClass() : USpinBox::StaticClass(), IsTextSetting(I) ? TEXT("GetText") : IsBoolSetting(I) ? TEXT("IsChecked") : TEXT("GetValue"));
+        Link(Input, *FString::Printf(TEXT("Input%s"), *SettingName(I)), Read, TEXT("self"));
         UEdGraphNode* Source = Read;
-        if (I == 0) {
+        if (IsTextSetting(I)) {
             auto* T = Call(G, UKismetTextLibrary::StaticClass(), TEXT("Conv_TextToString")); Link(Read, TEXT("ReturnValue"), T, TEXT("InText"));
             auto* Limit = Call(G, UKismetStringLibrary::StaticClass(), TEXT("Left")); Link(T, TEXT("ReturnValue"), Limit, TEXT("SourceString")); Value(Limit, TEXT("Count"), TEXT("64")); Source = Limit;
         }
-        auto* Write = WriteField(G, SaveBP->GeneratedClass, SettingNames[I], Config, TEXT("Settings")); Link(Source, TEXT("ReturnValue"), Write, SettingNames[I]); Link(Exec, TEXT("then"), Write, TEXT("execute")); Exec = Write;
+        auto* Write = WriteField(G, SaveBP->GeneratedClass, *SettingName(I), Config, TEXT("Settings")); Link(Source, TEXT("ReturnValue"), Write, *SettingName(I)); Link(Exec, TEXT("then"), Write, TEXT("execute")); Exec = Write;
     }
     auto* Revision = Field(G, SaveBP->GeneratedClass, TEXT("Revision"), Config, TEXT("Settings")); auto* Increment = Call(G, UKismetMathLibrary::StaticClass(), TEXT("Add_IntInt")); Link(Revision, TEXT("Revision"), Increment, TEXT("A")); Value(Increment, TEXT("B"), TEXT("1"));
     auto* Commit = WriteField(G, SaveBP->GeneratedClass, TEXT("Revision"), Config, TEXT("Settings")); Link(Increment, TEXT("ReturnValue"), Commit, TEXT("Revision")); Link(Exec, TEXT("then"), Commit, TEXT("execute"));
@@ -128,7 +134,7 @@ void AddControllerSettings(UBlueprint* BP)
     check(FBlueprintEditorUtils::ImplementNewInterface(BP, HubInterface(TEXT("IHubMod"))->GetFName()));
     auto* Info = HubResult(BP, TEXT("GetModInfo"));
     const TCHAR* Names[] = {TEXT("ModName"), TEXT("ModAuthor"), TEXT("ModVersion")};
-    const TCHAR* Values[] = {TEXT("Normal Wave Indicator"), TEXT("LostPatrol"), TEXT("0.8.0 test")};
+    const TCHAR* Values[] = {TEXT("Normal Wave Indicator"), TEXT("LostPatrol"), TEXT("0.9.0 test")};
     for (int32 I = 0; I < 3; ++I) GetDefault<UEdGraphSchema_K2>()->TrySetDefaultText(*Pin(Info, Names[I]), FText::FromString(Values[I]));
 }
 
@@ -177,12 +183,17 @@ void BuildControllerSettings(UBlueprint* BP, UEdGraph* G, UClass* PulseClass, UC
     auto* CacheTime = Set(G, TEXT("DurationSec")); Link(ClampTime, TEXT("ReturnValue"), CacheTime, TEXT("DurationSec")); Link(Commit, TEXT("then"), CacheTime, TEXT("execute")); UEdGraphNode* Exec = CacheTime;
     auto* Tint = Call(G, UKismetMathLibrary::StaticClass(), TEXT("MakeColor"));
     for (int32 I = 3; I < 6; ++I) {
-        auto* Channel = Field(G, SaveClass, SettingNames[I], Config, TEXT("Settings")); auto* Clamp = Call(G, UKismetMathLibrary::StaticClass(), TEXT("FClamp")); Link(Channel, SettingNames[I], Clamp, TEXT("Value")); Value(Clamp, TEXT("Max"), TEXT("5")); Link(Clamp, TEXT("ReturnValue"), Tint, I == 3 ? TEXT("R") : I == 4 ? TEXT("G") : TEXT("B"));
+        auto* Channel = Field(G, SaveClass, *SettingName(I), Config, TEXT("Settings")); auto* Clamp = Call(G, UKismetMathLibrary::StaticClass(), TEXT("FClamp")); Link(Channel, *SettingName(I), Clamp, TEXT("Value")); Value(Clamp, TEXT("Max"), TEXT("5")); Link(Clamp, TEXT("ReturnValue"), Tint, I == 3 ? TEXT("R") : I == 4 ? TEXT("G") : TEXT("B"));
     }
     Value(Tint, TEXT("A"), TEXT("1"));
     auto* Natural=Call(G,UKismetMathLibrary::StaticClass(),TEXT("SelectInt"));Value(Natural,TEXT("A"),TEXT("1"));Value(Natural,TEXT("B"),TEXT("0"));Link(Field(G,SaveClass,TEXT("NaturalEnabled"),Config,TEXT("Settings")),TEXT("NaturalEnabled"),Natural,TEXT("bPickA"));
     auto* Enabled=Set(G,TEXT("NativeEnabled"));Link(Natural,TEXT("ReturnValue"),Enabled,TEXT("NativeEnabled"));Link(Exec,TEXT("then"),Enabled,TEXT("execute"));Exec=Enabled;
-    auto TextColor=[&](int32 First) { auto* C=Call(G,UKismetMathLibrary::StaticClass(),TEXT("MakeColor"));for(int32 J=0;J<3;++J)Link(Field(G,SaveClass,SettingNames[First+J],Config,TEXT("Settings")),SettingNames[First+J],C,J==0?TEXT("R"):J==1?TEXT("G"):TEXT("B"));Value(C,TEXT("A"),TEXT("1"));return C; };
+    for (uint32 I=1; I<nwi::WaveTypeCount; ++I) {
+        const auto FieldName=FString::Printf(TEXT("EnabledType%u"),I), NativeName=FString::Printf(TEXT("NativeEnabled%u"),I);
+        auto* Number=Call(G,UKismetMathLibrary::StaticClass(),TEXT("SelectInt"));Value(Number,TEXT("A"),TEXT("1"));Value(Number,TEXT("B"),TEXT("0"));Link(Field(G,SaveClass,*FieldName,Config,TEXT("Settings")),*FieldName,Number,TEXT("bPickA"));
+        auto* StoreType=Set(G,*NativeName);Link(Number,TEXT("ReturnValue"),StoreType,*NativeName);Link(Exec,TEXT("then"),StoreType,TEXT("execute"));Exec=StoreType;
+    }
+    auto TextColor=[&](int32 First) { auto* C=Call(G,UKismetMathLibrary::StaticClass(),TEXT("MakeColor"));for(int32 J=0;J<3;++J)Link(Field(G,SaveClass,*SettingName(First+J),Config,TEXT("Settings")),*SettingName(First+J),C,J==0?TEXT("R"):J==1?TEXT("G"):TEXT("B"));Value(C,TEXT("A"),TEXT("1"));return C; };
     for (int32 I = 0; I < 8; ++I) {
         const FString H = FString::Printf(TEXT("AutoHud%d"), I), P = FString::Printf(TEXT("AutoPulse%d"), I);
         auto* Hud = Get(G, *H); auto* Pulse = Get(G, *P);

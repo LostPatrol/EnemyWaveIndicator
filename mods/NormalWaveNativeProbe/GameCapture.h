@@ -2,6 +2,7 @@
 #pragma once
 #include "SpawnAttribution.h"
 #include <array>
+#include "../../engine/Authoring/NwiAuthoring/Source/NwiAuthoring/Public/NwiWaveTypes.h"
 namespace nwi::capture {
 struct Target { void* address = nullptr; std::array<unsigned char, 24> bytes{}; };
 struct Binding {
@@ -10,6 +11,9 @@ struct Binding {
     uintptr_t imageBase = 0, imageEnd = 0;
     std::array<uintptr_t, 6> sourceChain{}; // Includes the natural scheduler, not only its shared spawning helper.
     uint32_t threadId = 0;
+    Target pool, location, group, spread, spreadCallback, center;
+    // Exact initiating object's class, evaluated synchronously before queuing; -1 is unrecognized.
+    int32_t (*classifySource)(void* context, void* world) = nullptr;
 };
 struct Stats {
     uint64_t waves = 0, tagged = 0, successes = 0, failures = 0, skipped = 0, sourceRejected = 0;

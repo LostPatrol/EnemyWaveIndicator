@@ -1,4 +1,4 @@
-// Synchronous, bounded native observations. No UE calls, logging, heap allocation or gameplay retries in hooks.
+// Synchronous source scopes and bounded queue observations; originals run once with unchanged arguments.
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <windows.h>
@@ -16,6 +16,14 @@ using Actor = void* (*)(void*, void*, const void*, const void*);
 using Shrink = void (*)(void*);
 Normal originalNormal = nullptr; Enqueue originalEnqueue = nullptr;
 Actor originalActor = nullptr; Shrink originalShrink = nullptr;
+using Pool = void (*)(void*, float, void*, void*, bool, bool);
+using Location = void (*)(void*, void*, int32_t, const void*, const void*, bool, bool, uint8_t);
+using Group = void (*)(void*, void*, float, const void*, bool, uint8_t);
+using SpreadCallback = void (*)(void*, void*, float, const void*, bool, uint8_t, const void*);
+using Center = void (*)(void*, void*, int32_t, float, const void*, const void*, uint8_t, const void*, bool);
+Pool originalPool = nullptr; Location originalLocation = nullptr;
+Group originalGroup = nullptr, originalSpread = nullptr;
+SpreadCallback originalSpreadCallback = nullptr; Center originalCenter = nullptr;
 Binding binding; Stats counters; SpawnAttribution ledger;
 void* world = nullptr; void* manager = nullptr;
 uint64_t epoch = 0, frame = 0, scopeWave = 0; void* scopeWorld = nullptr;
@@ -60,6 +68,7 @@ bool attach(void* owner) noexcept {
     manager = owner; return true;
 }
 bool provenance(uintptr_t caller) noexcept {
+    if (scopeWave && scopeWorld == world && waveType(scopeWave) > 0) return true;
     if (!scopeWave || scopeWorld != world || (caller != binding.enqueueReturns[0] && caller != binding.enqueueReturns[1])) return false;
     if (!binding.sourceChain[0]) return true; // Synthetic ABI harness; production always requires the full chain.
     void* frames[32]{};
@@ -87,6 +96,58 @@ SpawnKey readCenter(void* locations) noexcept {
         }
     } __except(EXCEPTION_EXECUTE_HANDLER) { return {}; }
     return result.valid() ? result : SpawnKey{};
+}
+
+SpawnKey readPoint(const void* point) noexcept {
+    SpawnKey result{};
+    __try { if (point) { memcpy(&result.x, point, 12); result.descriptor = 1; } }
+    __except(EXCEPTION_EXECUTE_HANDLER) { return {}; }
+    return result.valid() ? result : SpawnKey{};
+}
+// A scope ends when the synchronous source call returns. Queued entries retain their own identity.
+// Nested unrecognized sources clear provenance rather than borrowing another source's wave.
+struct SourceScope {
+    uint64_t previousWave = scopeWave, previousSelected = scopeSelectedMs;
+    void* previousWorld = scopeWorld; SpawnKey previousCenter = scopeCenter;
+    bool active = enabled.load(std::memory_order_relaxed) && onThread() && !counters.fault && world;
+    SourceScope(void* context, SpawnKey center = {}, bool preserveNatural = false) {
+        if (!active) return;
+        if (preserveNatural && scopeWave && waveType(scopeWave) == 0 && scopeWorld == world) { active = false; return; }
+        const auto type = binding.classifySource ? binding.classifySource(context, world) : -1;
+        scopeWave = type > 0 && uint32_t(type) < WaveTypeCount ? waveIdentity(++counters.waves, uint32_t(type)) : 0;
+        scopeWorld = world; scopeCenter = center; scopeSelectedMs = GetTickCount64();
+    }
+    ~SourceScope() {
+        if (active) { scopeWave = previousWave; scopeWorld = previousWorld; scopeCenter = previousCenter; scopeSelectedMs = previousSelected; }
+    }
+};
+void hookPool(void* context, float difficulty, void* locations, void* banned, bool alert, bool pressure) {
+    SourceScope scope(context, {}, reinterpret_cast<uintptr_t>(_ReturnAddress()) == binding.sourceChain[3]);
+    originalPool(context, difficulty, locations, banned, alert, pressure);
+}
+void hookLocation(void* context, void* descriptor, int32_t count, const void* point, const void* callback, bool alert, bool scale, uint8_t pathSize) {
+    SourceScope scope(context, readPoint(point));
+    originalLocation(context, descriptor, count, point, callback, alert, scale, pathSize);
+}
+void hookGroup(void* context, void* descriptor, float difficulty, const void* point, bool alert, uint8_t pathSize) {
+    SourceScope scope(context, readPoint(point));
+    originalGroup(context, descriptor, difficulty, point, alert, pathSize);
+}
+void hookSpread(void* context, void* descriptor, float difficulty, const void* points, bool alert, uint8_t pathSize) {
+    SourceScope scope(context);
+    originalSpread(context, descriptor, difficulty, points, alert, pathSize);
+}
+void hookSpreadCallback(void* context, void* descriptor, float difficulty, const void* points, bool alert, uint8_t pathSize, const void* callback) {
+    SourceScope scope(context);
+    originalSpreadCallback(context, descriptor, difficulty, points, alert, pathSize, callback);
+}
+// The shared batch helper receives the exact center selected from the game's location array.
+void hookCenter(void* context, void* descriptor, int32_t count, float weight, const void* point, const void* callback, uint8_t pathSize, const void* settings, bool flag) {
+    const bool observe = enabled.load(std::memory_order_relaxed) && onThread() && scopeWave && scopeWorld == world;
+    const auto previous = scopeCenter;
+    if (observe) scopeCenter = readPoint(point);
+    originalCenter(context, descriptor, count, weight, point, callback, pathSize, settings, flag);
+    if (observe) scopeCenter = previous;
 }
 
 void hookNormal(void* context, float difficulty, void* locations, bool a, bool b) {
@@ -192,13 +253,14 @@ bool install(const Binding& input) noexcept {
     binding = input;
     if (!onThread()) return false;
     LARGE_INTEGER frequency{}; QueryPerformanceFrequency(&frequency); qpcFrequency = frequency.QuadPart;
-    const Target targets[] = {binding.normal, binding.enqueue, binding.actor, binding.shrink};
-    for (const auto& target : targets) if (!target.address || memcmp(target.address, target.bytes.data(), target.bytes.size())) { counters.hookStatus = 100; return false; }
+    const Target targets[] = {binding.normal, binding.enqueue, binding.actor, binding.shrink, binding.pool, binding.location, binding.group, binding.spread, binding.spreadCallback, binding.center};
+    const size_t count = binding.classifySource ? std::size(targets) : 4; // Four-hook legacy synthetic fixture remains supported.
+    for (size_t i = 0; i < count; ++i) if (!targets[i].address || memcmp(targets[i].address, targets[i].bytes.data(), targets[i].bytes.size())) { counters.hookStatus = 100; return false; }
     auto status = MH_Initialize();
     if (status != MH_OK) { counters.hookStatus = static_cast<uint32_t>(status) + 1; return false; }
-    void* replacements[] = {reinterpret_cast<void*>(&hookNormal), reinterpret_cast<void*>(&hookEnqueue), reinterpret_cast<void*>(&hookActor), reinterpret_cast<void*>(&hookShrink)};
-    void** originals[] = {reinterpret_cast<void**>(&originalNormal), reinterpret_cast<void**>(&originalEnqueue), reinterpret_cast<void**>(&originalActor), reinterpret_cast<void**>(&originalShrink)};
-    for (size_t i = 0; i < 4; ++i) {
+    void* replacements[] = {reinterpret_cast<void*>(&hookNormal), reinterpret_cast<void*>(&hookEnqueue), reinterpret_cast<void*>(&hookActor), reinterpret_cast<void*>(&hookShrink), reinterpret_cast<void*>(&hookPool), reinterpret_cast<void*>(&hookLocation), reinterpret_cast<void*>(&hookGroup), reinterpret_cast<void*>(&hookSpread), reinterpret_cast<void*>(&hookSpreadCallback), reinterpret_cast<void*>(&hookCenter)};
+    void** originals[] = {reinterpret_cast<void**>(&originalNormal), reinterpret_cast<void**>(&originalEnqueue), reinterpret_cast<void**>(&originalActor), reinterpret_cast<void**>(&originalShrink), reinterpret_cast<void**>(&originalPool), reinterpret_cast<void**>(&originalLocation), reinterpret_cast<void**>(&originalGroup), reinterpret_cast<void**>(&originalSpread), reinterpret_cast<void**>(&originalSpreadCallback), reinterpret_cast<void**>(&originalCenter)};
+    for (size_t i = 0; i < count; ++i) {
         status = MH_CreateHook(targets[i].address, replacements[i], originals[i]);
         if (status != MH_OK) { counters.hookStatus = static_cast<uint32_t>(status) + 1; return false; }
     }

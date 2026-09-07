@@ -1,0 +1,1110 @@
+{
+  "description": "Installed Steam build 24903151 stock EWC inventory and serialized call operands; not an in-game execution test.",
+  "gameSHA256": "9B005BB6E1072F3CD98FCFAA75698316DC47B808D83A99DDF96DE529D00BAC13",
+  "selfOpcode": "17 (EX_Self)",
+  "controllers": [
+    {
+      "classPath": "/Game/Enemies/Waves/WaveControllers/EWC_Base.EWC_Base_C",
+      "parent": "/Script/FSD.EnemyWaveController",
+      "calls": []
+    },
+    {
+      "classPath": "/Game/Enemies/Waves/WaveControllers/EWC_DeepScan_Drillevator.EWC_DeepScan_Drillevator_C",
+      "parent": "/Game/Enemies/Waves/WaveControllers/EWC_Base.EWC_Base_C",
+      "calls": [
+        {
+          "function": "ExecuteUbergraph_EWC_DeepScan_Drillevator",
+          "offset": 16984,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "171e00007a4300010000003f000000020000000100000069020080010000"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_DeepScan_Drillevator",
+          "offset": 17584,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "171e0000484300010000003f000000020000000100000069020040030000"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_DeepScan_Drillevator",
+          "offset": 18005,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "171e00007a4300010000003f000000020000000100000065020000002f00"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_DeepScan_Drillevator",
+          "offset": 18371,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "171e0000484300010000003f000000020000000100000065020000002f00"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_DeepScan_Drillevator",
+          "offset": 18817,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "171e0000484300010000003f0000000200000001000000690200e9060000"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_DeepScan_Drillevator",
+          "offset": 19545,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "1700010000003c000000000000000100000000010000003f000000000000"
+        }
+      ]
+    },
+    {
+      "classPath": "/Game/Enemies/Waves/WaveControllers/EWC_EggHunt_Ambush.EWC_EggHunt_Ambush_C",
+      "parent": "/Game/Enemies/Waves/WaveControllers/EWC_Base.EWC_Base_C",
+      "calls": [
+        {
+          "function": "ExecuteUbergraph_EWC_EggHunt_Ambush",
+          "offset": 5466,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "170001000000210000000400000001000000000100000035000000020000"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_EggHunt_Ambush",
+          "offset": 6010,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "170001000000210000000300000001000000000100000035000000000000"
+        }
+      ]
+    },
+    {
+      "classPath": "/Game/Enemies/Waves/WaveControllers/EWC_EndMission.EWC_EndMission_C",
+      "parent": "/Game/Enemies/Waves/WaveControllers/EWC_Base.EWC_Base_C",
+      "calls": [
+        {
+          "function": "ExecuteUbergraph_EWC_EndMission",
+          "offset": 7981,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "1700010000001d0000000000000001000000000100000044000000000000"
+        }
+      ]
+    },
+    {
+      "classPath": "/Game/Enemies/Waves/WaveControllers/EWC_EndMission_MotherLode.EWC_EndMission_MotherLode_C",
+      "parent": "/Script/FSD.EnemyWaveController",
+      "calls": [
+        {
+          "function": "ExecuteUbergraph_EWC_EndMission_MotherLode",
+          "offset": 5408,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "171e0000f04200010000002b000000000000000100000065020000000600"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_EndMission_MotherLode",
+          "offset": 5609,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "171e0000f04200010000000f000000000000000100000065020000000600"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_EndMission_MotherLode",
+          "offset": 5772,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "171e00007a4300010000000f000000020000000100000065020000000600"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_EndMission_MotherLode",
+          "offset": 5973,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "171e0000484300010000000f000000030000000100000065020000000600"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_EndMission_MotherLode",
+          "offset": 6184,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "171e00007a4300010000000f000000040000000100000065020000000600"
+        }
+      ]
+    },
+    {
+      "classPath": "/Game/Enemies/Waves/WaveControllers/EWC_EndMission_Tutorial.EWC_EndMission_Tutorial_C",
+      "parent": "/Game/Enemies/Waves/WaveControllers/EWC_Base.EWC_Base_C",
+      "calls": [
+        {
+          "function": "ExecuteUbergraph_EWC_EndMission_Tutorial",
+          "offset": 4833,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "171e0000c84200010000002b000000000000000100000065020000000900"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_EndMission_Tutorial",
+          "offset": 5598,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "171e0000484300010000002b000000000000000100000065020000000900"
+        }
+      ]
+    },
+    {
+      "classPath": "/Game/Enemies/Waves/WaveControllers/EWC_Escort_DigPhase.EWC_Escort_DigPhase_C",
+      "parent": "/Game/Enemies/Waves/WaveControllers/EWC_Base.EWC_Base_C",
+      "calls": [
+        {
+          "function": "ExecuteUbergraph_EWC_Escort_DigPhase",
+          "offset": 10660,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "170001000000280000000000000001000000000100000030000000020000"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_Escort_DigPhase",
+          "offset": 11264,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "170001000000290000000400000001000000000100000030000000000000"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_Escort_DigPhase",
+          "offset": 12033,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "170001000000290000000300000001000000000100000030000000000000"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_Escort_DigPhase",
+          "offset": 12802,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "170001000000290000000200000001000000000100000030000000000000"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_Escort_DigPhase",
+          "offset": 13280,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "170001000000290000000000000001000000000100000030000000000000"
+        }
+      ]
+    },
+    {
+      "classPath": "/Game/Enemies/Waves/WaveControllers/EWC_Escort_EndDefense.EWC_Escort_EndDefense_C",
+      "parent": "/Game/Enemies/Waves/WaveControllers/EWC_Base.EWC_Base_C",
+      "calls": [
+        {
+          "function": "ExecuteUbergraph_EWC_Escort_EndDefense",
+          "offset": 11303,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "171e00007a43010100000071000000000000000d00000065020000001a00"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_Escort_EndDefense",
+          "offset": 11484,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "170001000000260000000200000001000000010100000071000000000000"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_Escort_EndDefense",
+          "offset": 12524,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "171e00007a43010100000071000000000000000d00000065020000001a00"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_Escort_EndDefense",
+          "offset": 12646,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "171e00001643010100000071000000000000000d00000065020000001a00"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_Escort_EndDefense",
+          "offset": 12726,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "171e00004843010100000071000000000000000d00000065020000001a00"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_Escort_EndDefense",
+          "offset": 12862,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "171e00007a43010100000071000000000000000d00000065020000001a00"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_Escort_EndDefense",
+          "offset": 13550,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "171e00004843010100000071000000000000000d00000065020000001a00"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_Escort_EndDefense",
+          "offset": 13672,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemyGroupDescriptorSpreadOut",
+          "args": "1720edffffff1e00001643010100000071000000000000000d0000002824"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_Escort_EndDefense",
+          "offset": 14205,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "170001000000250000000300000001000000010100000071000000000000"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_Escort_EndDefense",
+          "offset": 15353,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "17690200fc0c000000010000007a000000040000000100000028e50c0000"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_Escort_EndDefense",
+          "offset": 16070,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "17690200f90e000000010000007a000000000000000100000028e20e0000"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_Escort_EndDefense",
+          "offset": 16724,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "17690200cb10000000010000007a000000020000000100000028b4100000"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_Escort_EndDefense",
+          "offset": 17297,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "1700010000004d0000000000000001000000010100000071000000000000"
+        }
+      ]
+    },
+    {
+      "classPath": "/Game/Enemies/Waves/WaveControllers/EWC_Escort_EndMission.EWC_Escort_EndMission_C",
+      "parent": "/Game/Enemies/Waves/WaveControllers/EWC_Base.EWC_Base_C",
+      "calls": [
+        {
+          "function": "ExecuteUbergraph_EWC_Escort_EndMission",
+          "offset": 8089,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "1700010000001d0000000000000001000000000100000046000000000000"
+        }
+      ]
+    },
+    {
+      "classPath": "/Game/Enemies/Waves/WaveControllers/EWC_Escort_Refueling.EWC_Escort_Refueling_C",
+      "parent": "/Game/Enemies/Waves/WaveControllers/EWC_Base.EWC_Base_C",
+      "calls": [
+        {
+          "function": "ExecuteUbergraph_EWC_Escort_Refueling",
+          "offset": 8200,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "171e0000c842000100000027000000020000000100000065020000001f00"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_Escort_Refueling",
+          "offset": 9593,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "171e00001643000100000026000000000000000100000065020000001f00"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_Escort_Refueling",
+          "offset": 9856,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "171e00001643000100000027000000000000000100000065020000001f00"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_Escort_Refueling",
+          "offset": 10214,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "171e0000c842000100000026000000000000000100000065020000001f00"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_Escort_Refueling",
+          "offset": 10522,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "1700010000002d0000000400000001000000000100000027000000030000"
+        }
+      ]
+    },
+    {
+      "classPath": "/Game/Enemies/Waves/WaveControllers/EWC_Excavation_ExcavationPhase.EWC_Excavation_ExcavationPhase_C",
+      "parent": "/Game/Enemies/Waves/WaveControllers/EWC_Base.EWC_Base_C",
+      "calls": [
+        {
+          "function": "ExecuteUbergraph_EWC_Excavation_ExcavationPhase",
+          "offset": 4671,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "1700010000001d000000000000000100000001010000003e000000000000"
+        }
+      ]
+    },
+    {
+      "classPath": "/Game/Enemies/Waves/WaveControllers/EWC_Excavation_LaunchPhase.EWC_Excavation_LaunchPhase_C",
+      "parent": "/Game/Enemies/Waves/WaveControllers/EWC_Base.EWC_Base_C",
+      "calls": [
+        {
+          "function": "ExecuteUbergraph_EWC_Excavation_LaunchPhase",
+          "offset": 4655,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "1700010000001d000000000000000100000001010000003e000000000000"
+        }
+      ]
+    },
+    {
+      "classPath": "/Game/Enemies/Waves/WaveControllers/EWC_Generic.EWC_Generic_C",
+      "parent": "/Game/Enemies/Waves/WaveControllers/EWC_Base.EWC_Base_C",
+      "calls": [
+        {
+          "function": "ExecuteUbergraph_EWC_Generic",
+          "offset": 6282,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "171e00008743010100000049000000000000000400000065020000001d00"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_Generic",
+          "offset": 6466,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "171e00005c43010100000049000000000000000400000065020000001d00"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_Generic",
+          "offset": 6780,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "171e0000f042010100000049000000000000000400000065020000001d00"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_Generic",
+          "offset": 6964,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "171e0000c842010100000049000000000000000400000065020000001d00"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_Generic",
+          "offset": 7278,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "171e0000b442010100000049000000000000000400000065020000001d00"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_Generic",
+          "offset": 7833,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "170001000000210000000200000001000000010100000049000000000000"
+        }
+      ]
+    },
+    {
+      "classPath": "/Game/Enemies/Waves/WaveControllers/EWC_OktoberFest_BeerAmbush.EWC_OktoberFest_BeerAmbush_C",
+      "parent": "/Game/Enemies/Waves/WaveControllers/EWC_Base.EWC_Base_C",
+      "calls": [
+        {
+          "function": "ExecuteUbergraph_EWC_OktoberFest_BeerAmbush",
+          "offset": 4754,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemyGroupDescriptorSpreadOut",
+          "args": "1720f6ffffff1e0000c84200010000001d00000002000000010000002724"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_OktoberFest_BeerAmbush",
+          "offset": 4968,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemyGroupDescriptorSpreadOut",
+          "args": "1720f7ffffff1e0000484300010000001d00000000000000010000002724"
+        }
+      ]
+    },
+    {
+      "classPath": "/Game/Enemies/Waves/WaveControllers/EWC_OverloadShieldGenerator_Facility.EWC_OverloadShieldGenerator_Facility_C",
+      "parent": "/Game/Enemies/Waves/WaveControllers/EWC_Base.EWC_Base_C",
+      "calls": [
+        {
+          "function": "ExecuteUbergraph_EWC_OverloadShieldGenerator_Facility",
+          "offset": 10740,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "171e0000c842000100000025000000000000000100000065020000001a00"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_OverloadShieldGenerator_Facility",
+          "offset": 11207,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "171e00009642000100000025000000020000000100000065020000001a00"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_OverloadShieldGenerator_Facility",
+          "offset": 11492,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "171e00002041000100000025000000020000000100000065020000001a00"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_OverloadShieldGenerator_Facility",
+          "offset": 11772,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "171e0000c842000100000025000000020000000100000065020000001a00"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_OverloadShieldGenerator_Facility",
+          "offset": 11952,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "171e00004842000100000025000000000000000100000065020000001a00"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_OverloadShieldGenerator_Facility",
+          "offset": 12127,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "171e00004842000100000025000000000000000100000065020000001a00"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_OverloadShieldGenerator_Facility",
+          "offset": 12307,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "171e00001643000100000025000000040000000100000065020000001a00"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_OverloadShieldGenerator_Facility",
+          "offset": 12526,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemyGroupDescriptorSpreadOut",
+          "args": "17010100000038000000000000000a0000001e00002f4300010000002500"
+        }
+      ]
+    },
+    {
+      "classPath": "/Game/Enemies/Waves/WaveControllers/EWC_PlagueMeteorDefence.EWC_PlagueMeteorDefence_C",
+      "parent": "/Game/Enemies/Waves/WaveControllers/EWC_Base.EWC_Base_C",
+      "calls": [
+        {
+          "function": "ExecuteUbergraph_EWC_PlagueMeteorDefence",
+          "offset": 13627,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemyGroupDescriptorSpreadOut",
+          "args": "1720d8ffffff1e0000964200010000003800000004000000010000002724"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_PlagueMeteorDefence",
+          "offset": 13871,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "170001000000320000000200000001000000000100000038000000000000"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_PlagueMeteorDefence",
+          "offset": 14186,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "1700010000003c0000000200000001000000000100000038000000000000"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_PlagueMeteorDefence",
+          "offset": 14501,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "1700010000003c0000000300000001000000000100000038000000020000"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_PlagueMeteorDefence",
+          "offset": 15377,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "1700010000003b0000000000000001000000000100000038000000030000"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_PlagueMeteorDefence",
+          "offset": 16867,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "171e00001643000100000038000000050000000100000065020000002300"
+        }
+      ]
+    },
+    {
+      "classPath": "/Game/Enemies/Waves/WaveControllers/EWC_PumpSequence_ConstantPresure_Refinery.EWC_PumpSequence_ConstantPresure_Refinery_C",
+      "parent": "/Game/Enemies/Waves/WaveControllers/EWC_Base.EWC_Base_C",
+      "calls": [
+        {
+          "function": "ExecuteUbergraph_EWC_PumpSequence_ConstantPresure_Refinery",
+          "offset": 6788,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "17000100000021000000000000000100000000010000001e000000000000"
+        }
+      ]
+    },
+    {
+      "classPath": "/Game/Enemies/Waves/WaveControllers/EWC_PumpSequence_Wave_Refinery.EWC_PumpSequence_Wave_Refinery_C",
+      "parent": "/Game/Enemies/Waves/WaveControllers/EWC_Base.EWC_Base_C",
+      "calls": [
+        {
+          "function": "ExecuteUbergraph_EWC_PumpSequence_Wave_Refinery",
+          "offset": 7526,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "171e00009642000100000025000000000000000100000065020000001d00"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_PumpSequence_Wave_Refinery",
+          "offset": 7789,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "171e00004842000100000025000000000000000100000065020000001d00"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_PumpSequence_Wave_Refinery",
+          "offset": 8053,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "171e0000fa42000100000025000000000000000100000065020000001d00"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_PumpSequence_Wave_Refinery",
+          "offset": 8408,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "171e0000964200010000004d000000020000000100000065020000001d00"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_PumpSequence_Wave_Refinery",
+          "offset": 8723,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "171e0080894300010000004d000000000000000100000065020000001d00"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_PumpSequence_Wave_Refinery",
+          "offset": 9029,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "171e0000164300010000004d000000000000000100000065020000001d00"
+        }
+      ]
+    },
+    {
+      "classPath": "/Game/Enemies/Waves/WaveControllers/EWC_Refinery_BokenPipe_LocalWave.EWC_Refinery_BokenPipe_LocalWave_C",
+      "parent": "/Game/Enemies/Waves/WaveControllers/EWC_Base.EWC_Base_C",
+      "calls": [
+        {
+          "function": "ExecuteUbergraph_EWC_Refinery_BokenPipe_LocalWave",
+          "offset": 5426,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "17000100000020000000030000000100000000010000001d000000000000"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_Refinery_BokenPipe_LocalWave",
+          "offset": 5919,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "17000100000020000000040000000100000000010000001d000000020000"
+        }
+      ]
+    },
+    {
+      "classPath": "/Game/Enemies/Waves/WaveControllers/EWC_Refinery_End.EWC_Refinery_End_C",
+      "parent": "/Game/Enemies/Waves/WaveControllers/EWC_Base.EWC_Base_C",
+      "calls": [
+        {
+          "function": "ExecuteUbergraph_EWC_Refinery_End",
+          "offset": 5354,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "171e0000c842000100000019000000030000000100000065020000001400"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_Refinery_End",
+          "offset": 5605,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "170001000000160000000200000001000000000100000019000000030000"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_Refinery_End",
+          "offset": 5818,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "171e00004842000100000019000000030000000100000065020000001400"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_Refinery_End",
+          "offset": 6167,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "170001000000180000000000000001000000000100000019000000000000"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_Refinery_End",
+          "offset": 6742,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "171e00007a43000100000019000000020000000100000065020000001400"
+        }
+      ]
+    },
+    {
+      "classPath": "/Game/Enemies/Waves/WaveControllers/EWC_SW_Grunts.EWC_SW_Grunts_C",
+      "parent": "/Game/Enemies/Waves/WaveControllers/EWC_Base.EWC_Base_C",
+      "calls": [
+        {
+          "function": "ExecuteUbergraph_EWC_SW_Grunts",
+          "offset": 6636,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemyGroupDescriptorSpreadOut",
+          "args": "1701010000002e00000000000000040000001e0000874301010000005000"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_SW_Grunts",
+          "offset": 6952,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemyGroupDescriptorSpreadOut",
+          "args": "1720efffffff000100000022000000020000000100000001010000005000"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_SW_Grunts",
+          "offset": 7154,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemyGroupDescriptorSpreadOut",
+          "args": "1701010000002e00000000000000040000001e00005c4301010000005000"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_SW_Grunts",
+          "offset": 7394,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemyGroupDescriptorSpreadOut",
+          "args": "1701010000002e00000000000000040000001e0000f04201010000005000"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_SW_Grunts",
+          "offset": 7634,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemyGroupDescriptorSpreadOut",
+          "args": "1701010000002e00000000000000040000001e0000c84201010000005000"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_SW_Grunts",
+          "offset": 7874,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemyGroupDescriptorSpreadOut",
+          "args": "1701010000002e00000000000000040000001e0000b44201010000005000"
+        }
+      ]
+    },
+    {
+      "classPath": "/Game/Enemies/Waves/WaveControllers/EWC_SW_Macteras.EWC_SW_Macteras_C",
+      "parent": "/Game/Enemies/Waves/WaveControllers/EWC_Base.EWC_Base_C",
+      "calls": [
+        {
+          "function": "ExecuteUbergraph_EWC_SW_Macteras",
+          "offset": 7303,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemyGroupDescriptor",
+          "args": "1701010000003000000000000000040000001e0000874301010000005400"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_SW_Macteras",
+          "offset": 7772,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemyGroupDescriptor",
+          "args": "1720efffffff000100000024000000020000000100000000010000002100"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_SW_Macteras",
+          "offset": 7940,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemyGroupDescriptorSpreadOut",
+          "args": "1701010000003000000000000000040000001e0000484300010000002300"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_SW_Macteras",
+          "offset": 8333,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemyGroupDescriptorSpreadOut",
+          "args": "1701010000003000000000000000040000001e0000f04200010000002300"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_SW_Macteras",
+          "offset": 8601,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemyGroupDescriptorSpreadOut",
+          "args": "1701010000003000000000000000040000001e0000484300010000002300"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_SW_Macteras",
+          "offset": 8994,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemyGroupDescriptorSpreadOut",
+          "args": "1701010000003000000000000000040000001e0000b44200010000002300"
+        }
+      ]
+    },
+    {
+      "classPath": "/Game/Enemies/Waves/WaveControllers/EWC_SW_Plague_RockpoxInfectedEnemies.EWC_SW_Plague_RockpoxInfectedEnemies_C",
+      "parent": "/Game/Enemies/Waves/WaveControllers/EWC_Base.EWC_Base_C",
+      "calls": [
+        {
+          "function": "ExecuteUbergraph_EWC_SW_Plague_RockpoxInfectedEnemies",
+          "offset": 6716,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemyGroupDescriptorSpreadOut",
+          "args": "1701010000002e00000000000000040000001e0000874301010000005000"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_SW_Plague_RockpoxInfectedEnemies",
+          "offset": 7032,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemyGroupDescriptorSpreadOut",
+          "args": "1701010000002e0000000000000004000000000100000022000000020000"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_SW_Plague_RockpoxInfectedEnemies",
+          "offset": 7246,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemyGroupDescriptorSpreadOut",
+          "args": "1701010000002e00000000000000040000001e00005c4301010000005000"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_SW_Plague_RockpoxInfectedEnemies",
+          "offset": 7486,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemyGroupDescriptorSpreadOut",
+          "args": "1701010000002e00000000000000040000001e0000f04201010000005000"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_SW_Plague_RockpoxInfectedEnemies",
+          "offset": 7726,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemyGroupDescriptorSpreadOut",
+          "args": "1701010000002e00000000000000040000001e0000c84201010000005000"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_SW_Plague_RockpoxInfectedEnemies",
+          "offset": 7966,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemyGroupDescriptorSpreadOut",
+          "args": "1701010000002e00000000000000040000001e0000b44201010000005000"
+        }
+      ]
+    },
+    {
+      "classPath": "/Game/Enemies/Waves/WaveControllers/EWC_SW_Pretorians.EWC_SW_Pretorians_C",
+      "parent": "/Game/Enemies/Waves/WaveControllers/EWC_Base.EWC_Base_C",
+      "calls": [
+        {
+          "function": "ExecuteUbergraph_EWC_SW_Pretorians",
+          "offset": 7158,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemyGroupDescriptor",
+          "args": "1701010000003000000000000000040000001e0000c84301010000005500"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_SW_Pretorians",
+          "offset": 7632,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "170001000000240000000200000001000000000100000023000000040000"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_SW_Pretorians",
+          "offset": 7728,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemyGroupDescriptor",
+          "args": "1701010000003000000000000000040000001e0000c84201010000005500"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_SW_Pretorians",
+          "offset": 8121,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemyGroupDescriptorSpreadOut",
+          "args": "1701010000003000000000000000040000001e0000664300010000002300"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_SW_Pretorians",
+          "offset": 8389,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemyGroupDescriptorSpreadOut",
+          "args": "1701010000003000000000000000040000001e0000b44200010000002300"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_SW_Pretorians",
+          "offset": 8595,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemyGroupDescriptorSpreadOut",
+          "args": "1701010000003000000000000000040000001e0000b44200010000002300"
+        }
+      ]
+    },
+    {
+      "classPath": "/Game/Enemies/Waves/WaveControllers/EWC_SW_Swarmers.EWC_SW_Swarmers_C",
+      "parent": "/Game/Enemies/Waves/WaveControllers/EWC_Base.EWC_Base_C",
+      "calls": [
+        {
+          "function": "ExecuteUbergraph_EWC_SW_Swarmers",
+          "offset": 7158,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemyGroupDescriptor",
+          "args": "1701010000003000000000000000040000001e0000874301010000005400"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_SW_Swarmers",
+          "offset": 7627,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemyGroupDescriptor",
+          "args": "1720efffffff000100000024000000020000000100000000010000002100"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_SW_Swarmers",
+          "offset": 7795,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemyGroupDescriptorSpreadOut",
+          "args": "1701010000003000000000000000040000001e00005c4300010000002300"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_SW_Swarmers",
+          "offset": 8188,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemyGroupDescriptorSpreadOut",
+          "args": "1701010000003000000000000000040000001e0000f04200010000002300"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_SW_Swarmers",
+          "offset": 8581,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemyGroupDescriptorSpreadOut",
+          "args": "1701010000003000000000000000040000001e0000b44200010000002300"
+        }
+      ]
+    },
+    {
+      "classPath": "/Game/Enemies/Waves/WaveControllers/EWC_Salvage_Ambush.EWC_Salvage_Ambush_C",
+      "parent": "/Game/Enemies/Waves/WaveControllers/EWC_Base.EWC_Base_C",
+      "calls": [
+        {
+          "function": "ExecuteUbergraph_EWC_Salvage_Ambush",
+          "offset": 4672,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "171e0000164300010000001c000000020000000100000065020000001a00"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_Salvage_Ambush",
+          "offset": 5120,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "171e0000964300010000001c000000000000000100000065020000001a00"
+        }
+      ]
+    },
+    {
+      "classPath": "/Game/Enemies/Waves/WaveControllers/EWC_Salvage_Defend.EWC_Salvage_Defend_C",
+      "parent": "/Game/Enemies/Waves/WaveControllers/EWC_Base.EWC_Base_C",
+      "calls": [
+        {
+          "function": "ExecuteUbergraph_EWC_Salvage_Defend",
+          "offset": 5484,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "17000100000017000000000000000100000000010000001a000000000000"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_Salvage_Defend",
+          "offset": 5764,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "17000100000017000000020000000100000000010000001a000000000000"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_Salvage_Defend",
+          "offset": 6044,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "17000100000017000000030000000100000000010000001a000000020000"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_Salvage_Defend",
+          "offset": 6629,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "17000100000019000000020000000100000000010000001a000000030000"
+        }
+      ]
+    },
+    {
+      "classPath": "/Game/Enemies/Waves/WaveControllers/EWC_Salvage_End.EWC_Salvage_End_C",
+      "parent": "/Script/FSD.EnemyWaveController",
+      "calls": [
+        {
+          "function": "ExecuteUbergraph_EWC_Salvage_End",
+          "offset": 4492,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "1700010000000c000000000000000100000000010000000d000000020000"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_Salvage_End",
+          "offset": 5191,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "1700010000000a000000030000000100000000010000000d000000000000"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_Salvage_End",
+          "offset": 5454,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "1700010000000a000000040000000100000000010000000d000000000000"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_Salvage_End",
+          "offset": 5791,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "1700010000000a000000020000000100000000010000000d000000000000"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_Salvage_End",
+          "offset": 6168,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "171e00007a4300010000000d000000030000000100000065020000000800"
+        }
+      ]
+    },
+    {
+      "classPath": "/Game/Enemies/Waves/WaveControllers/EWC_ShieledGenerator_DronePresure_Facility.EWC_ShieledGenerator_DronePresure_Facility_C",
+      "parent": "/Game/Enemies/Waves/WaveControllers/EWC_Base.EWC_Base_C",
+      "calls": [
+        {
+          "function": "ExecuteUbergraph_EWC_ShieledGenerator_DronePresure_Facility",
+          "offset": 5861,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemyGroupDescriptorSpreadOut",
+          "args": "1720f1ffffff1e0000484200010000001a00000000000000010000002724"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_ShieledGenerator_DronePresure_Facility",
+          "offset": 6120,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemyGroupDescriptorSpreadOut",
+          "args": "1720f1ffffff1e0000964200010000001a00000000000000010000002724"
+        }
+      ]
+    },
+    {
+      "classPath": "/Game/Enemies/Waves/WaveControllers/EWC_Spiders_Boss.EWC_Spiders_Boss_C",
+      "parent": "/Game/Enemies/Waves/WaveControllers/EWC_Base.EWC_Base_C",
+      "calls": [
+        {
+          "function": "ExecuteUbergraph_EWC_Spiders_Boss",
+          "offset": 8053,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesAtLocationWithCallback",
+          "args": "1720e4ffffff1d0100000001010000006b00000000000000050000000001"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_Spiders_Boss",
+          "offset": 8153,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesAtLocationWithCallback",
+          "args": "1720e3ffffff1d0100000001010000006b00000000000000050000000001"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_Spiders_Boss",
+          "offset": 8401,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesAtLocationWithCallback",
+          "args": "17690200c402000000010000006f00000000000000010000001d00000000"
+        }
+      ]
+    },
+    {
+      "classPath": "/Game/Enemies/Waves/WaveControllers/EWC_Spiders_Motherlode.EWC_Spiders_Motherlode_C",
+      "parent": "/Game/Enemies/Waves/WaveControllers/EWC_Base.EWC_Base_C",
+      "calls": [
+        {
+          "function": "ExecuteUbergraph_EWC_Spiders_Motherlode",
+          "offset": 10972,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "170001000000250000000200000001000000000100000030000000040000"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_Spiders_Motherlode",
+          "offset": 11235,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "170001000000250000000300000001000000000100000030000000000000"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_Spiders_Motherlode",
+          "offset": 11634,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "170001000000250000000000000001000000000100000030000000000000"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_Spiders_Motherlode",
+          "offset": 11897,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "170001000000250000000400000001000000000100000030000000000000"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_Spiders_Motherlode",
+          "offset": 12633,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "171e00004843000100000030000000020000000100000065020000002100"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_Spiders_Motherlode",
+          "offset": 12834,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "171e0000c842000100000030000000030000000100000065020000002100"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_Spiders_Motherlode",
+          "offset": 13598,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesAtLocation",
+          "args": "1720edffffff1d0100000000010000002f00000000000000010000002728"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_Spiders_Motherlode",
+          "offset": 13925,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "1700010000002a0000000300000001000000000100000030000000050000"
+        }
+      ]
+    },
+    {
+      "classPath": "/Game/Enemies/Waves/WaveControllers/EWC_TutorialGrunts.EWC_TutorialGrunts_C",
+      "parent": "/Game/Enemies/Waves/WaveControllers/EWC_Base.EWC_Base_C",
+      "calls": [
+        {
+          "function": "ExecuteUbergraph_EWC_TutorialGrunts",
+          "offset": 8012,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemyGroupDescriptorSpreadOut",
+          "args": "1701010000003700000000000000040000001e00007a4300010000002800"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_TutorialGrunts",
+          "offset": 8506,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemyGroupDescriptorSpreadOut",
+          "args": "1701010000003700000000000000040000001e0000164300010000002800"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_TutorialGrunts",
+          "offset": 8712,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemyGroupDescriptorSpreadOut",
+          "args": "1701010000003700000000000000040000001e0000164300010000002800"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_TutorialGrunts",
+          "offset": 9001,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemyGroupDescriptor",
+          "args": "1701010000003700000000000000040000001e0000874301010000006300"
+        }
+      ]
+    },
+    {
+      "classPath": "/Game/GameElements/GameEvents/CoreRift/EWC_CoreRift.EWC_CoreRift_C",
+      "parent": "/Game/Enemies/Waves/WaveControllers/EWC_Base.EWC_Base_C",
+      "calls": [
+        {
+          "function": "ExecuteUbergraph_EWC_CoreRift",
+          "offset": 14826,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemyGroupDescriptorWithCallbackSpreadOut",
+          "args": "1720ddffffff010100000057000000000000000900000000010000002b00"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_CoreRift",
+          "offset": 17478,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemyGroupDescriptorWithCallbackSpreadOut",
+          "args": "1720ddffffff1e00007a4301010000009400000000000000090000002724"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_CoreRift",
+          "offset": 17994,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemyGroupDescriptorWithCallbackSpreadOut",
+          "args": "1720ddffffff1e0000164300010000002b00000002000000010000002724"
+        }
+      ]
+    },
+    {
+      "classPath": "/Game/GameElements/GameEvents/RivalBombEvent/EWC_BombEvent.EWC_BombEvent_C",
+      "parent": "/Game/Enemies/Waves/WaveControllers/EWC_Base.EWC_Base_C",
+      "calls": [
+        {
+          "function": "ExecuteUbergraph_EWC_BombEvent",
+          "offset": 8869,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemyGroupDescriptor",
+          "args": "1720edffffff1e0000204201010000007800000000000000090000002724"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_BombEvent",
+          "offset": 9416,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemyGroupDescriptor",
+          "args": "1720edffffff1e0000204201010000007800000000000000090000002724"
+        },
+        {
+          "function": "SpawnWave",
+          "offset": 12111,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "170001000000310000000000000008000000000100000023000000000000"
+        }
+      ]
+    },
+    {
+      "classPath": "/Game/GameElements/Missions/Warnings/CoreCorruption/EWC_CoreCorruption.EWC_CoreCorruption_C",
+      "parent": "/Game/Enemies/Waves/WaveControllers/EWC_Base.EWC_Base_C",
+      "calls": [
+        {
+          "function": "ExecuteUbergraph_EWC_CoreCorruption",
+          "offset": 16030,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemyGroupDescriptorWithCallbackSpreadOut",
+          "args": "1720daffffff010100000052000000000000000800000001010000009d00"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_CoreCorruption",
+          "offset": 16766,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemyGroupDescriptorWithCallbackSpreadOut",
+          "args": "1720daffffff1e0000484301010000009d00000000000000080000002724"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_CoreCorruption",
+          "offset": 17105,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemyGroupDescriptorWithCallbackSpreadOut",
+          "args": "1720daffffff1e0000f04201010000009d00000000000000080000002724"
+        }
+      ]
+    },
+    {
+      "classPath": "/Game/GameElements/Objectives/HackBuilding/EWC_HackBuilding.EWC_HackBuilding_C",
+      "parent": "/Game/Enemies/Waves/WaveControllers/EWC_Base.EWC_Base_C",
+      "calls": [
+        {
+          "function": "ExecuteUbergraph_EWC_HackBuilding",
+          "offset": 10956,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "171e0000c842000100000025000000000000000100000065020000001a00"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_HackBuilding",
+          "offset": 11675,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "171e00002f43000100000025000000000000000100000065020000001a00"
+        },
+        {
+          "function": "ExecuteUbergraph_EWC_HackBuilding",
+          "offset": 11850,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemyGroupDescriptorSpreadOut",
+          "args": "17010100000039000000000000000b0000001e0000fa4200010000002600"
+        },
+        {
+          "function": "SpawnWave",
+          "offset": 14884,
+          "callee": "/Script/FSD.SpawningBlueprintLibrary.SpawnEnemiesFromPool",
+          "args": "17000100000037000000000000000a000000000100000025000000000000"
+        }
+      ]
+    }
+  ]
+}

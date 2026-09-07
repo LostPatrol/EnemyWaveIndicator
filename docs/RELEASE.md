@@ -1,7 +1,9 @@
 <!-- DLL/Pak delivery, migration and moderation instructions; no publication is claimed. -->
-# 发布与安装准备 — 0.8.0 测试候选
+# 发布与安装准备 — 0.9.0 测试候选
 
 当前路线是 MintCat 自动安装 DLL+Pak。**task1 尚未全部实现，当前包仅供测试，不应以完整发行版发布。** 源码不再提供旧版手工 PowerShell 安装器。
+
+0.9.0新增35种脚本虫潮，加自然潮共36项独立开关和文字配置，见[类型目录](WAVE-TYPES.md)。默认仅自然潮开启，测试矿骡伏击需启用 **Salvage: mini-MULE ambush** 并Apply。新NativeAbi=0x90000，必须同时更新DLL和Pak。原v2配置继续使用，新增类型默认关闭。
 
 ## 本次本机测试操作
 

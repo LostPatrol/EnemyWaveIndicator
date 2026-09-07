@@ -1,21 +1,21 @@
 <!-- Current native test baseline; task1's all-source and prediction work is explicitly incomplete. -->
-# Normal Wave Indicator — 0.8.0 test candidate
+# Normal Wave Indicator — 0.9.0 test candidate
 
 DRG natural-wave center markers using **DLL + Pak**, installed through MintCat. This is an unpublished test candidate, not completion of every requirement in `task1-refine.md`.
 
 ## Implemented
 
 - Natural provenance requires six exact native call-chain returns, including the natural scheduler. Ownership follows each accepted queue request through swap removal and successful actor creation; ambient/boss/event requests are not relabeled because a natural wave is active.
-- Only registered regular enemies qualify. The game's small-enemy and critter buckets override regular membership; unknown/unregistered actors are excluded. Hoarder/Huuli names are additionally excluded. Source attribution does not depend on the summoned enemy's descriptor, so changing a summon to a grunt does not make that summon natural.
-- The audited natural path supplies one actual game-selected center. Successful requests retain this center; unavailable centers fall back to the queued origin. Eight regions are supported. Distinct known centers and wave identities stay separate. Overflow is counted and dropped.
+- Natural waves require registered regular enemies; explicitly enabled scripted wave types also admit registered small enemies. Critters and unknown/unregistered actors are excluded; small membership overrides regular membership for natural waves. Hoarder/Huuli names are additionally excluded. Source attribution does not depend on the summoned enemy's descriptor, so changing a summon to a grunt does not make that summon natural.
+- Native generation scopes identify all 35 concrete stock wave-controller classes; each queued entry keeps its own source type and request identity. The shared batch helper supplies the actual selected center, including multi-center requests. Successful requests retain this center; unavailable centers fall back to the queued origin. Eight regions are supported. Distinct known centers and wave identities stay separate. Overflow is counted and dropped.
 - Sphere size uses the sum of successful enemies' **base descriptor `DifficultyRating`**, normalized to 200 and cube-root scaled (0.4–4 multiplier). It grows with count and cost. It does not claim to reproduce all runtime difficulty modifiers or precise combat threat.
-- Mod Hub: natural-wave enable/text, global size, duration, sphere RGB and opacity (default 0.4), text color A/B and frequency (default red/white, two complete cycles/second). Draft RGBA swatch and text previews update before Apply; Apply persists `NormalWaveIndicator_v2.sav`. Preview is a color swatch, not a 3D sphere/GPU preview. Old v1 preferences are left intact and not imported.
-- A host-created, always relevant Blueprint actor replicates region points, size, visibility and expiry. Clients with the matching Pak draw their own HUD/spheres and use synchronized server time. **Network transport and late-join behavior still need real two-peer testing.** Clients without the Pak cannot display these custom assets. The DLL is required on the host.
+- Mod Hub: 36 independent wave-type enable/text pairs, natural only by default, global size, duration, sphere RGB and opacity (default 0.4), text color A/B and frequency (default red/white, two complete cycles/second). Draft RGBA swatch and text previews update before Apply; Apply persists `NormalWaveIndicator_v2.sav`. Preview is a color swatch, not a 3D sphere/GPU preview. Old v1 preferences are left intact and not imported.
+- A host-created, always relevant Blueprint actor replicates source type, region points, size, visibility and expiry. Clients with the matching Pak draw their own HUD/spheres and use synchronized server time. **Network transport and late-join behavior still need real two-peer testing.** Clients without the Pak cannot display these custom assets. The DLL is required on the host.
 - Diagnostic logs measure actual selected-center→spawn, queue→spawn and spawn→native handoff intervals. They do not represent a rendered GPU frame or a prediction.
 
 ## Still required by task1
 
-Other wave sources (announced/scripted waves, individual events and direct boss summons), their independent custom labels/toggles, and all-source/multiple-center coverage are **not implemented**. No claim of universal source coverage or completed task1 is made. A future implementation must attach initiating source identity to each request; the retired active-controller guessing approach must not return.
+The 35 concrete stock EWC types and natural waves have independent toggles/text and request provenance; see [the complete type catalog](docs/WAVE-TYPES.md). Non-EWC boss/direct summons, machine-event spawning components and new Mod-defined controller classes are not covered by this catalog. Generic controllers reused by several triggers remain one code type. This is not universal enemy-source coverage or completed task1.
 
 One-to-five-second exact position prediction is not established: the current game chooses a player, RNG and navigation location when triggering the wave. No early game function invocation, RNG consumption, enemy delay or spawning change is used. See [test instructions and acceptance gaps](docs/TASK1-ACCEPTANCE.md).
 

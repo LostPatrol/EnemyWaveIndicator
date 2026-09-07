@@ -23,6 +23,7 @@ uint64_t normalCalls = 0, enqueueCalls = 0, actorCalls = 0, shrinkCalls = 0;
 volatile uint32_t afterCall = 0;
 bool badArguments = false;
 bool bypassMiddle = false; // Same normal entry but an unproven downstream route must still be rejected.
+uint64_t sourceCalls = 0, centerCalls = 0;
 void sync() {
     struct Array { void* data; int32_t count, capacity; } array{queue.data(), static_cast<int32_t>(queue.size()), static_cast<int32_t>(queue.capacity())};
     memcpy(owner + 0x1c0, &array, sizeof(array));
@@ -44,6 +45,40 @@ __declspec(noinline) void batch() {
         if (!enqueue(owner, reinterpret_cast<void*>(descriptor), transform, callback, true, false)) badArguments = true;
         ++afterCall;
     }
+}
+// Exact ABI of the six additional native entrypoints, with two game-selected centers per request.
+__declspec(noinline) void sourceCenter(void* context, void* descriptor, int32_t count, float weight, const void* point, const void* callback, uint8_t pf, const void* settings, bool flag) {
+    ++centerCalls;
+    if (context != &worldToken || descriptor != reinterpret_cast<void*>(91) || count != 3 || weight != 2.25f || !point || callback != reinterpret_cast<void*>(92) || pf != 2 || settings != reinterpret_cast<void*>(93) || flag) badArguments = true;
+    const auto* xyz=static_cast<const float*>(point);
+    if ((xyz[0]!=100 && xyz[0]!=101) || xyz[1]!=200 || xyz[2]!=300) badArguments=true;
+    batch(); ++afterCall;
+}
+void sourceBatch() {
+    float point[3]{100,200,300};
+    sourceCenter(&worldToken,reinterpret_cast<void*>(91),3,2.25f,point,reinterpret_cast<void*>(92),2,reinterpret_cast<void*>(93),false);
+    point[0]=101; // One centimeter separation proves the actual centers are not proximity-merged.
+    sourceCenter(&worldToken,reinterpret_cast<void*>(91),3,2.25f,point,reinterpret_cast<void*>(92),2,reinterpret_cast<void*>(93),false);
+}
+__declspec(noinline) void sourcePool(void*, float difficulty, void* locations, void* banned, bool alert, bool pressure) {
+    ++sourceCalls; if(difficulty!=7.25f || locations!=reinterpret_cast<void*>(81) || banned!=reinterpret_cast<void*>(82) || !alert || pressure) badArguments=true;
+    sourceBatch(); ++afterCall;
+}
+__declspec(noinline) void sourceLocation(void*, void* desc, int32_t count, const void* point, const void* callback, bool alert, bool scale, uint8_t pf) {
+    ++sourceCalls; if(desc!=reinterpret_cast<void*>(81) || count!=7 || !point || callback!=reinterpret_cast<void*>(82) || !alert || scale || pf!=2) badArguments=true;
+    sourceBatch(); ++afterCall;
+}
+__declspec(noinline) void sourceGroup(void*, void* desc, float difficulty, const void* point, bool alert, uint8_t pf) {
+    ++sourceCalls; if(desc!=reinterpret_cast<void*>(81) || difficulty!=7.25f || !point || !alert || pf!=2) badArguments=true;
+    sourceBatch(); ++afterCall;
+}
+__declspec(noinline) void sourceSpread(void*, void* desc, float difficulty, const void* points, bool alert, uint8_t pf) {
+    ++sourceCalls; if(desc!=reinterpret_cast<void*>(81) || difficulty!=7.25f || !points || !alert || pf!=2) badArguments=true;
+    sourceBatch(); ++afterCall;
+}
+__declspec(noinline) void sourceCallback(void*, void* desc, float difficulty, const void* points, bool alert, uint8_t pf, const void* callback) {
+    ++sourceCalls; if(desc!=reinterpret_cast<void*>(81) || difficulty!=7.25f || !points || !alert || pf!=2 || callback!=reinterpret_cast<void*>(82)) badArguments=true;
+    sourceBatch(); ++afterCall;
 }
 __declspec(noinline) void middle() { middleReturn = reinterpret_cast<uintptr_t>(_ReturnAddress()); batch(); ++afterCall; }
 __declspec(noinline) void outer() { outerReturn = reinterpret_cast<uintptr_t>(_ReturnAddress()); middle(); ++afterCall; }
@@ -86,6 +121,10 @@ template<class T> nwi::capture::Target target(T function) {
     nwi::capture::Target t; t.address = reinterpret_cast<void*>(function); memcpy(t.bytes.data(), t.address, t.bytes.size()); return t;
 }
 #define REQUIRE(x) do { if (!(x)) { printf("FAIL line %d: %s (fault=%u)\n", __LINE__, #x, nwi::capture::stats().fault); return 1; } } while (0)
+int32_t classifySource(void* context, void* world) {
+    const auto id = reinterpret_cast<uintptr_t>(context);
+    return world == &worldToken && id > 0 && id < nwi::WaveTypeCount ? static_cast<int32_t>(id) : -1;
+}
 }
 int main() {
     using namespace nwi;
@@ -108,6 +147,8 @@ int main() {
     }
     REQUIRE(binding.imageBase && binding.imageEnd > binding.imageBase);
     binding.sourceChain = {enqueueReturn, batchReturn, middleReturn, outerReturn, normalReturn, schedulerReturn};
+    binding.pool=target(sourcePool);binding.location=target(sourceLocation);binding.group=target(sourceGroup);
+    binding.spread=target(sourceSpread);binding.spreadCallback=target(sourceCallback);binding.center=target(sourceCenter);binding.classifySource=classifySource;
     REQUIRE(capture::install(binding)); capture::setWorld(world);
     SpawnEvent event;
     void* absent = nullptr;
@@ -185,6 +226,8 @@ int main() {
     const auto pawn=reinterpret_cast<uint64_t>(&pawnToken);
     REQUIRE(eligibleEnemy(pawn,regular,empty,empty));
     REQUIRE(!eligibleEnemy(pawn,empty,empty,empty) && !eligibleEnemy(0,regular,empty,empty));
+    REQUIRE(!eligibleEnemy(pawn,empty,small,empty) && eligibleScriptedEnemy(pawn,empty,small,empty));
+    REQUIRE(!eligibleScriptedEnemy(pawn,regular,small,small) && !eligibleScriptedEnemy(pawn,empty,empty,empty));
     REQUIRE(!eligibleEnemy(pawn,regular,empty,small));
     const auto originalCount=regions.items[0].count; const auto originalExpiry=regions.items[0].expires;
     for (unsigned i=0;i<100;++i) if (eligibleEnemy(pawn,regular,small,empty)) regions.add(centered,104,90);
@@ -192,6 +235,25 @@ int main() {
     small.count=-1;REQUIRE(!eligibleEnemy(pawn,regular,small,empty));
     puts("PASS: registered regular required; small/critter wins mixed membership; 100 excluded notifications cannot grow or renew markers.");
     capture::setWorld(nullptr); capture::setWorld(world); // Retire a healthy epoch, not one already disabled by a fault.
+    for (uint32_t type=1;type<WaveTypeCount;++type) {
+        const auto priorCalls=sourceCalls; const auto priorCenters=centerCalls;
+        sourcePool(reinterpret_cast<void*>(uintptr_t(type)),7.25f,reinterpret_cast<void*>(81),reinterpret_cast<void*>(82),true,false);
+        consume(); uint32_t delivered=0;
+        while(capture::pop(event)) { if(waveType(event.wave)!=type || !event.center.valid() || (event.center.x!=100 && event.center.x!=101)) printf("source expected=%u got=%u center=%f,%f,%f descriptor=%llu\n",type,waveType(event.wave),event.center.x,event.center.y,event.center.z,event.center.descriptor); REQUIRE(waveType(event.wave)==type && event.center.valid() && (event.center.x==100 || event.center.x==101)); ++delivered; }
+        REQUIRE(delivered==4 && sourceCalls==priorCalls+1 && centerCalls==priorCenters+2 && !badArguments);
+    }
+    float point[3]{100,200,300};
+    sourceLocation(reinterpret_cast<void*>(1),reinterpret_cast<void*>(81),7,point,reinterpret_cast<void*>(82),true,false,2);
+    sourceGroup(reinterpret_cast<void*>(2),reinterpret_cast<void*>(81),7.25f,point,true,2);
+    sourceSpread(reinterpret_cast<void*>(3),reinterpret_cast<void*>(81),7.25f,point,true,2);
+    sourceCallback(reinterpret_cast<void*>(4),reinterpret_cast<void*>(81),7.25f,point,true,2,reinterpret_cast<void*>(82));
+    sourcePool(nullptr,7.25f,reinterpret_cast<void*>(81),reinterpret_cast<void*>(82),true,false); // Unknown source stays unknown despite the same enemy descriptors.
+    consume(); uint32_t perType[5]{}; regions.reset();
+    while(capture::pop(event)) { REQUIRE(waveType(event.wave)>=1 && waveType(event.wave)<=4); ++perType[waveType(event.wave)]; REQUIRE(regions.add(event,GetTickCount64())); }
+    for(uint32_t type=1;type<=4;++type) REQUIRE(perType[type]==4);
+    for(const auto& region:regions.items) REQUIRE(region.visible && region.count==2);
+    REQUIRE(!badArguments && !capture::stats().fault);
+    puts("PASS: all 35 stock scripted types; ten real hooks; interleaved queued sources, unknown-descriptor isolation, exact multi-centers and callback/float/bool/pointer ABI.");
     scheduleNormal(); consume(); while (capture::pop(event)) {}
     REQUIRE(!capture::stats().fault);
     const auto wavesBeforeStop = capture::stats().waves, normalBeforeStop = normalCalls;

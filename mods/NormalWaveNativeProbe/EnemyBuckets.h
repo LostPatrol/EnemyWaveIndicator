@@ -14,4 +14,9 @@ inline bool eligibleEnemy(uint64_t pawn, const EnemyBucket& regular, const Enemy
     return pawn && regular.valid() && small.valid() && critters.valid()
         && regular.contains(pawn) && !small.contains(pawn) && !critters.contains(pawn);
 }
+// Explicit scripted swarm types may consist of small enemies; the natural filter stays strict.
+inline bool eligibleScriptedEnemy(uint64_t pawn, const EnemyBucket& regular, const EnemyBucket& small, const EnemyBucket& critters) noexcept {
+    return pawn && regular.valid() && small.valid() && critters.valid()
+        && (regular.contains(pawn) || small.contains(pawn)) && !critters.contains(pawn);
+}
 }

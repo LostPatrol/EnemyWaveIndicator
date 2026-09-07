@@ -1,6 +1,7 @@
 // Editor-only generator. Cooked graphs use stock Engine and existing FSD reflection, never this module.
 #include "Modules/ModuleManager.h"
 #include "NwiValidation.h"
+#include "NwiWaveTypes.h"
 #include "K2Node_AddDelegate.h"
 #include "K2Node_RemoveDelegate.h"
 #include "K2Node_CreateDelegate.h"

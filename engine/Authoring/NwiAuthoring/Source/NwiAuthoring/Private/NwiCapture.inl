@@ -1,10 +1,11 @@
 // Versioned native handoff; the DLL alone supplies proven natural-wave records.
 void DeclareCapture(UBlueprint* BP)
 {
-    Variable(BP, TEXT("NativeAbi"), Type(UEdGraphSchema_K2::PC_Int), TEXT("524288"));
+    Variable(BP, TEXT("NativeAbi"), Type(UEdGraphSchema_K2::PC_Int), TEXT("589824"));
     Variable(BP, TEXT("NativeCookie"), Type(UEdGraphSchema_K2::PC_Int));
     Variable(BP, TEXT("NativeTime"), Type(UEdGraphSchema_K2::PC_Float));
     Variable(BP, TEXT("NativeEnabled"), Type(UEdGraphSchema_K2::PC_Int), TEXT("1"));
+    for (uint32 I=1; I<nwi::WaveTypeCount; ++I) Variable(BP,*FString::Printf(TEXT("NativeEnabled%u"),I),Type(UEdGraphSchema_K2::PC_Int),TEXT("0"));
     for (int32 I=0; I<8; ++I) {
         Variable(BP, *FString::Printf(TEXT("RegionExpires%d"), I), Type(UEdGraphSchema_K2::PC_Float));
         Variable(BP, *FString::Printf(TEXT("RegionScale%d"), I), Type(UEdGraphSchema_K2::PC_Float), TEXT("1"));
@@ -13,11 +14,35 @@ void DeclareCapture(UBlueprint* BP)
     auto* F = FBlueprintEditorUtils::CreateNewGraph(BP, TEXT("NwiPoll"), UEdGraph::StaticClass(), UEdGraphSchema_K2::StaticClass());
     FBlueprintEditorUtils::AddFunctionGraph(BP, F, true, static_cast<UClass*>(nullptr));
 }
-UK2Node_CallFunction* UpdateRegionLabel(UEdGraph* G, UClass* HudClass, int32 I)
+// Each display peer selects its own label/visibility from the replicated source ID.
+UK2Node_CallFunction* RegionSetting(UEdGraph* G, int32 I, bool Enabled)
 {
     auto* SaveClass=LoadClass<USaveGame>(nullptr,TEXT("/Game/NormalWaveIndicator/SG_NwiSettings.SG_NwiSettings_C"));
+    const auto Region=FString::Printf(TEXT("RegionType%d"),I);
+    auto* Config=Get(G,TEXT("Settings"));
+    const TCHAR* NaturalField=Enabled?TEXT("NaturalEnabled"):TEXT("Label");
+    UEdGraphNode* Current=Field(G,SaveClass,NaturalField,Config,TEXT("Settings"));
+    const TCHAR* Output=NaturalField; UK2Node_CallFunction* Select=nullptr;
+    for (uint32 J=1; J<nwi::WaveTypeCount; ++J) {
+        const auto FieldName=Enabled?FString::Printf(TEXT("EnabledType%u"),J):FString::Printf(TEXT("LabelType%u"),J);
+        auto* Match=Call(G,UKismetMathLibrary::StaticClass(),TEXT("EqualEqual_IntInt"));Link(Get(G,*Region),*Region,Match,TEXT("A"));Value(Match,TEXT("B"),*FString::FromInt(J));
+        if (Enabled) {
+            auto* Yes=Call(G,UKismetMathLibrary::StaticClass(),TEXT("BooleanAND"));Link(Match,TEXT("ReturnValue"),Yes,TEXT("A"));Link(Field(G,SaveClass,*FieldName,Config,TEXT("Settings")),*FieldName,Yes,TEXT("B"));
+            auto* Not=Call(G,UKismetMathLibrary::StaticClass(),TEXT("Not_PreBool"));Link(Match,TEXT("ReturnValue"),Not,TEXT("A"));
+            auto* No=Call(G,UKismetMathLibrary::StaticClass(),TEXT("BooleanAND"));Link(Not,TEXT("ReturnValue"),No,TEXT("A"));Link(Current,Output,No,TEXT("B"));
+            Select=Call(G,UKismetMathLibrary::StaticClass(),TEXT("BooleanOR"));Link(Yes,TEXT("ReturnValue"),Select,TEXT("A"));Link(No,TEXT("ReturnValue"),Select,TEXT("B"));
+        } else {
+            Select=Call(G,UKismetMathLibrary::StaticClass(),TEXT("SelectString"));Link(Match,TEXT("ReturnValue"),Select,TEXT("bPickA"));
+            Link(Field(G,SaveClass,*FieldName,Config,TEXT("Settings")),*FieldName,Select,TEXT("A"));Link(Current,Output,Select,TEXT("B"));
+        }
+        Current=Select;Output=TEXT("ReturnValue");
+    }
+    return Select;
+}
+UK2Node_CallFunction* UpdateRegionLabel(UEdGraph* G, UClass* HudClass, int32 I)
+{
     auto* Text=Call(G,UKismetTextLibrary::StaticClass(),TEXT("Conv_StringToText"));
-    Link(Field(G,SaveClass,TEXT("Label"),Get(G,TEXT("Settings")),TEXT("Settings")),TEXT("Label"),Text,TEXT("InString"));
+    Link(RegionSetting(G,I,false),TEXT("ReturnValue"),Text,TEXT("InString"));
     auto* Label=Call(G,HudClass,TEXT("SetMarkerLabel"));
     const auto H=FString::Printf(TEXT("AutoHud%d"),I);Link(Get(G,*H),*H,Label,TEXT("self"));Link(Text,TEXT("ReturnValue"),Label,TEXT("Label"));return Label;
 }

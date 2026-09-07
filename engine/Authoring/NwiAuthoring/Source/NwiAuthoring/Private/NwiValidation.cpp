@@ -1,5 +1,6 @@
 // Headless integration tests follow UE's EngineAutomationTests transient UWorld lifecycle.
 #include "NwiValidation.h"
+#include "NwiWaveTypes.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "Engine/StaticMeshActor.h"
@@ -368,6 +369,12 @@ bool ValidateAutomatic(UClass* PulseClass, UClass* WidgetClass)
     auto* TimeInput = Cast<USpinBox>(Page->WidgetTree->FindWidget(TEXT("InputDuration")));
     auto* Button = Cast<UButton>(Page->WidgetTree->FindWidget(TEXT("ApplyButton")));
     NWI_REQUIRE(LabelInput && RadiusInput && TimeInput && Button);
+    for (uint32 I=1; I<nwi::WaveTypeCount; ++I) {
+        auto* Toggle=Cast<UCheckBox>(Page->WidgetTree->FindWidget(*FString::Printf(TEXT("InputEnabledType%u"),I)));
+        auto* Text=Cast<UEditableTextBox>(Page->WidgetTree->FindWidget(*FString::Printf(TEXT("InputLabelType%u"),I)));
+        NWI_REQUIRE(Toggle && Text && !Toggle->IsChecked()); // Only natural is enabled by default.
+        Toggle->SetIsChecked((I%2)==1);Text->SetText(FText::FromString(FString::Printf(TEXT("TYPE %u"),I)));
+    }
     LabelInput->SetText(FText::FromString(TEXT("WATCH OUT"))); RadiusInput->SetValue(6.f); TimeInput->SetValue(12.f);
     auto* OpacityInput=Cast<USpinBox>(Page->WidgetTree->FindWidget(TEXT("InputOpacity")));auto* HzInput=Cast<USpinBox>(Page->WidgetTree->FindWidget(TEXT("InputBlinkHz")));NWI_REQUIRE(OpacityInput && HzInput);
     OpacityInput->SetValue(.65f);HzInput->SetValue(2.f);
@@ -381,6 +388,10 @@ bool ValidateAutomatic(UClass* PulseClass, UClass* WidgetClass)
     NWI_REQUIRE(Reloaded && UGameplayStatics::DeleteGameInSlot(Slot, 0));
     NWI_REQUIRE(FindFProperty<FFloatProperty>(Reloaded->GetClass(), TEXT("Duration"))->GetPropertyValue_InContainer(Reloaded) == 12.f);
     NWI_REQUIRE(FindFProperty<FFloatProperty>(Reloaded->GetClass(),TEXT("Opacity"))->GetPropertyValue_InContainer(Reloaded)==.65f);
+    for (uint32 I=1; I<nwi::WaveTypeCount; ++I) {
+        NWI_REQUIRE(FindFProperty<FBoolProperty>(Reloaded->GetClass(),*FString::Printf(TEXT("EnabledType%u"),I))->GetPropertyValue_InContainer(Reloaded)==((I%2)==1));
+        NWI_REQUIRE(FindFProperty<FStrProperty>(Reloaded->GetClass(),*FString::Printf(TEXT("LabelType%u"),I))->GetPropertyValue_InContainer(Reloaded)==FString::Printf(TEXT("TYPE %u"),I));
+    }
     Controller->ProcessEvent(Class->FindFunctionByName(TEXT("RefreshSettings")), nullptr);
     float SavedOpacity=0; NWI_REQUIRE(Cast<UMaterialInstanceDynamic>(Mids[0])->GetScalarParameterValue(FMaterialParameterInfo(TEXT("Opacity")),SavedOpacity) && SavedOpacity==.65f);
     NWI_REQUIRE(FindFProperty<FFloatProperty>(Class, TEXT("DurationSec"))->GetPropertyValue_InContainer(Controller) == 12.f);
@@ -410,6 +421,18 @@ bool ValidateAutomatic(UClass* PulseClass, UClass* WidgetClass)
     NWI_REQUIRE(FindFProperty<FObjectPropertyBase>(PageClass, TEXT("Settings"))->GetObjectPropertyValue_InContainer(HubPage) == Settings);
     Controller->ProcessEvent(PagesFunction, PageParams.GetStructMemory());
     NWI_REQUIRE(reinterpret_cast<FScriptInterface*>(Pages.GetRawPtr(0))->GetObject() == HubPage);
+    // Exercise every replicated source ID through actual saved Blueprint display branches.
+    for (uint32 I=1; I<nwi::WaveTypeCount; ++I) {
+        FindFProperty<FIntProperty>(Class,TEXT("RegionType0"))->SetPropertyValue_InContainer(Controller,I);
+        FindFProperty<FIntProperty>(Class,TEXT("RegionSerial0"))->SetPropertyValue_InContainer(Controller,1000+I);
+        FindFProperty<FIntProperty>(Class,TEXT("RegionVisible0"))->SetPropertyValue_InContainer(Controller,1);
+        FindFProperty<FFloatProperty>(Class,TEXT("RegionExpires0"))->SetPropertyValue_InContainer(Controller,Test.World->GetTimeSeconds()+8.f);
+        Controller->ProcessEvent(Service,nullptr);
+        NWI_REQUIRE((Huds[0]->GetVisibility()==ESlateVisibility::HitTestInvisible)==((I%2)==1));
+        if(I%2) NWI_REQUIRE(FindFProperty<FTextProperty>(WidgetClass,TEXT("BaseLabel"))->GetPropertyValue_InContainer(Huds[0]).ToString()==FString::Printf(TEXT("TYPE %u"),I));
+        NWI_REQUIRE(FindFProperty<FIntProperty>(Class,*FString::Printf(TEXT("NativeEnabled%u"),I))->GetPropertyValue_InContainer(Controller)==int32(I%2));
+    }
+    UE_LOG(LogTemp,Display,TEXT("NWI_TEST 36 wave types: default natural only, independent checkbox/text persistence, native enable fields, replicated source label/visibility selection passed"));
     NWI_REQUIRE(Pawn->Destroy() && Pc->Destroy());
     UE_LOG(LogTemp, Display, TEXT("NWI_TEST settings button/save/reload, pooled radius update, actual pawn 3-4-5 distance text and blink disable passed; Mod Hub H discovery still requires game testing"));
     NWI_REQUIRE(Controller->Destroy());

@@ -12,7 +12,7 @@ void BuildAutomatic()
     for (int32 I = 0; I < 8; ++I)
     {
         Variable(BP, *FString::Printf(TEXT("RegionPoint%d"), I), Type(UEdGraphSchema_K2::PC_Struct, TBaseStructure<FVector>::Get()));
-        for (auto* Prefix : { TEXT("RegionSerial"), TEXT("RegionVisible"), TEXT("AppliedSerial"), TEXT("AppliedVisible") })
+        for (auto* Prefix : { TEXT("RegionSerial"), TEXT("RegionType"), TEXT("RegionVisible"), TEXT("AppliedSerial"), TEXT("AppliedVisible") })
             Variable(BP, *FString::Printf(TEXT("%s%d"), Prefix, I), Type(UEdGraphSchema_K2::PC_Int), TEXT("0"));
         Variable(BP, *FString::Printf(TEXT("AutoPulse%d"), I), Type(UEdGraphSchema_K2::PC_Object, PulseClass));
         Variable(BP, *FString::Printf(TEXT("AutoHud%d"), I), Type(UEdGraphSchema_K2::PC_Object, HudClass));
@@ -99,7 +99,7 @@ void BuildAutomatic()
         auto* Clock = Call(G,UKismetMathLibrary::StaticClass(),TEXT("SelectFloat")); Link(Call(G,UGameplayStatics::StaticClass(),TEXT("GetTimeSeconds")),TEXT("ReturnValue"),Clock,TEXT("A")); Link(ServerTime,TEXT("ReturnValue"),Clock,TEXT("B"));Link(Host,TEXT("ReturnValue"),Clock,TEXT("bPickA"));Link(Clock,TEXT("ReturnValue"),Remaining,TEXT("B"));
         auto* Fresh = Call(G, UKismetMathLibrary::StaticClass(), TEXT("Greater_FloatFloat")); Link(Remaining, TEXT("ReturnValue"), Fresh, TEXT("A"));
         auto* VisibleFresh = Call(G, UKismetMathLibrary::StaticClass(), TEXT("BooleanAND")); Link(IsVisible, TEXT("ReturnValue"), VisibleFresh, TEXT("A")); Link(Fresh, TEXT("ReturnValue"), VisibleFresh, TEXT("B"));
-        auto* Preference=Call(G,UKismetMathLibrary::StaticClass(),TEXT("BooleanAND"));Link(VisibleFresh,TEXT("ReturnValue"),Preference,TEXT("A"));auto* SaveClass=LoadClass<USaveGame>(nullptr,TEXT("/Game/NormalWaveIndicator/SG_NwiSettings.SG_NwiSettings_C"));Link(Field(G,SaveClass,TEXT("NaturalEnabled"),Get(G,TEXT("Settings")),TEXT("Settings")),TEXT("NaturalEnabled"),Preference,TEXT("B"));
+        auto* Preference=Call(G,UKismetMathLibrary::StaticClass(),TEXT("BooleanAND"));Link(VisibleFresh,TEXT("ReturnValue"),Preference,TEXT("A"));Link(RegionSetting(G,I,true),TEXT("ReturnValue"),Preference,TEXT("B"));
         auto* ShowGate = Branch(G, Preference, TEXT("ReturnValue")); Link(SaveSerial, TEXT("then"), ShowGate, TEXT("execute"));
         auto* HideCall = Call(G, BP->GeneratedClass, *HideName); Link(ShowGate, TEXT("else"), HideCall, TEXT("execute"));
         auto* ShowPair = Branch(G, Pair, TEXT("ReturnValue")); Link(ShowGate, TEXT("then"), ShowPair, TEXT("execute"));

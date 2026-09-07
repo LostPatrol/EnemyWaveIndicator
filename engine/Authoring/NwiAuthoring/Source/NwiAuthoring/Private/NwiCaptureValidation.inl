@@ -5,8 +5,8 @@ bool ValidateCapture()
     FTestWorld Test;
     auto* Class=LoadClass<AActor>(nullptr,TEXT("/Game/NormalWaveIndicator/BP_NwiAuto.BP_NwiAuto_C"));NWI_REQUIRE(Class);
     NWI_REQUIRE(Class->FindFunctionByName(TEXT("NwiPoll")) && !Class->FindFunctionByName(TEXT("ObserveEnemy")));
-    NWI_REQUIRE(FindFProperty<FIntProperty>(Class,TEXT("NativeAbi"))->GetPropertyValue_InContainer(Class->GetDefaultObject())==0x80000);
-    for(int32 I=0;I<8;++I) for(const TCHAR* Prefix:{TEXT("RegionPoint"),TEXT("RegionSerial"),TEXT("RegionVisible"),TEXT("RegionExpires"),TEXT("RegionScale")}) {
+    NWI_REQUIRE(FindFProperty<FIntProperty>(Class,TEXT("NativeAbi"))->GetPropertyValue_InContainer(Class->GetDefaultObject())==0x90000);
+    for(int32 I=0;I<8;++I) for(const TCHAR* Prefix:{TEXT("RegionPoint"),TEXT("RegionSerial"),TEXT("RegionVisible"),TEXT("RegionExpires"),TEXT("RegionScale"),TEXT("RegionType")}) {
         auto* Field=FindFProperty<FProperty>(Class,*FString::Printf(TEXT("%s%d"),Prefix,I));NWI_REQUIRE(Field && Field->HasAnyPropertyFlags(CPF_Net));
     }
     // The actual native-loading entry assets deduplicate the controller across repeated initialization.

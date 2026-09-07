@@ -29,9 +29,9 @@ std::atomic<bool> retired{false};
 int32_t* instanceCookie = nullptr;
 float* durationSec = nullptr; // Own Blueprint property; never a game-class field.
 float* worldTime = nullptr;
-int32_t* enabledNatural = nullptr;
+int32_t* enabledTypes[WaveTypeCount]{};
 int32_t cookie = 0; // A fresh Blueprint instance has zero even when its allocator reuses an old address.
-struct Output { float* point = nullptr; int32_t* serial = nullptr; int32_t* visible = nullptr; float* expires = nullptr; float* scale = nullptr; };
+struct Output { float* point = nullptr; int32_t* serial = nullptr; int32_t* visible = nullptr; float* expires = nullptr; float* scale = nullptr; int32_t* type = nullptr; };
 Output output[OriginRegions::Capacity]{};
 
 template<class T> T resolve(HMODULE module, const char* symbol, uintptr_t rva) noexcept {
@@ -45,10 +45,14 @@ bool localAddress(void* actor, void* pointer, size_t bytes) noexcept {
 }
 bool bind(void* actor) {
     auto* abi = static_cast<int32_t*>(value(actor, L"NativeAbi"));
-    if (!localAddress(actor, abi, 4) || *abi != 0x80000) return false;
+    if (!localAddress(actor, abi, 4) || *abi != 0x90000) return false;
     worldTime = static_cast<float*>(value(actor, L"NativeTime"));
-    enabledNatural = static_cast<int32_t*>(value(actor, L"NativeEnabled"));
-    if (!localAddress(actor, worldTime, 4) || !localAddress(actor, enabledNatural, 4)) return false;
+    for (uint32_t i = 0; i < WaveTypeCount; ++i) {
+        wchar_t field[48]; if (i) swprintf_s(field, L"NativeEnabled%u", i); else wcscpy_s(field, L"NativeEnabled");
+        enabledTypes[i] = static_cast<int32_t*>(value(actor, field));
+        if (!localAddress(actor, enabledTypes[i], 4)) return false;
+    }
+    if (!localAddress(actor, worldTime, 4)) return false;
     durationSec = static_cast<float*>(value(actor, L"DurationSec"));
     if (!localAddress(actor, durationSec, 4)) return false;
     instanceCookie = static_cast<int32_t*>(value(actor, L"NativeCookie"));
@@ -65,23 +69,27 @@ bool bind(void* actor) {
         swprintf_s(field, L"RegionVisible%u", i); output[i].visible = static_cast<int32_t*>(value(actor, field));
         swprintf_s(field, L"RegionExpires%u", i); output[i].expires = static_cast<float*>(value(actor, field));
         swprintf_s(field, L"RegionScale%u", i); output[i].scale = static_cast<float*>(value(actor, field));
+        swprintf_s(field, L"RegionType%u", i); output[i].type = static_cast<int32_t*>(value(actor, field));
         if (!localAddress(actor, output[i].point, 12) || !localAddress(actor, output[i].serial, 4) || !localAddress(actor, output[i].visible, 4)
-            || !localAddress(actor, output[i].expires, 4) || !localAddress(actor, output[i].scale, 4)) return false;
+            || !localAddress(actor, output[i].expires, 4) || !localAddress(actor, output[i].scale, 4) || !localAddress(actor, output[i].type, 4)) return false;
     }
     activeController = actor; activeWorld = world; regions.reset(); ++counters.bindings;
     capture::setWorld(classifyWorldName(text, length) == WorldKind::Mission ? world : nullptr);
     return true;
 }
 
-// Require successful registration as a regular enemy. Unknown/unregistered actors fail closed;
-// descriptor budget significance is deliberately not used as a substitute for Pawn counting tags.
+// Natural waves exclude small enemies; explicitly enabled scripted swarmers remain displayable.
+// Unknown/unregistered actors and critters fail closed for both paths.
 bool eligible(const SpawnEvent& event, float& cost) {
     auto* manager = capture::spawnManager();
     if (!manager) return false;
     const auto* regular=static_cast<EnemyBucket*>(value(manager,L"ActiveEnemies"));
     const auto* small=static_cast<EnemyBucket*>(value(manager,L"ActiveSwarmerEnemies"));
     const auto* critters=static_cast<EnemyBucket*>(value(manager,L"ActiveCritters"));
-    if (!regular || !small || !critters || !eligibleEnemy(event.pawn,*regular,*small,*critters)) return false;
+    if (!regular || !small || !critters) return false;
+    const bool accepted = waveType(event.wave) == 0 ? eligibleEnemy(event.pawn,*regular,*small,*critters)
+        : eligibleScriptedEnemy(event.pawn,*regular,*small,*critters);
+    if (!accepted) return false;
     wchar_t pawnName[512]{}; const auto length = name(reinterpret_cast<void*>(event.pawn), pawnName, 512);
     if (!length || length >= 512 || wcsstr(pawnName, L"Hoarder") || wcsstr(pawnName, L"Huuli")) return false;
     auto* rating = static_cast<float*>(value(reinterpret_cast<void*>(event.origin.descriptor), L"DifficultyRating"));
@@ -99,7 +107,7 @@ void update(void* actor) {
     for (uint32_t i = 0; i < SpawnAttribution::Capacity && capture::pop(event); ++i) {
         float cost = 0;
         if (eligible(event, cost)) {
-            if (event.selectedMs && event.capturedMs >= event.selectedMs && event.capturedMs >= event.queuedMs) {
+            if (waveType(event.wave) == 0 && event.selectedMs && event.capturedMs >= event.selectedMs && event.capturedMs >= event.queuedMs) {
                 const auto lead=event.capturedMs-event.selectedMs;
                 if (!counters.timingSamples || lead<counters.centerMinMs) counters.centerMinMs=lead;
                 ++counters.timingSamples;
@@ -107,17 +115,19 @@ void update(void* actor) {
                 if (event.capturedMs-event.queuedMs>counters.queueMaxMs) counters.queueMaxMs=event.capturedMs-event.queuedMs;
                 if (now-event.capturedMs>counters.handoffMaxMs) counters.handoffMaxMs=now-event.capturedMs;
             }
-            if (*enabledNatural) regions.add(event, now, cost);
+            const auto type = waveType(event.wave);
+            if (type < WaveTypeCount && *enabledTypes[type]) regions.add(event, now, cost);
         } else ++counters.filtered;
     }
     regions.expire(now);
-    if (capture::stats().fault || !*enabledNatural) for (auto& r : regions.items) if (r.visible) { r.visible = 0; ++r.serial; }
+    for (auto& r : regions.items) if (r.visible && (capture::stats().fault || waveType(r.wave) >= WaveTypeCount || !*enabledTypes[waveType(r.wave)])) { r.visible = 0; ++r.serial; }
     for (uint32_t i = 0; i < OriginRegions::Capacity; ++i) {
         const auto& r = regions.items[i];
         if (*output[i].serial == r.serial) continue;
         memcpy(output[i].point, &r.point.x, 12);
         *output[i].expires = *worldTime + (r.expires > now ? static_cast<float>(r.expires - now) / 1000.f : 0.f);
         *output[i].scale = r.scale();
+        *output[i].type = static_cast<int32_t>(waveType(r.wave));
         *output[i].visible = r.visible; *output[i].serial = r.serial;
     }
     counters.regionsDropped = regions.overflow; counters.stale = regions.stale;
@@ -142,6 +152,21 @@ capture::Target target(uintptr_t base, uintptr_t rva, const char* hex) {
     }
     return result;
 }
+// Match the initiating controller's exact class path, never an enemy name or an active-wave list.
+// Stock scripted callers pass EX_Self as WorldContextObject (recorded in the asset audit).
+int32_t sourceClassUnchecked(void* context, void* world) {
+    if (!context || actorWorld(context) != world) return -1;
+    auto* cls = *reinterpret_cast<void**>(static_cast<unsigned char*>(context) + 0x10);
+    wchar_t text[512]{}; const auto length = name(cls, text, std::size(text));
+    if (!length || length >= std::size(text)) return -1;
+    const auto* path = wcschr(text, L' '); if (!path) return -1;
+    for (uint32_t i = 1; i < WaveTypeCount; ++i) if (!wcscmp(path + 1, WaveTypes[i].classPath)) return static_cast<int32_t>(i);
+    return -1;
+}
+int32_t sourceClass(void* context, void* world) noexcept {
+    __try { return sourceClassUnchecked(context, world); }
+    __except(EXCEPTION_EXECUTE_HANDLER) { return -1; }
+}
 } // namespace
 bool configure(HMODULE runtime, HMODULE game, uint32_t gameThread) noexcept {
     thread = gameThread;
@@ -165,6 +190,13 @@ bool configure(HMODULE runtime, HMODULE game, uint32_t gameThread) noexcept {
     binding.imageBase = base; binding.imageEnd = base + 0x7000000;
     binding.sourceChain = {base + 0x19dba4d, base + 0x19dbe76, base + 0x19db33d, base + 0x19db3c8, base + 0x16abe53, base + 0x16af697};
     binding.threadId = thread;
+    binding.pool = target(base, 0x19db030, "4c894424185355574881eca00000000fb605a2f1ab04498b");
+    binding.location = target(base, 0x19dab90, "4055565741554156488d6c24f04881ec10010000488b058d");
+    binding.group = target(base, 0x19dbf00, "4c8bdc49895b1849896b20565741564881eca0000000803d");
+    binding.spread = target(base, 0x19dc1b0, "4c8bdc53565741564881ec98000000803d22e0ab0405488d");
+    binding.spreadCallback = target(base, 0x19dc470, "405355565741574881eca0000000803d63ddab0405498bf1");
+    binding.center = target(base, 0x19db3d0, "40555356574154415541564157488dac2428ffffff4881ec");
+    binding.classifySource = &sourceClass;
     configured = capture::install(binding); return configured;
 }
 static bool prepareUnchecked() noexcept {
