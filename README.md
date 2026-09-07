@@ -1,7 +1,9 @@
 <!-- Current native test baseline; task1's all-source and prediction work is explicitly incomplete. -->
-# Normal Wave Indicator — 0.9.0 test candidate
+# Enemy Wave Indicator — 0.9.0 test candidate
 
-DRG natural-wave center markers using **DLL + Pak**, installed through MintCat. This is an unpublished test candidate, not completion of every requirement in `task1-refine.md`.
+DRG enemy-wave spawn markers using **DLL + Pak**, installed through MintCat. This is an unpublished test candidate, not completion of every requirement in `task1-refine.md`.
+
+Previously named Normal Wave Indicator. The public name and Mod Hub page now use Enemy Wave Indicator; existing asset paths, DLL identifiers and save slots retain their original names for compatibility. Upload package: `dist/EnemyWaveIndicator-0.9.0.zip`. [Publication cover](docs/media/enemy-wave-indicator-cover-v1.png).
 
 ## Implemented
 

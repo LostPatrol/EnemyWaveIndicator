@@ -1,5 +1,9 @@
 <!-- Ready-to-paste mod.io listing draft; no unpublished URL or unverified acceptance claim. -->
-# Normal Wave Indicator — 0.9.0 Public Beta / 公开测试版
+# Enemy Wave Indicator — 0.9.0 Public Beta / 公开测试版
+
+## Summary
+
+Marks enemy wave spawn locations with glowing spheres, customizable text and distance indicators. Supports natural swarms and 35 scripted wave types, with individual toggles and labels plus shared appearance settings in Mod Hub.
 
 为虫潮生成位置添加光球与HUD文字提示。支持自然潮以及当前游戏35种明确的虫潮控制器，共36种类型。每类可独立启用并设置提示文字，默认仅显示自然潮。
 

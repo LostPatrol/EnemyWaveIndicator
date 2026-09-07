@@ -56,7 +56,7 @@ void BuildSettings()
         auto* T = BP->WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), Name); T->SetText(FText::FromString(Label));
         auto Font = T->Font; Font.Size = 16; T->SetFont(Font); Root->AddChildToVerticalBox(T); return T;
     };
-    AddText(TEXT("Title"), TEXT("Normal Wave Indicator  |  Wave types test 0.9.0"));
+    AddText(TEXT("Title"), TEXT("Enemy Wave Indicator  |  Wave types test 0.9.0"));
     const TCHAR* Labels[] = {TEXT("Natural wave text (up to 64 characters)"), TEXT("Visibility after the last spawn (seconds, 1 - 30)"), TEXT("Sphere size (0.5 - 12; default 3.75)"), TEXT("Sphere red (linear intensity, 0 - 5)"), TEXT("Sphere green (0 - 5)"), TEXT("Sphere blue (0 - 5)"), TEXT("Flash text between colors A and B"), TEXT("Sphere opacity (0 transparent - 1 opaque; default 0.4)"), TEXT("Text flash cycles per second (0.1 - 10; default 2)"), TEXT("Text A red"), TEXT("Text A green"), TEXT("Text A blue"), TEXT("Text B red"), TEXT("Text B green"), TEXT("Text B blue"), TEXT("Show natural waves")};
     for (int32 I = 0; I < SettingCount; ++I)
     {
@@ -134,7 +134,7 @@ void AddControllerSettings(UBlueprint* BP)
     check(FBlueprintEditorUtils::ImplementNewInterface(BP, HubInterface(TEXT("IHubMod"))->GetFName()));
     auto* Info = HubResult(BP, TEXT("GetModInfo"));
     const TCHAR* Names[] = {TEXT("ModName"), TEXT("ModAuthor"), TEXT("ModVersion")};
-    const TCHAR* Values[] = {TEXT("Normal Wave Indicator"), TEXT("LostPatrol"), TEXT("0.9.0 test")};
+    const TCHAR* Values[] = {TEXT("Enemy Wave Indicator"), TEXT("LostPatrol"), TEXT("0.9.0 test")};
     for (int32 I = 0; I < 3; ++I) GetDefault<UEdGraphSchema_K2>()->TrySetDefaultText(*Pin(Info, Names[I]), FText::FromString(Values[I]));
 }
 

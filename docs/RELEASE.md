@@ -1,20 +1,22 @@
 <!-- Public-beta upload steps and two distinct installation routes, with measured acceptance boundaries. -->
 # 0.9.0 公开测试版：发布与安装
 
+公开名称已改为 **Enemy Wave Indicator**，Mod Hub名称与设置页标题同步更新。发布使用 `dist/EnemyWaveIndicator-0.9.0.zip` 和 `docs/media/enemy-wave-indicator-cover-v1.png`。Pak内部路径、存档槽、GitHub仓库地址保留原名以兼容现有安装；本机MintCat已有条目继续引用字节一致的 `dist/NormalWaveIndicator-0.9.0.zip`，避免添加第二份DLL。
+
 用户此前反馈主要功能正常，随后报告只有光球、没有文字。2026-09-08修复包补上文字控件脱离视口后的恢复，并提高默认显示层级；真实Slate视口回归通过，实机文字恢复仍待确认。发布前先复测此问题。当前仍定位为**已有36类虫潮功能的公开测试版**，不要称为完整task1或稳定版。后续计划统一在[TODO issue #1](https://github.com/LostPatrol/NormalWaveIndicator/issues/1)，发布说明草稿见[MODIO-DESCRIPTION.md](MODIO-DESCRIPTION.md)。
 
 ## 作者：在 mod.io 发布
 
-1. 登录[DRG mod.io](https://mod.io/g/drg)，使用添加Mod入口创建条目。名称建议 `Normal Wave Indicator`，摘要说明虫潮生成位置、HUD/光球提示和36类开关。首次版本写 `0.9.0`，说明中明确“公开测试版”。
+1. 登录[DRG mod.io](https://mod.io/g/drg)，使用添加Mod入口创建条目。名称建议 `Enemy Wave Indicator`，摘要说明虫潮生成位置、HUD/光球提示和36类开关。首次版本写 `0.9.0`，说明中明确“公开测试版”。
 2. 填写描述，上传一张封面和实际游戏截图；可直接使用本仓库的发布说明草稿。添加[Mod Hub](https://mod.io/g/drg/m/mod-hub)作为内容依赖；MintCat与UE4SSL作为安装/运行要求写入说明。不要把开发用接口包设为依赖。
-3. 在文件管理入口上传 `dist/NormalWaveIndicator-0.9.0.zip`，选择Windows，填写版本号及更新说明，并将该文件设为当前可下载版本。ZIP根目录必须是 `main.dll`、`NormalWaveIndicator_P.pak`、`LICENSES.txt`；不上传manifest、游戏文件或整个工作目录。
+3. 在文件管理入口上传 `dist/EnemyWaveIndicator-0.9.0.zip`，选择Windows，填写版本号及更新说明，并将该文件设为当前可下载版本。ZIP根目录必须是 `main.dll`、`NormalWaveIndicator_P.pak`、`LICENSES.txt`；不上传manifest、游戏文件或整个工作目录。
 4. 初次可使用Hidden供本人检查条目和文件，再切换Public提供测试。是否需要平台审核取决于DRG规则；Hidden也有访问限制，不能保证任意测试者拿链接就能下载。[mod.io状态和可见性说明](https://docs.mod.io/restapi/status-and-visibility)。
 5. 发布后，订阅自己的条目，在MintCat“添加Mod→mod.io订阅”选择它，或“在线”粘贴页面URL，然后保存更改。先禁用本地测试条目，避免两份同资产/DLL同时加载。验证真实线上首次下载、更新及禁用流程。
 6. 再验证下方的非MintCat路线。它需要一个没有MintCat合并包参与的安装环境；不要仅凭本机已有加载器就宣称干净环境订阅测试通过。
 
 截至2026-09-07，本轮只创建了GitHub TODO issue；没有代为创建mod.io条目、上传或公开文件。原构建manifest里的ReleaseReady=false表示完整稳定发行验收未完成，不阻止明确标注范围的公开测试计划。
 
-当前本地0.9.0文字修复包（2026-09-08）SHA256：`13714FB15529CD826D8A03354A6C5DF8E090D6FC3AE73D7FA19FCE94D5E136E2`。尚未发布，版本号沿用0.9.0；旧本地ZIP已备份。
+当前本地0.9.0改名包（Enemy Wave Indicator，含文字修复，2026-09-08）SHA256：`FCE0057BAD2865061320AEE19B8A6B150178475F24D11F8BF8ACAF76D11252B6`。尚未发布，版本号沿用0.9.0；旧本地ZIP已备份。
 
 ## 玩家路线 A：订阅后由 MintCat 安装
 
@@ -70,7 +72,7 @@ FSD/Binaries/Win64/
 - 游戏EXE：`9B005BB6E1072F3CD98FCFAA75698316DC47B808D83A99DDF96DE529D00BAC13`。
 - UE4SSL.dll：`D1AC7156B8C8C16E46CE5CE06667457274816358329C5641CE1D2F80B53B4EB7`。
 - 本Mod main.dll：`F4BB94269AD83761D8C3A8EEE976E49B5A6938C8D4CA2A508064F3872F3CFFCC`。
-- 本Mod Pak（2026-09-08文字修复）：`7F3DBB260F30B8ADEE61292592AF0638CF71CEE5D4647007B944FD6865435F30`。
+- 本Mod Pak（2026-09-08文字修复）：`79BA0212D5BD323C80E92A5D67D9392A0E523CFF8B3CE4B2989F76BC34E6FA1A`。
 - 运行时ZIP MD5：`B715F195B448481BBF28FAF53EAC8AE8`（官方清单提供值，下载复核一致）。
 
 ## 联机与审核分类
