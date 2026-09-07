@@ -5,10 +5,10 @@
 
 ## 本次本机测试操作
 
-1. 关闭 DRG。当前计算机仍安装 0.6.0，本次没有修改游戏目录。
+1. 关闭 DRG。以下是安装/迁移流程；本机实际已安装版本以最新部署报告及 MEMORY.md 为准。
 2. 用资源管理器把旧 `D:\Steam\steamapps\common\Deep Rock Galactic\FSD\Content\Paks\NormalWaveIndicator_P.pak` 和 `FSD\Binaries\Win64\ue4ss\mods\NormalWaveIndicator\main.dll` 备份到游戏目录之外，并从原位置移走，避免同名蓝图和旧 DLL 混用。不要移动其他 Mod、加载器或存档。
 3. 在 MintCat 中使用“添加本地文件”导入新的 ZIP，保留/启用 Mod Hub，执行应用/集成。压缩包包含 `main.dll`、`NormalWaveIndicator_P.pak`、`LICENSES.txt`；不要导入旁边的 manifest，也不要再同时启用 0.7.1 纯 Pak 候选。
-4. 手动启动游戏。先验证 Mod Hub 页面和默认自然潮提示，再执行 [TASK1-ACCEPTANCE.md](TASK1-ACCEPTANCE.md) 的排除与联机测试。此步骤由用户操作，不自动启动游戏。
+4. 手动启动游戏。0.8.0 初始化修复版的 DLL 会在启动后至少30秒、世界稳定至少5秒时加载并执行对应 Init 入口；入口负责房主检查及控制器去重，直接本机部署也能启动。进入空间站后等待约40秒，再重新打开 Mod Hub 验证页面和默认自然潮提示，然后执行 [TASK1-ACCEPTANCE.md](TASK1-ACCEPTANCE.md) 的排除与联机测试。此步骤由用户操作，不自动启动游戏。
 5. 联机测试时房主与客机均安装匹配的 Pak；可都通过同一 ZIP 安装。未安装 Pak 的客机没有自定义蓝图、HUD和材质，不能显示同款效果。安装行为与双机显示尚未实测。
 6. 如果出现问题，关闭游戏，在 MintCat 禁用新候选并重新集成，再恢复步骤 2 的两份旧文件。不要把两个版本同时启用。
 

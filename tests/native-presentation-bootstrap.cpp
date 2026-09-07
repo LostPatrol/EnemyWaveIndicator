@@ -7,24 +7,35 @@
 namespace {
 int worlds[12]{}, classToken = 0, actorToken = 0;
 void* world = nullptr;
-bool cached = false, loadFails = false, spawnFails = false, badArguments = false;
-unsigned finds = 0, loads = 0, spawns = 0;
+bool cached = false, loadFails = false, spawnFails = false, prepareFails = false, badArguments = false;
+unsigned finds = 0, loads = 0, spawns = 0, preparations = 0;
+const wchar_t* expectedClass() {
+    return world == &worlds[10] ? L"/Game/NormalWaveIndicator/InitSpacerig.InitSpacerig_C"
+        : L"/Game/NormalWaveIndicator/InitCave.InitCave_C";
+}
 bool equal(const nwi::WideView* v, const wchar_t* text) {
     return v && v->size == wcslen(text) && wmemcmp(v->data, text, v->size) == 0;
 }
 void* find(const nwi::WideView* v) {
     ++finds;
-    if (equal(v, nwi::PresentationBootstrap::ClassPath)) return cached ? &classToken : nullptr;
+    if (equal(v, expectedClass())) return cached ? &classToken : nullptr;
     badArguments = true; return nullptr;
 }
 void* load(const nwi::WideView* v) {
-    ++loads; if (!equal(v, nwi::PresentationBootstrap::ClassPath)) badArguments = true;
+    ++loads; if (!equal(v, expectedClass())) badArguments = true;
     cached = !loadFails; return cached ? &classToken : nullptr;
 }
 bool valid(void* v) { return v != nullptr; }
 void* currentWorld() { return world; }
 nwi::WorldKind worldKind(void* value) {
-    return value == &worlds[11] ? nwi::WorldKind::Excluded : nwi::WorldKind::Mission;
+    return value == &worlds[11] ? nwi::WorldKind::Excluded
+        : value == &worlds[10] ? nwi::WorldKind::SpaceRig : nwi::WorldKind::Mission;
+}
+// Cold-start regression: binding cannot succeed until the entry class and its dependencies are loaded.
+bool prepare(void* cls) {
+    ++preparations;
+    if (!cached || cls != &classToken) badArguments = true;
+    return cached && !prepareFails;
 }
 int viewportToken = 0;
 bool viewportMissing = false, bridgeFault = false;
@@ -40,16 +51,24 @@ nwi::WorldResult worldOf(void* viewport) {
 }
 void* spawn(void* w, void* cls, const nwi::Position3* p) {
     ++spawns;
-    if (w != world || cls != &classToken || !p || p->x || p->y || p->z) badArguments = true;
+    if (w != world || cls != &classToken || !preparations || !p || p->x || p->y || p->z) badArguments = true;
     return spawnFails ? nullptr : &actorToken;
 }
 void setup(nwi::PresentationBootstrap& p) {
-    world = &worlds[0]; cached = loadFails = spawnFails = badArguments = false;
-    finds = loads = spawns = 0; p.configure({find, load, valid, spawn, currentWorld, worldKind}, 0);
+    world = &worlds[0]; cached = loadFails = spawnFails = prepareFails = badArguments = false;
+    finds = loads = spawns = preparations = 0; p.configure({find, load, valid, spawn, currentWorld, worldKind, prepare}, 0);
 }
 #define REQUIRE(x) do { if (!(x)) { printf("FAIL line %d: %s\n", __LINE__, #x); return 1; } } while (0)
 }
 int main() {
+    {
+        nwi::PresentationBootstrap p; setup(p); world = &worlds[10];
+        p.tick(30000); p.tick(35000);
+        REQUIRE(p.kind == nwi::WorldKind::SpaceRig && loads == 1 && preparations == 1 && spawns == 1 && !badArguments);
+        // A preloaded class from an integration entry still receives the native binding on mission travel.
+        world = &worlds[0]; p.tick(40000); p.tick(45000);
+        REQUIRE(p.kind == nwi::WorldKind::Mission && loads == 1 && preparations == 2 && spawns == 2 && !badArguments);
+    }
     {
         REQUIRE(nwi::classifyWorldName(L"", 0) == nwi::WorldKind::Excluded);
         const wchar_t* names[] = {
@@ -107,11 +126,11 @@ int main() {
         }
         REQUIRE(p.status == 5 && p.attempted == 8 && spawns == 8 && !badArguments);
     }
-    for (int failure = 0; failure < 2; ++failure) {
-        nwi::PresentationBootstrap p; setup(p); loadFails = failure == 0; spawnFails = failure == 1;
+    for (int failure = 0; failure < 3; ++failure) {
+        nwi::PresentationBootstrap p; setup(p); loadFails = failure == 0; spawnFails = failure == 1; prepareFails = failure == 2;
         p.tick(30000); p.tick(35000); REQUIRE(p.status == 4);
         for (int i = 0; i < 100; ++i) p.tick(40000 + i * 5000);
-        REQUIRE(loads == 1 && spawns == static_cast<unsigned>(failure) && !badArguments);
+        REQUIRE(loads == 1 && spawns == static_cast<unsigned>(failure == 1) && !badArguments);
     }
     {
         nwi::PresentationBootstrap p; setup(p); p.tick(30000);

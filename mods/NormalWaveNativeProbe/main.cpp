@@ -1,4 +1,4 @@
-// Verify engine thread identity, install passive native capture and bootstrap our host-local automatic renderer.
+// Verify engine thread identity, install passive capture and bootstrap the deduplicating native Init actors.
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <windows.h>
@@ -120,7 +120,7 @@ void configureDispatch() noexcept {
     objectName = resolve<ObjectName>(runtime, "ue4ssl_host_object_full_name_v1", 0x76a090);
     if (find && load && valid && spawn && findViewport && objectWorld && objectName) {
         activeWorld.configure({findViewport, valid, &readViewportWorld});
-        presentation.configure({find, load, valid, spawn, &currentWorld, &worldKind, &nwi::automatic::prepareClass, true}, GetTickCount64());
+        presentation.configure({find, load, valid, spawn, &currentWorld, &worldKind, &nwi::automatic::prepareClass}, GetTickCount64());
     }
     dispatchProbe.configure({dispatch, &sampleThread, &sampleClock, &showPresentation});
 }
