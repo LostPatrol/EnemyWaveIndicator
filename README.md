@@ -1,59 +1,83 @@
-<!-- Current native test baseline; task1's all-source and prediction work is explicitly incomplete. -->
-# Enemy Wave Indicator — 0.9.0 Beta
+<!-- Player-facing overview, installation guide, configuration notes, and troubleshooting. -->
+# Enemy Wave Indicator
 
-![Enemy Wave Indicator cover](docs/media/enemy-wave-indicator-cover-v1.png)
+[English](README.md) | [简体中文](README.zh-CN.md)
 
-DRG enemy-wave spawn markers using **DLL + Pak**, installed through MintCat. Supports natural waves and 35 scripted wave types, with configurable spheres, text and distance indicators.
+![Enemy Wave Indicator cover](docs/media/cover-new.png)
 
-<img src="https://raw.githubusercontent.com/LostPatrol/NormalWaveIndicator/main/docs/media/normalwaveindicator-720x400.gif" alt="Enemy Wave Indicator gameplay demonstration" width="719" height="408">
+Enemy Wave Indicator marks detected enemy spawn areas with glowing spheres, customizable labels, and distance readouts. It supports natural waves and 35 stock scripted wave types in Deep Rock Galactic.
 
-**[Download 0.9.0 Beta 1](https://github.com/LostPatrol/NormalWaveIndicator/releases/tag/v0.9.0-beta.1)** · [Installation guide](docs/RELEASE.md) · [Supported wave types](docs/WAVE-TYPES.md)
+> This is a Windows public beta. The current build targets the Steam version of DRG 1.40 (tested build 24903151).
 
-This is a public beta; full task1 acceptance and multiplayer validation remain incomplete. Previously named Normal Wave Indicator. The public name and Mod Hub page now use Enemy Wave Indicator; existing asset paths, DLL identifiers and save slots retain their original names for compatibility.
+## Features
 
-Gameplay recording supplied by the author. The cover above is promotional artwork. Original media and generation prompts are kept in [docs/media](docs/media).
+- Natural waves plus 35 scripted wave types, each with its own enable switch and label.
+- Configurable sphere color, opacity, size, and display duration.
+- Two alternating text colors with configurable flashing speed.
+- Marker size scales with the number and base difficulty weight of spawned enemies.
+- Up to eight spawn areas displayed at once.
+- Host-to-client marker synchronization when every player has matching mod content.
+- Read-only behavior: the mod observes spawning and does not change enemies, damage, rewards, or progression.
 
-## Implemented
+Only **Natural wave** is enabled by default. Open Mod Hub to enable other events, then select **Apply and save**. For example, mini-MULE ambushes use **Salvage: mini-MULE ambush**. See the [complete wave-type list](docs/WAVE-TYPES.md).
 
-- Natural provenance requires six exact native call-chain returns, including the natural scheduler. Ownership follows each accepted queue request through swap removal and successful actor creation; ambient/boss/event requests are not relabeled because a natural wave is active.
-- Natural waves require registered regular enemies; explicitly enabled scripted wave types also admit registered small enemies. Critters and unknown/unregistered actors are excluded; small membership overrides regular membership for natural waves. Hoarder/Huuli names are additionally excluded. Source attribution does not depend on the summoned enemy's descriptor, so changing a summon to a grunt does not make that summon natural.
-- Native generation scopes identify all 35 concrete stock wave-controller classes; each queued entry keeps its own source type and request identity. The shared batch helper supplies the actual selected center, including multi-center requests. Successful requests retain this center; unavailable centers fall back to the queued origin. Eight regions are supported. Distinct known centers and wave identities stay separate. Overflow is counted and dropped.
-- Sphere size uses the sum of successful enemies' **base descriptor `DifficultyRating`**, normalized to 200 and cube-root scaled (0.4–4 multiplier). It grows with count and cost. It does not claim to reproduce all runtime difficulty modifiers or precise combat threat.
-- Mod Hub: 36 independent wave-type enable/text pairs, natural only by default, global size, duration, sphere RGB and opacity (default 0.4), text color A/B and frequency (default red/white, two complete cycles/second). Draft RGBA swatch and text previews update before Apply; Apply persists `NormalWaveIndicator_v2.sav`. Preview is a color swatch, not a 3D sphere/GPU preview. Old v1 preferences are left intact and not imported.
-- A host-created, always relevant Blueprint actor replicates source type, region points, size, visibility and expiry. Clients with the matching Pak draw their own HUD/spheres and use synchronized server time. **Network transport and late-join behavior still need real two-peer testing.** Clients without the Pak cannot display these custom assets. The DLL is required on the host.
-- Diagnostic logs measure actual selected-center→spawn, queue→spawn and spawn→native handoff intervals. They do not represent a rendered GPU frame or a prediction.
+![Natural wave markers](docs/media/normal_wave_1.png)
 
-## Planned work
+## Installation
 
-The 35 concrete stock EWC types and natural waves have independent toggles/text and request provenance; see [the complete type catalog](docs/WAVE-TYPES.md). Non-EWC boss/direct summons, machine-event spawning components and new Mod-defined controller classes are not covered by this catalog. Generic controllers reused by several triggers remain one code type. This is not universal enemy-source coverage or completed task1.
+Download the current package from [GitHub Releases](https://github.com/LostPatrol/EnemyWaveIndicator/releases/tag/v0.9.0-beta.1). The release archive contains both `main.dll` and `NormalWaveIndicator_P.pak`; the old internal filenames are retained for compatibility.
 
-One-to-five-second exact position prediction is not established: the current game chooses a player, RNG and navigation location when triggering the wave. No early game function invocation, RNG consumption, enemy delay or spawning change is used. See [test instructions and acceptance gaps](docs/TASK1-ACCEPTANCE.md).
+### Option A: MintCat (recommended)
 
-Future work is tracked in [TODO issue #1](https://github.com/LostPatrol/NormalWaveIndicator/issues/1). Following broad positive gameplay feedback, the author reported missing text with spheres still visible. The September 8 HUD fix restores active widgets detached during HUD cleanup and places them above the default viewport layer. A real Slate attachment regression passes; gameplay confirmation of this fix is pending. Online mod.io delivery and clean native subscription/manual-loader installation remain to be tested.
+1. Install [MintCat](https://github.com/iris-cat-dev/mintcat) and close DRG.
+2. Subscribe to [Mod Hub](https://mod.io/g/drg/m/mod-hub) in mod.io.
+3. In MintCat, import the downloaded Enemy Wave Indicator release ZIP as a local mod.
+4. Enable Enemy Wave Indicator and Mod Hub, then select **Apply Changes / Save Changes** and wait for installation to finish.
+5. Start DRG, wait about 40 seconds in the Space Rig, open Mod Hub, adjust the wave types you want, and select **Apply and save**.
 
-## Player installation
+MintCat installs the DLL and merges the Pak content it manages. Do not also copy the same Pak or DLL into the game folders manually.
 
-Download `EnemyWaveIndicator-0.9.0-beta.1.zip` from the linked GitHub Release. Close DRG, import the ZIP into MintCat using its local-file import, enable Mod Hub and apply/integrate. If you already installed a local test copy, update that entry or disable it before importing this archive to avoid duplicate DLLs. New players do not run PowerShell. Host and participating clients need matching content. This beta targets Steam Windows 1.40 (build24903151) and UE4SSL0.31.0; incompatible binaries do not install observation hooks.
+### Option B: Manual installation
 
-The old 0.6.0 manually installed DLL/Pak must be backed up and disabled before importing the new package. Updating through MintCat does not prove it removed a separately installed loose Pak. Detailed migration, testing and mod.io submission steps are in [RELEASE.md](docs/RELEASE.md).
+1. Close DRG and disable any MintCat installation of this mod.
+2. Subscribe to and enable [Mod Hub](https://mod.io/g/drg/m/mod-hub) through DRG's in-game mod menu.
+3. Download the compatible [UE4SSL 0.31.0 runtime](https://yuri-oss-hz.oss-cn-hangzhou.aliyuncs.com/releases/ue4ssl/windows/stable/0.31.0/UE4SSL.zip).
+4. In Steam, open **Deep Rock Galactic → Manage → Browse local files**, then enter `FSD\Binaries\Win64`.
+5. Extract the runtime into `Win64` while preserving its directory structure. `dwmapi.dll` and the `ue4ss` directory should both be directly inside `Win64`.
+6. Open the Enemy Wave Indicator release ZIP and copy:
+   - `main.dll` to `FSD\Binaries\Win64\ue4ss\mods\NormalWaveIndicator\main.dll`
+   - `NormalWaveIndicator_P.pak` to `FSD\Content\Paks\NormalWaveIndicator_P.pak`
+7. Start DRG, wait about 40 seconds in the Space Rig, then configure the mod in Mod Hub.
 
-## Developer build
+The DLL and Pak must come from the same release. When updating manually, replace both files. If another loader already owns `dwmapi.dll`, verify compatibility before replacing it.
 
-Windows PowerShell, Visual Studio C++ x64/Windows SDK/.NET Framework 4.8 SDK, UE **4.27.2**, and Node.js are required. Python used inside UE is its bundled project/editor interpreter; no global Python environment is needed.
+## Gallery
 
-```powershell
-.\scripts\Prepare-ModHubDevkit.ps1
-$native = .\scripts\Build-NativeProbe.ps1
-$editor = .\scripts\Build-EditorAuthoring.ps1
-$check = .\scripts\Test-PresentationAssets.ps1 -AuthoringBuild $editor
-$cook = .\scripts\Cook-PresentationAssets.ps1 -VerificationDirectory $check
-.\scripts\Prepare-Release.ps1 -BuildDirectory $native -PresentationCook $cook
-.\scripts\Test-SpawnAttribution.ps1
-.\tests\modio-package.test.ps1
-```
+| Egg Hunt ambush | Salvage defense |
+|---|---|
+| ![Egg Hunt ambush marker](docs/media/egg_ambush.png) | ![Salvage defense marker](docs/media/salvage_defense_1.png) |
 
-The Pak contains nine owned asset pairs. There is no runtime FSD stub, authoring module, validation asset or copied game asset. The ZIP includes `main.dll`, `NormalWaveIndicator_P.pak`, and `LICENSES.txt`. The original build manifest remains `ReleaseReady=false` for full stable-release acceptance. Public beta preparation and measured local MintCat import results are documented in [RELEASE.md](docs/RELEASE.md).
+| Excavation | Mod Hub settings |
+|---|---|
+| ![Excavation marker](docs/media/excavation_1.png) | ![Mod Hub settings](docs/media/modhub1.png) |
 
-## License and references
+## Troubleshooting
 
-Original source: MIT, LostPatrol. MinHook's license is included in distributed ZIPs. Mod Hub interface references come from [trumank/drg-mods](https://github.com/trumank/drg-mods). DRG and its assets belong to Ghost Ship Games and their respective owners. This is an unofficial Mod. Historical architecture investigations in `docs` are evidence, not descriptions of current implementation.
+- **The mod is missing from Mod Hub:** confirm that Mod Hub is enabled, wait about 40 seconds in the Space Rig, and restart the game once.
+- **Natural waves appear, but another event does not:** only natural waves are enabled by default. Enable the matching type in Mod Hub and select **Apply and save**.
+- **Nothing appears:** verify that `main.dll` and `NormalWaveIndicator_P.pak` are from the same version. The host needs the DLL; clients need matching Pak content to render the custom markers.
+- **MintCat reports a duplicate or loose Pak:** remove the manually installed `NormalWaveIndicator_P.pak` after confirming MintCat manages the mod, then apply changes again.
+- **You are updating a very old manual installation:** remove or back up the old DLL and Pak before installing the current pair. Do not load two copies.
+
+When reporting a problem, include the mission type, the wave/event that triggered it, whether you were host or client, your installation method, and any `probe-*.jsonl` file created beside the mod DLL.
+
+## Current limitations
+
+- Markers appear when supported enemies begin spawning; this is not advance wave prediction.
+- New mod-defined controllers, some direct boss summons, and event-specific spawning paths may not be identified.
+- Multiplayer synchronization and late joining have not completed full two-machine validation. The host needs the native DLL, and participating clients need matching content.
+- The internal Pak path, save slot, DLL folder, and some code identifiers still use `NormalWaveIndicator` for compatibility.
+
+## License
+
+Source code is licensed under MIT. Distributed packages include the MinHook license. Deep Rock Galactic and its assets belong to Ghost Ship Games and their respective owners. This is an unofficial community mod.
