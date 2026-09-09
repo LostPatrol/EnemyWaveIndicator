@@ -49,8 +49,8 @@ const TCHAR* WaveTitlesZhCn[] = {
     TEXT("特殊虫潮：战士"), TEXT("特殊虫潮：异虫蝇"), TEXT("特殊虫潮：岩痘"), TEXT("特殊虫潮：禁卫"), TEXT("特殊虫潮：蜂拥"),
     TEXT("搜救行动：矿骡伏击"), TEXT("搜救行动：据点防守"), TEXT("搜救行动：撤离"), TEXT("设施破坏：无人机"), TEXT("无畏异虫潮"),
     TEXT("定点提取压力潮"), TEXT("教程战士潮"), TEXT("核心岩事件"), TEXT("强敌科技通讯事件"), TEXT("核心侵扰警告"), TEXT("骇入防守"),
-    TEXT("三提石矿藏"), TEXT("矿化爆发（机械事件）"), TEXT("氪石感染"), TEXT("蜂拥浩劫"), TEXT("自爆群袭"),
-    TEXT("掠痕集居"), TEXT("凝血化糖"), TEXT("强敌环伺"), TEXT("矿化爆发（任务警告）"), TEXT("噬岩体爆发"), TEXT("诡异洞穴")
+    TEXT("三提石矿藏"), TEXT("矿化爆发（事件）"), TEXT("氪石感染"), TEXT("蜂拥浩劫"), TEXT("自爆群袭"),
+    TEXT("掠痕集居"), TEXT("凝血化糖"), TEXT("强敌环伺"), TEXT("矿化爆发（警告）"), TEXT("噬岩体爆发"), TEXT("幽魂不散")
 };
 static_assert(sizeof(SettingLabelsEn) / sizeof(SettingLabelsEn[0]) == 16, "English settings caption count changed");
 static_assert(sizeof(SettingLabelsZhCn) / sizeof(SettingLabelsZhCn[0]) == 16, "Chinese settings caption count changed");
