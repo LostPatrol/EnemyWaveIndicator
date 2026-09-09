@@ -29,6 +29,8 @@
 #include "GameFramework/DefaultPawn.h"
 #include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
+#include "Internationalization/Internationalization.h"
+#include "Internationalization/Culture.h"
 
 // Test failures log and unwind normally; they must not deliberately crash the editor.
 #define NWI_REQUIRE(Condition) do { if (!(Condition)) { UE_LOG(LogTemp, Error, TEXT("NWI validation failed: %s"), TEXT(#Condition)); return false; } } while (false)
@@ -289,6 +291,23 @@ bool ValidatePlacement(UClass* WidgetClass)
 
 // Exercise serialized Blueprint region updates without binding any native test function.
 namespace {
+// Restore the commandlet language even when an assertion returns early.
+struct FScopedLanguage
+{
+    FString Original = FInternationalization::Get().GetCurrentLanguage()->GetName();
+    ~FScopedLanguage() { FInternationalization::Get().SetCurrentLanguage(Original); }
+    bool Set(const TCHAR* Language) { return FInternationalization::Get().SetCurrentLanguage(Language); }
+};
+
+FString TextOutput(UObject* Object, const TCHAR* FunctionName, const TCHAR* OutputName)
+{
+    auto* Function = Object ? Object->GetClass()->FindFunctionByName(FunctionName) : nullptr;
+    auto* Text = Function ? FindFProperty<FTextProperty>(Function, OutputName) : nullptr;
+    if (!Function || !Text) return FString();
+    FStructOnScope Params(Function); Object->ProcessEvent(Function, Params.GetStructMemory());
+    return Text->GetPropertyValue_InContainer(Params.GetStructMemory()).ToString();
+}
+
 bool ValidateAutomatic(UClass* PulseClass, UClass* WidgetClass)
 {
     // Commandlets have no Slate application; use a real widget tree with a non-rendering backend.
@@ -367,6 +386,8 @@ bool ValidateAutomatic(UClass* PulseClass, UClass* WidgetClass)
     // Exercise the serialized page's actual button delegate, disk round trip and pool update.
     auto* Settings = FindFProperty<FObjectPropertyBase>(Class, TEXT("Settings"))->GetObjectPropertyValue_InContainer(Controller);
     auto* PageClass = LoadClass<UUserWidget>(nullptr, TEXT("/Game/NormalWaveIndicator/WBP_NwiSettings.WBP_NwiSettings_C"));
+    FScopedLanguage Language;
+    NWI_REQUIRE(Language.Set(TEXT("en")));
     auto* Page = NewObject<UUserWidget>(GetTransientPackage(), PageClass);
     NWI_REQUIRE(Settings && Page && Page->Initialize());
     FindFProperty<FObjectPropertyBase>(PageClass, TEXT("Settings"))->SetObjectPropertyValue_InContainer(Page, Settings);
@@ -378,6 +399,29 @@ bool ValidateAutomatic(UClass* PulseClass, UClass* WidgetClass)
     auto* TimeInput = Cast<USpinBox>(Page->WidgetTree->FindWidget(TEXT("InputDuration")));
     auto* Button = Cast<UButton>(Page->WidgetTree->FindWidget(TEXT("ApplyButton")));
     NWI_REQUIRE(LabelInput && RadiusInput && TimeInput && Button);
+    NWI_REQUIRE(Cast<UTextBlock>(Page->WidgetTree->FindWidget(TEXT("Title")))->GetText().ToString() == TEXT("Enemy Wave Indicator  |  Wave types test 0.9.0"));
+    NWI_REQUIRE(Cast<UTextBlock>(Page->WidgetTree->FindWidget(TEXT("Caption18")))->GetText().ToString() == TEXT("Show Egg hunt ambush"));
+    NWI_REQUIRE(TextOutput(Page, TEXT("GetPageInfo"), TEXT("PageName")) == TEXT("Indicator settings"));
+    NWI_REQUIRE(TextOutput(Controller, TEXT("GetModInfo"), TEXT("ModName")) == TEXT("Enemy Wave Indicator"));
+    NWI_REQUIRE(Language.Set(TEXT("zh-CN")));
+    auto* ChinesePage = NewObject<UUserWidget>(GetTransientPackage(), PageClass);
+    NWI_REQUIRE(ChinesePage && ChinesePage->Initialize());
+    FindFProperty<FObjectPropertyBase>(PageClass, TEXT("Settings"))->SetObjectPropertyValue_InContainer(ChinesePage, Settings);
+    ChinesePage->ProcessEvent(PageClass->FindFunctionByName(TEXT("Construct")), nullptr);
+    NWI_REQUIRE(Cast<UTextBlock>(ChinesePage->WidgetTree->FindWidget(TEXT("Title")))->GetText().ToString() == TEXT("敌潮指示器  |  虫潮类型测试 0.9.0"));
+    NWI_REQUIRE(Cast<UTextBlock>(ChinesePage->WidgetTree->FindWidget(TEXT("Caption15")))->GetText().ToString() == TEXT("显示自然潮"));
+    NWI_REQUIRE(Cast<UTextBlock>(ChinesePage->WidgetTree->FindWidget(TEXT("Caption18")))->GetText().ToString() == TEXT("显示虫蛋伏击"));
+    NWI_REQUIRE(Cast<UTextBlock>(ChinesePage->WidgetTree->FindWidget(TEXT("Caption19")))->GetText().ToString() == TEXT("虫蛋伏击提示文字（最多 64 个字符）"));
+    NWI_REQUIRE(TextOutput(ChinesePage, TEXT("GetPageInfo"), TEXT("PageName")) == TEXT("指示器设置"));
+    NWI_REQUIRE(TextOutput(Controller, TEXT("GetModInfo"), TEXT("ModName")) == TEXT("敌潮指示器"));
+    NWI_REQUIRE(Cast<UEditableTextBox>(ChinesePage->WidgetTree->FindWidget(TEXT("InputLabel")))->GetText().ToString() == TEXT("[!] NATURAL WAVE"));
+    NWI_REQUIRE(Cast<UEditableTextBox>(ChinesePage->WidgetTree->FindWidget(TEXT("InputLabelType2")))->GetText().ToString() == TEXT("[!] Egg hunt ambush"));
+    const FString ChineseSlot = Slot + TEXT("_zh-CN");
+    FindFProperty<FStrProperty>(PageClass, TEXT("SaveSlot"))->SetPropertyValue_InContainer(ChinesePage, ChineseSlot);
+    Cast<UButton>(ChinesePage->WidgetTree->FindWidget(TEXT("ApplyButton")))->OnClicked.Broadcast();
+    NWI_REQUIRE(Cast<UTextBlock>(ChinesePage->WidgetTree->FindWidget(TEXT("SaveStatus")))->GetText().ToString() == TEXT("已应用并保存。"));
+    NWI_REQUIRE(UGameplayStatics::DeleteGameInSlot(ChineseSlot, 0));
+    NWI_REQUIRE(Language.Set(TEXT("en")));
     for (uint32 I=1; I<nwi::WaveTypeCount; ++I) {
         auto* Toggle=Cast<UCheckBox>(Page->WidgetTree->FindWidget(*FString::Printf(TEXT("InputEnabledType%u"),I)));
         auto* Text=Cast<UEditableTextBox>(Page->WidgetTree->FindWidget(*FString::Printf(TEXT("InputLabelType%u"),I)));
@@ -393,6 +437,7 @@ bool ValidateAutomatic(UClass* PulseClass, UClass* WidgetClass)
     NWI_REQUIRE(FindFProperty<FFloatProperty>(Settings->GetClass(),TEXT("Opacity"))->GetPropertyValue_InContainer(Settings)==.4f); // Preview has no save side effects.
     Button->OnClicked.Broadcast();
     NWI_REQUIRE(FindFProperty<FStrProperty>(Settings->GetClass(), TEXT("Label"))->GetPropertyValue_InContainer(Settings) == TEXT("WATCH OUT"));
+    NWI_REQUIRE(Cast<UTextBlock>(Page->WidgetTree->FindWidget(TEXT("SaveStatus")))->GetText().ToString() == TEXT("Applied and saved."));
     auto* Reloaded = UGameplayStatics::LoadGameFromSlot(Slot, 0);
     NWI_REQUIRE(Reloaded && UGameplayStatics::DeleteGameInSlot(Slot, 0));
     NWI_REQUIRE(FindFProperty<FFloatProperty>(Reloaded->GetClass(), TEXT("Duration"))->GetPropertyValue_InContainer(Reloaded) == 12.f);
@@ -441,6 +486,7 @@ bool ValidateAutomatic(UClass* PulseClass, UClass* WidgetClass)
         if(I%2) NWI_REQUIRE(FindFProperty<FTextProperty>(WidgetClass,TEXT("BaseLabel"))->GetPropertyValue_InContainer(Huds[0]).ToString()==FString::Printf(TEXT("TYPE %u"),I));
         NWI_REQUIRE(FindFProperty<FIntProperty>(Class,*FString::Printf(TEXT("NativeEnabled%u"),I))->GetPropertyValue_InContainer(Controller)==int32(I%2));
     }
+    UE_LOG(LogTemp,Display,TEXT("NWI_TEST bilingual English/zh-CN UI, documented Chinese wave names and unchanged English marker defaults passed"));
     UE_LOG(LogTemp,Display,TEXT("NWI_TEST 36 wave types: default natural only, independent checkbox/text persistence, native enable fields, replicated source label/visibility selection passed"));
     // Real Slate attachment matters: visibility alone cannot recover a viewport cleared after Init.
     auto* Viewport = NewObject<UGameViewportClient>(GEngine);

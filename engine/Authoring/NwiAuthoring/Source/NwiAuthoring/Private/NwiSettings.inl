@@ -30,12 +30,71 @@ UK2Node_VariableSet* WriteField(UEdGraph* G, UClass* Owner, const TCHAR* Name, U
 }
 
 const TCHAR* SettingNames[] = {TEXT("Label"), TEXT("Duration"), TEXT("Radius"), TEXT("Red"), TEXT("Green"), TEXT("Blue"), TEXT("Blink"), TEXT("Opacity"), TEXT("BlinkHz"), TEXT("TextAR"), TEXT("TextAG"), TEXT("TextAB"), TEXT("TextBR"), TEXT("TextBG"), TEXT("TextBB"), TEXT("NaturalEnabled")};
+// Marker defaults are deliberately English in every culture; only their settings captions are localized.
 const TCHAR* SettingDefaults[] = {TEXT("[!] NATURAL WAVE"), TEXT("8"), TEXT("3.75"), TEXT("3"), TEXT("0.01"), TEXT("0.005"), TEXT("true"), TEXT("0.4"), TEXT("2"), TEXT("1"), TEXT("0"), TEXT("0"), TEXT("1"), TEXT("1"), TEXT("1"), TEXT("true")};
+const TCHAR* SettingLabelsEn[] = {
+    TEXT("Natural wave text (up to 64 characters)"), TEXT("Visibility after the last spawn (seconds, 1 - 30)"), TEXT("Sphere size (0.5 - 12; default 3.75)"),
+    TEXT("Sphere red (linear intensity, 0 - 5)"), TEXT("Sphere green (0 - 5)"), TEXT("Sphere blue (0 - 5)"), TEXT("Flash text between colors A and B"),
+    TEXT("Sphere opacity (0 transparent - 1 opaque; default 0.4)"), TEXT("Text flash cycles per second (0.1 - 10; default 2)"), TEXT("Text A red"),
+    TEXT("Text A green"), TEXT("Text A blue"), TEXT("Text B red"), TEXT("Text B green"), TEXT("Text B blue"), TEXT("Show natural waves")
+};
+const TCHAR* SettingLabelsZhCn[] = {
+    TEXT("自然潮提示文字（最多 64 个字符）"), TEXT("最后一只敌人生成后的显示时间（秒，1 - 30）"), TEXT("球体大小（0.5 - 12；默认 3.75）"),
+    TEXT("球体红色（线性强度，0 - 5）"), TEXT("球体绿色（0 - 5）"), TEXT("球体蓝色（0 - 5）"), TEXT("在颜色 A 与 B 之间闪烁提示文字"),
+    TEXT("球体不透明度（0 为透明，1 为不透明；默认 0.4）"), TEXT("提示文字每秒闪烁周期数（0.1 - 10；默认 2）"), TEXT("文字颜色 A：红色"),
+    TEXT("文字颜色 A：绿色"), TEXT("文字颜色 A：蓝色"), TEXT("文字颜色 B：红色"), TEXT("文字颜色 B：绿色"), TEXT("文字颜色 B：蓝色"), TEXT("显示自然潮")
+};
+// These names mirror docs/WAVE-TYPES.md and are UI captions, never marker defaults.
+const TCHAR* WaveTitlesZhCn[] = {
+    TEXT("自然潮"), TEXT("深掘钻梯"), TEXT("虫蛋伏击"), TEXT("常规撤离"), TEXT("定点提取撤离"), TEXT("教程撤离"),
+    TEXT("执勤护送：钻进"), TEXT("执勤护送：心石防守"), TEXT("执勤护送：撤离"), TEXT("执勤护送：补充燃料"),
+    TEXT("重型采掘：挖掘"), TEXT("重型采掘：升空"), TEXT("播报潮／通用潮"), TEXT("啤酒节伏击"), TEXT("设施破坏：发电站"),
+    TEXT("噬岩体陨石防守"), TEXT("就地精炼：恒压潮"), TEXT("就地精炼：炼油虫潮"), TEXT("就地精炼：管道故障"), TEXT("就地精炼：撤离"),
+    TEXT("特殊虫潮：战士"), TEXT("特殊虫潮：异虫蝇"), TEXT("特殊虫潮：岩痘"), TEXT("特殊虫潮：禁卫"), TEXT("特殊虫潮：蜂拥"),
+    TEXT("搜救：迷你矿骡伏击"), TEXT("搜救：据点防守"), TEXT("搜救：撤离"), TEXT("设施破坏：无人机"), TEXT("无畏异虫虫潮"),
+    TEXT("定点提取压力潮"), TEXT("教程战士潮"), TEXT("核心岩事件"), TEXT("强敌科技通讯事件"), TEXT("核心侵扰警告"), TEXT("骇入防守")
+};
+static_assert(sizeof(SettingLabelsEn) / sizeof(SettingLabelsEn[0]) == 16, "English settings caption count changed");
+static_assert(sizeof(SettingLabelsZhCn) / sizeof(SettingLabelsZhCn[0]) == 16, "Chinese settings caption count changed");
+static_assert(sizeof(WaveTitlesZhCn) / sizeof(WaveTitlesZhCn[0]) == nwi::WaveTypeCount, "Chinese wave title count changed");
 constexpr int32 SettingCount = 16 + 2 * (nwi::WaveTypeCount - 1);
 FString SettingName(int32 I) { return I < 16 ? FString(SettingNames[I]) : (I % 2 == 0 ? FString::Printf(TEXT("EnabledType%d"), (I-16)/2+1) : FString::Printf(TEXT("LabelType%d"), (I-16)/2+1)); }
 FString SettingDefault(int32 I) { return I < 16 ? FString(SettingDefaults[I]) : I % 2 == 0 ? FString(TEXT("false")) : FString(TEXT("[!] ")) + nwi::WaveTypes[(I-16)/2+1].title; }
 bool IsTextSetting(int32 I) { return I == 0 || (I >= 16 && I % 2 == 1); }
 bool IsBoolSetting(int32 I) { return I == 6 || I == 15 || (I >= 16 && I % 2 == 0); }
+FString SettingCaption(int32 I, bool Chinese)
+{
+    if (I < 16) return Chinese ? FString(SettingLabelsZhCn[I]) : FString(SettingLabelsEn[I]);
+    const int32 Type = (I - 16) / 2 + 1;
+    if (Chinese) return I % 2 == 0 ? FString(TEXT("显示")) + WaveTitlesZhCn[Type] : FString(WaveTitlesZhCn[Type]) + TEXT("提示文字（最多 64 个字符）");
+    return I % 2 == 0 ? FString(TEXT("Show ")) + nwi::WaveTypes[Type].title : FString(nwi::WaveTypes[Type].title) + TEXT(" text (up to 64 characters)");
+}
+
+// DRG's Simplified Chinese localization currently reports zh-CN; zh-Hans covers canonical aliases.
+UK2Node_CallFunction* IsSimplifiedChinese(UEdGraph* G)
+{
+    auto* Language = Call(G, UKismetInternationalizationLibrary::StaticClass(), TEXT("GetCurrentLanguage"));
+    auto Starts = [&](const TCHAR* Prefix) {
+        auto* Result = Call(G, UKismetStringLibrary::StaticClass(), TEXT("StartsWith"));
+        Link(Language, TEXT("ReturnValue"), Result, TEXT("SourceString")); Value(Result, TEXT("InPrefix"), Prefix); return Result;
+    };
+    auto* ZhCn = Starts(TEXT("zh-CN")); auto* ZhHans = Starts(TEXT("zh-Hans"));
+    auto* Either = Call(G, UKismetMathLibrary::StaticClass(), TEXT("BooleanOR"));
+    Link(ZhCn, TEXT("ReturnValue"), Either, TEXT("A")); Link(ZhHans, TEXT("ReturnValue"), Either, TEXT("B")); return Either;
+}
+
+UK2Node_CallFunction* LocalizedText(UEdGraph* G, UEdGraphNode* Chinese, const FString& English, const FString& ZhCn)
+{
+    auto* Select = Call(G, UKismetMathLibrary::StaticClass(), TEXT("SelectString"));
+    Value(Select, TEXT("A"), *ZhCn); Value(Select, TEXT("B"), *English); Link(Chinese, TEXT("ReturnValue"), Select, TEXT("bPickA"));
+    auto* Text = Call(G, UKismetTextLibrary::StaticClass(), TEXT("Conv_StringToText")); Link(Select, TEXT("ReturnValue"), Text, TEXT("InString")); return Text;
+}
+
+UK2Node_CallFunction* SetLocalizedWidgetText(UEdGraph* G, UEdGraphNode* Chinese, const TCHAR* Widget, const FString& English, const FString& ZhCn)
+{
+    auto* SetText = Call(G, UTextBlock::StaticClass(), TEXT("SetText"));
+    Link(Get(G, Widget), Widget, SetText, TEXT("self")); Link(LocalizedText(G, Chinese, English, ZhCn), TEXT("ReturnValue"), SetText, TEXT("InText")); return SetText;
+}
 void AddSettings(UBlueprint* BP)
 {
     for (int32 I = 0; I < SettingCount; ++I) Variable(BP, *SettingName(I), Type(IsTextSetting(I) ? UEdGraphSchema_K2::PC_String : IsBoolSetting(I) ? UEdGraphSchema_K2::PC_Boolean : UEdGraphSchema_K2::PC_Float), *SettingDefault(I));
@@ -49,18 +108,18 @@ void BuildSettings()
     Variable(BP, TEXT("Settings"), Type(UEdGraphSchema_K2::PC_Object, SaveBP->GeneratedClass));
     Variable(BP, TEXT("SaveSlot"), Type(UEdGraphSchema_K2::PC_String), TEXT("NormalWaveIndicator_v2"));
     check(FBlueprintEditorUtils::ImplementNewInterface(BP, HubInterface(TEXT("IHubPageWidget"))->GetFName()));
-    auto* Info = HubResult(BP, TEXT("GetPageInfo")); GetDefault<UEdGraphSchema_K2>()->TrySetDefaultText(*Pin(Info, TEXT("PageName")), FText::FromString(TEXT("Indicator settings")));
+    auto* Info = HubResult(BP, TEXT("GetPageInfo"));
+    Link(LocalizedText(Info->GetGraph(), IsSimplifiedChinese(Info->GetGraph()), TEXT("Indicator settings"), TEXT("指示器设置")), TEXT("ReturnValue"), Info, TEXT("PageName"));
     auto* Mode = HubResult(BP, TEXT("GetContainerMode")); Value(Mode, TEXT("bStretchToContainer"), TEXT("true"));
     auto* Root = BP->WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("SettingsPanel")); auto* Scroll=BP->WidgetTree->ConstructWidget<UScrollBox>(UScrollBox::StaticClass(),TEXT("SettingsScroll"));Scroll->AddChild(Root);auto* Frame=BP->WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(),TEXT("SettingsFrame"));BP->WidgetTree->RootWidget=Frame;
     auto AddText = [&](const TCHAR* Name, const TCHAR* Label) {
         auto* T = BP->WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), Name); T->SetText(FText::FromString(Label));
-        auto Font = T->Font; Font.Size = 16; T->SetFont(Font); Root->AddChildToVerticalBox(T); return T;
+        auto Font = T->Font; Font.Size = 16; T->SetFont(Font); T->bIsVariable = true; Root->AddChildToVerticalBox(T); return T;
     };
     AddText(TEXT("Title"), TEXT("Enemy Wave Indicator  |  Wave types test 0.9.0"));
-    const TCHAR* Labels[] = {TEXT("Natural wave text (up to 64 characters)"), TEXT("Visibility after the last spawn (seconds, 1 - 30)"), TEXT("Sphere size (0.5 - 12; default 3.75)"), TEXT("Sphere red (linear intensity, 0 - 5)"), TEXT("Sphere green (0 - 5)"), TEXT("Sphere blue (0 - 5)"), TEXT("Flash text between colors A and B"), TEXT("Sphere opacity (0 transparent - 1 opaque; default 0.4)"), TEXT("Text flash cycles per second (0.1 - 10; default 2)"), TEXT("Text A red"), TEXT("Text A green"), TEXT("Text A blue"), TEXT("Text B red"), TEXT("Text B green"), TEXT("Text B blue"), TEXT("Show natural waves")};
     for (int32 I = 0; I < SettingCount; ++I)
     {
-        const FString Caption = I < 16 ? FString(Labels[I]) : (I % 2 == 0 ? FString(TEXT("Show ")) + nwi::WaveTypes[(I-16)/2+1].title : FString(nwi::WaveTypes[(I-16)/2+1].title) + TEXT(" text (up to 64 characters)"));
+        const FString Caption = SettingCaption(I, false);
         AddText(*FString::Printf(TEXT("Caption%d"), I), *Caption);
         const FName Name(*FString::Printf(TEXT("Input%s"), *SettingName(I))); UWidget* Input = nullptr;
         if (IsTextSetting(I)) Input = BP->WidgetTree->ConstructWidget<UEditableTextBox>(UEditableTextBox::StaticClass(), Name);
@@ -77,12 +136,21 @@ void BuildSettings()
     auto* Swatch=BP->WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(),TEXT("SpherePreview"));Swatch->bIsVariable=true;Swatch->Brush.ImageSize=FVector2D(160,60);Frame->AddChildToVerticalBox(Swatch);
     auto* Preview=BP->WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(),TEXT("TextPreview"));Preview->SetText(FText::FromString(TEXT("[!] NATURAL WAVE")));Preview->bIsVariable=true;Frame->AddChildToVerticalBox(Preview);auto* ScrollSlot=Frame->AddChildToVerticalBox(Scroll);ScrollSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
     auto* Button = BP->WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("ApplyButton")); Button->bIsVariable = true;
-    auto* ButtonText = BP->WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("ApplyText")); ButtonText->SetText(FText::FromString(TEXT("Apply and save"))); Button->AddChild(ButtonText); Frame->AddChildToVerticalBox(Button);
+    auto* ButtonText = BP->WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("ApplyText")); ButtonText->SetText(FText::FromString(TEXT("Apply and save"))); ButtonText->bIsVariable = true; Button->AddChild(ButtonText); Frame->AddChildToVerticalBox(Button);
     auto* Status = AddText(TEXT("SaveStatus"), TEXT("Distance is straight-line meters. Duration changes apply to new spawn events.")); Status->bIsVariable = true;
     Compile(BP); auto* G = Graph(BP);
     auto* Config = Get(G, TEXT("Settings"));
     auto* Construct = Event(G, UUserWidget::StaticClass(), TEXT("Construct")); auto* Gate = Branch(G, Valid(G, Config, TEXT("Settings")), TEXT("ReturnValue")); Link(Construct, TEXT("then"), Gate, TEXT("execute"));
     UEdGraphNode* Exec = Gate;
+    auto* Chinese = IsSimplifiedChinese(G);
+    auto Localize = [&](const TCHAR* Widget, const FString& English, const FString& ZhCn) {
+        auto* SetText = SetLocalizedWidgetText(G, Chinese, Widget, English, ZhCn); Link(Exec, TEXT("then"), SetText, TEXT("execute")); Exec = SetText;
+    };
+    Localize(TEXT("Title"), TEXT("Enemy Wave Indicator  |  Wave types test 0.9.0"), TEXT("敌潮指示器  |  虫潮类型测试 0.9.0"));
+    for (int32 I = 0; I < SettingCount; ++I) Localize(*FString::Printf(TEXT("Caption%d"), I), SettingCaption(I, false), SettingCaption(I, true));
+    Localize(TEXT("PreviewCaption"), TEXT("Live sphere RGBA swatch and text preview (edits are saved with Apply)"), TEXT("实时球体 RGBA 色样与文字预览（点击“应用并保存”后保存修改）"));
+    Localize(TEXT("ApplyText"), TEXT("Apply and save"), TEXT("应用并保存"));
+    Localize(TEXT("SaveStatus"), TEXT("Distance is straight-line meters. Duration changes apply to new spawn events."), TEXT("距离为直线距离（米）。显示时间的修改将在新敌潮事件中生效。"));
     for (int32 I = 0; I < SettingCount; ++I) {
         auto* Input = Get(G, *FString::Printf(TEXT("Input%s"), *SettingName(I)));
         auto* Read = Field(G, SaveBP->GeneratedClass, *SettingName(I), Config, TEXT("Settings"));
@@ -117,7 +185,9 @@ void BuildSettings()
     auto* Revision = Field(G, SaveBP->GeneratedClass, TEXT("Revision"), Config, TEXT("Settings")); auto* Increment = Call(G, UKismetMathLibrary::StaticClass(), TEXT("Add_IntInt")); Link(Revision, TEXT("Revision"), Increment, TEXT("A")); Value(Increment, TEXT("B"), TEXT("1"));
     auto* Commit = WriteField(G, SaveBP->GeneratedClass, TEXT("Revision"), Config, TEXT("Settings")); Link(Increment, TEXT("ReturnValue"), Commit, TEXT("Revision")); Link(Exec, TEXT("then"), Commit, TEXT("execute"));
     auto* Store = Call(G, UGameplayStatics::StaticClass(), TEXT("SaveGameToSlot")); Link(Config, TEXT("Settings"), Store, TEXT("SaveGameObject")); Link(Get(G, TEXT("SaveSlot")), TEXT("SaveSlot"), Store, TEXT("SlotName")); Link(Commit, TEXT("then"), Store, TEXT("execute"));
-    auto* Message = Call(G, UKismetMathLibrary::StaticClass(), TEXT("SelectString")); Value(Message, TEXT("A"), TEXT("Applied and saved.")); Value(Message, TEXT("B"), TEXT("Applied for this session; disk save failed.")); Link(Store, TEXT("ReturnValue"), Message, TEXT("bPickA"));
+    auto* MessageEn = Call(G, UKismetMathLibrary::StaticClass(), TEXT("SelectString")); Value(MessageEn, TEXT("A"), TEXT("Applied and saved.")); Value(MessageEn, TEXT("B"), TEXT("Applied for this session; disk save failed.")); Link(Store, TEXT("ReturnValue"), MessageEn, TEXT("bPickA"));
+    auto* MessageZh = Call(G, UKismetMathLibrary::StaticClass(), TEXT("SelectString")); Value(MessageZh, TEXT("A"), TEXT("已应用并保存。")); Value(MessageZh, TEXT("B"), TEXT("已在当前会话中应用，但保存到磁盘失败。")); Link(Store, TEXT("ReturnValue"), MessageZh, TEXT("bPickA"));
+    auto* Message = Call(G, UKismetMathLibrary::StaticClass(), TEXT("SelectString")); Link(MessageZh, TEXT("ReturnValue"), Message, TEXT("A")); Link(MessageEn, TEXT("ReturnValue"), Message, TEXT("B")); Link(Chinese, TEXT("ReturnValue"), Message, TEXT("bPickA"));
     auto* AsText = Call(G, UKismetTextLibrary::StaticClass(), TEXT("Conv_StringToText")); Link(Message, TEXT("ReturnValue"), AsText, TEXT("InString"));
     auto* StatusSet = Call(G, UTextBlock::StaticClass(), TEXT("SetText")); Link(Get(G, TEXT("SaveStatus")), TEXT("SaveStatus"), StatusSet, TEXT("self")); Link(AsText, TEXT("ReturnValue"), StatusSet, TEXT("InText")); Link(Store, TEXT("then"), StatusSet, TEXT("execute"));
     Compile(BP); Save(BP);
@@ -133,9 +203,9 @@ void AddControllerSettings(UBlueprint* BP)
     Variable(BP, TEXT("DurationSec"), Type(UEdGraphSchema_K2::PC_Float), TEXT("8"));
     check(FBlueprintEditorUtils::ImplementNewInterface(BP, HubInterface(TEXT("IHubMod"))->GetFName()));
     auto* Info = HubResult(BP, TEXT("GetModInfo"));
-    const TCHAR* Names[] = {TEXT("ModName"), TEXT("ModAuthor"), TEXT("ModVersion")};
-    const TCHAR* Values[] = {TEXT("Enemy Wave Indicator"), TEXT("LostPatrol"), TEXT("0.9.0 test")};
-    for (int32 I = 0; I < 3; ++I) GetDefault<UEdGraphSchema_K2>()->TrySetDefaultText(*Pin(Info, Names[I]), FText::FromString(Values[I]));
+    Link(LocalizedText(Info->GetGraph(), IsSimplifiedChinese(Info->GetGraph()), TEXT("Enemy Wave Indicator"), TEXT("敌潮指示器")), TEXT("ReturnValue"), Info, TEXT("ModName"));
+    GetDefault<UEdGraphSchema_K2>()->TrySetDefaultText(*Pin(Info, TEXT("ModAuthor")), FText::FromString(TEXT("LostPatrol")));
+    GetDefault<UEdGraphSchema_K2>()->TrySetDefaultText(*Pin(Info, TEXT("ModVersion")), FText::FromString(TEXT("0.9.0 test")));
 }
 
 void BuildControllerSettings(UBlueprint* BP, UEdGraph* G, UClass* PulseClass, UClass* HudClass)

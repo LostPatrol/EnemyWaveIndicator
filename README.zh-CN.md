@@ -12,6 +12,7 @@ Enemy Wave Indicator 会用发光球体、可自定义文字和距离信息，�
 ## 功能
 
 - 支持自然潮和 35 种脚本虫潮，每种类型都有独立的开关和提示文字。
+- Mod Hub 设置界面会随游戏语言自动显示英文或简体中文；两种语言下的可编辑标记默认内容均保留英文。
 - 可设置球体颜色、透明度、大小和显示时长。
 - 可设置两种交替文字颜色及闪烁速度。
 - 标记大小会根据成功生成敌人的数量和基础难度权重变化。
@@ -19,7 +20,7 @@ Enemy Wave Indicator 会用发光球体、可自定义文字和距离信息，�
 - 所有玩家安装匹配版本内容时，可由房主向客机同步标记。
 - 本 Mod 只观察刷怪，不会改变敌人、伤害、奖励或任务进度。
 
-默认只启用 **Natural wave**。如需显示其他事件，请在 Mod Hub 中启用对应类型，并点击 **Apply and save**。例如矿骡伏击对应 **Salvage: mini-MULE ambush**。全部类型见[虫潮类型清单](docs/WAVE-TYPES.md)。
+默认只启用**自然潮**。如需显示其他事件，请在 Mod Hub 中启用对应类型，并点击**应用并保存**。例如矿骡伏击对应**搜救：迷你矿骡伏击**；它的可编辑标记默认内容仍是英文。全部类型见[虫潮类型清单](docs/WAVE-TYPES.md)。
 
 ![自然潮标记](docs/media/normal_wave_1.png)
 
@@ -33,7 +34,7 @@ Enemy Wave Indicator 会用发光球体、可自定义文字和距离信息，�
 2. 在 mod.io 订阅 [Mod Hub](https://mod.io/g/drg/m/mod-hub)。
 3. 在 MintCat 中把下载的 Enemy Wave Indicator Release ZIP 作为本地 Mod 导入。
 4. 启用 Enemy Wave Indicator 和 Mod Hub，点击 **Apply Changes / Save Changes**，等待安装完成。
-5. 启动游戏，在空间站等待约 40 秒，打开 Mod Hub，选择需要显示的虫潮类型，然后点击 **Apply and save**。
+5. 启动游戏，在空间站等待约 40 秒，打开 Mod Hub，选择需要显示的虫潮类型，然后点击**应用并保存**。
 
 MintCat 会安装 DLL，并把它管理的 Pak 内容合并到游戏中。使用 MintCat 后，不要再手动复制同一份 Pak 或 DLL。
 
@@ -64,7 +65,7 @@ DLL 和 Pak 必须来自同一个版本。手动更新时需要同时替换这�
 ## 常见问题
 
 - **Mod Hub 中没有出现本 Mod：**确认 Mod Hub 已启用，在空间站等待约 40 秒，并重启一次游戏。
-- **能显示自然潮，但某个任务事件不显示：**默认只启用自然潮。请在 Mod Hub 中开启对应类型，再点击 **Apply and save**。
+- **能显示自然潮，但某个任务事件不显示：**默认只启用自然潮。请在 Mod Hub 中开启对应类型，再点击**应用并保存**。
 - **完全没有标记：**确认 `main.dll` 和 `NormalWaveIndicator_P.pak` 来自同一版本。房主需要安装 DLL，客机需要匹配的 Pak 内容才能显示自定义标记。
 - **MintCat 提示重复或松散 Pak：**先确认 MintCat 已管理本 Mod，再删除手动安装的 `NormalWaveIndicator_P.pak`，然后重新应用更改。
 - **从很早的手动安装版本升级：**先移走或备份旧 DLL 和 Pak，再安装当前版本，避免同时加载两份。

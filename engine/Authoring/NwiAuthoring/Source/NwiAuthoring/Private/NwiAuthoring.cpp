@@ -35,6 +35,7 @@
 #include "K2Node_SpawnActorFromClass.h"
 #include "Blueprint/WidgetBlueprintLibrary.h"
 #include "Kismet/GameplayStatics.h"
+#include "Kismet/KismetInternationalizationLibrary.h"
 #include "Kismet/KismetTextLibrary.h"
 #include "Camera/PlayerCameraManager.h"
 #include "WidgetBlueprint.h"

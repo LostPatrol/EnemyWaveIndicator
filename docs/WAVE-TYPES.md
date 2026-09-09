@@ -2,9 +2,9 @@
 
 # Wave Types / 虫潮类型
 
-Enemy Wave Indicator 0.9.0 provides separate switches and labels for one natural-wave source and 35 stock scripted wave controllers. Only **Natural wave** is enabled by default; after changing a setting in Mod Hub, select **Apply and save**.
+Enemy Wave Indicator 0.9.0 provides separate switches and labels for one natural-wave source and 35 stock scripted wave controllers. Only **Natural wave** is enabled by default; after changing a setting in Mod Hub, select **Apply and save**. The settings UI follows the game language in English or Simplified Chinese, while editable marker defaults remain English.
 
-Enemy Wave Indicator 0.9.0 为自然潮和 35 种游戏自带的脚本虫潮控制器提供独立开关与提示文字。默认只启用 **Natural wave**；在 Mod Hub 中修改设置后，请点击 **Apply and save**。
+Enemy Wave Indicator 0.9.0 为自然潮和 35 种游戏自带的脚本虫潮控制器提供独立开关与提示文字。默认只启用**自然潮**；在 Mod Hub 中修改设置后，请点击**应用并保存**。设置界面会随游戏语言显示英文或简体中文，但可编辑的标记默认内容始终保留英文。
 
 ## Main settings / 主要设置
 

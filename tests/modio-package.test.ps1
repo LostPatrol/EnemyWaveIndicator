@@ -45,6 +45,7 @@ foreach($p in @($source,$asset,$files[0].Path,$config,$pak,$audit,$dll)) {
 $release=& $script -BuildDirectory $nativeDir -PresentationCook $cookDir
 $m=Get-Content (Join-Path $release 'manifest.json') -Raw | ConvertFrom-Json
 if($m.ModioSubscriptionOnly -or !$m.RuntimeDllRequired -or $m.MintCatInstallTested -or $m.NetworkTested -or $m.ReleaseReady){throw 'Untruthful acceptance metadata.'}
+if(!$m.Localization.Automatic -or @($m.Localization.Languages).Count -ne 2 -or 'en' -notin $m.Localization.Languages -or 'zh-CN' -notin $m.Localization.Languages -or $m.Localization.MarkerDefaults -notmatch 'English'){throw 'Missing bilingual localization metadata.'}
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $zip=[IO.Compression.ZipFile]::OpenRead($release+'.zip')
 try {

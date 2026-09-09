@@ -38,6 +38,7 @@ $licensePath=Join-Path $output 'LICENSES.txt'; Set-Content -LiteralPath $license
     Position='source center when available; queued spawn origin otherwise'; Weight='successful count times descriptor base DifficultyRating'
     ExcludedBuckets=@('ActiveSwarmerEnemies','ActiveCritters'); UnregisteredExcluded=$true
     SupportedSources=$sourceNames; PerTypeEnableAndText=$true; UnsupportedRequestedFeatures=@('independent non-wave-controller boss/direct summons','multi-second exact prediction')
+    Localization=@{Languages=@('en','zh-CN');Automatic=$true;MarkerDefaults='English in every language; user editable'}
     ClientRequiresPak=$true; HostRequiresDll=$true; MaximumRegions=8
     Requires=@('MintCat with UE4SSL.JavaScript stable 0.31.0 audited runtime','Mod Hub','matching 0.9.0 Pak on participating clients')
     GameSHA256='9B005BB6E1072F3CD98FCFAA75698316DC47B808D83A99DDF96DE529D00BAC13'

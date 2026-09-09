@@ -12,6 +12,7 @@ Enemy Wave Indicator marks detected enemy spawn areas with glowing spheres, cust
 ## Features
 
 - Natural waves plus 35 scripted wave types, each with its own enable switch and label.
+- Mod Hub settings automatically follow the game language in English or Simplified Chinese; editable marker defaults remain English in both languages.
 - Configurable sphere color, opacity, size, and display duration.
 - Two alternating text colors with configurable flashing speed.
 - Marker size scales with the number and base difficulty weight of spawned enemies.
@@ -19,7 +20,7 @@ Enemy Wave Indicator marks detected enemy spawn areas with glowing spheres, cust
 - Host-to-client marker synchronization when every player has matching mod content.
 - Read-only behavior: the mod observes spawning and does not change enemies, damage, rewards, or progression.
 
-Only **Natural wave** is enabled by default. Open Mod Hub to enable other events, then select **Apply and save**. For example, mini-MULE ambushes use **Salvage: mini-MULE ambush**. See the [complete wave-type list](docs/WAVE-TYPES.md).
+Only **Natural wave** is enabled by default. Open Mod Hub to enable other events, then select **Apply and save** (shown as **应用并保存** in Simplified Chinese). For example, mini-MULE ambushes use **Salvage: mini-MULE ambush**. See the [complete wave-type list](docs/WAVE-TYPES.md).
 
 ![Natural wave markers](docs/media/normal_wave_1.png)
 
