@@ -20,13 +20,13 @@ Enemy Wave Indicator marks detected enemy spawn areas with glowing spheres, cust
 - Host-to-client marker synchronization when every player has matching mod content.
 - Read-only behavior: the mod observes spawning and does not change enemies, damage, rewards, or progression.
 
-Version 0.9.3 enables every wave broadcast by default except **Drillevator**, **Escort: drilling**, **Core Stone event**, and **Core Corruption warning**. Marker text flashes yellow-red by default, and sphere RGB channels use a normalized 0–1 range. Open Mod Hub and select **Apply and save** after changing any option. See the [complete wave-type list](docs/WAVE-TYPES.md).
+Version 0.9.4 adds exact centers for eight mission warning/anomaly sources, including Swarmageddon, Blood Sugar, Rival Presence, Ebonite Outbreak, and Haunted Cave. Every broadcast is enabled by default except **Drillevator**, **Escort: drilling**, **Core Stone event**, **Core Corruption warning**, and **Haunted Cave**. Marker text flashes yellow-red by default, and sphere RGB channels use a normalized 0–1 range. Open Mod Hub and select **Apply and save** after changing any option. See the [complete wave-type list](docs/WAVE-TYPES.md).
 
 ![Natural wave markers](docs/media/normal_wave_1.png)
 
 ## Installation
 
-Download the matching 0.9.3 package from [GitHub Releases](https://github.com/LostPatrol/EnemyWaveIndicator/releases) when it is published. The release archive contains `main.dll`, `EnemyWaveIndicator_P.pak`, and the redistributed dependency licenses.
+The matching 0.9.4 MintCat archive is currently a local test candidate containing `main.dll`, `EnemyWaveIndicator_P.pak`, and redistributed dependency licenses. The latest formally published package remains available from [GitHub Releases](https://github.com/LostPatrol/EnemyWaveIndicator/releases); do not mix native and Pak versions.
 
 ### Option A: MintCat (recommended)
 
@@ -62,8 +62,8 @@ The DLL and Pak must come from the same release. When updating manually, replace
 
 ## Troubleshooting
 
-- **The mod is missing from Mod Hub:** confirm that Mod Hub is enabled and that the Space Rig has finished loading. The current 0.9.3 package has no fixed startup delay and uses the same stable, static Mod Hub registration metadata as the validated 0.9.0 build. If the ZIP SHA-256 differs from the release note, close the game and reimport it in MintCat.
-- **One of the four default-disabled events does not appear:** enable its matching type in Mod Hub and select **Apply and save**.
+- **The mod is missing from Mod Hub:** confirm that Mod Hub is enabled and that the Space Rig has finished loading. The current 0.9.4 test package has no fixed startup delay and uses the same stable, static Mod Hub registration metadata as the validated 0.9.0 build. If the ZIP SHA-256 differs from its test manifest, close the game and reimport it in MintCat.
+- **One of the five default-disabled sources does not appear:** enable its matching type in Mod Hub and select **Apply and save**.
 - **Nothing appears:** verify that `main.dll` and `EnemyWaveIndicator_P.pak` are from the same version. The host needs the DLL; clients need matching Pak content to render the custom markers.
 - **MintCat reports a duplicate or loose Pak:** remove the manually installed `EnemyWaveIndicator_P.pak` after confirming MintCat manages the mod, then apply changes again.
 - **You are updating a very old manual installation:** remove or back up the old DLL and Pak before installing the current pair. Do not load two copies.

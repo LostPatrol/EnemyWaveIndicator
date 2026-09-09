@@ -49,7 +49,8 @@ const TCHAR* WaveTitlesZhCn[] = {
     TEXT("特殊虫潮：战士"), TEXT("特殊虫潮：异虫蝇"), TEXT("特殊虫潮：岩痘"), TEXT("特殊虫潮：禁卫"), TEXT("特殊虫潮：蜂拥"),
     TEXT("搜救行动：矿骡伏击"), TEXT("搜救行动：据点防守"), TEXT("搜救行动：撤离"), TEXT("设施破坏：无人机"), TEXT("无畏异虫潮"),
     TEXT("定点提取压力潮"), TEXT("教程战士潮"), TEXT("核心岩事件"), TEXT("强敌科技通讯事件"), TEXT("核心侵扰警告"), TEXT("骇入防守"),
-    TEXT("三提石矿藏"), TEXT("矿化爆发"), TEXT("氪石感染")
+    TEXT("三提石矿藏"), TEXT("矿化爆发（机械事件）"), TEXT("氪石感染"), TEXT("蜂拥浩劫"), TEXT("自爆群袭"),
+    TEXT("掠痕集居"), TEXT("凝血化糖"), TEXT("强敌环伺"), TEXT("矿化爆发（任务警告）"), TEXT("噬岩体爆发"), TEXT("诡异洞穴")
 };
 static_assert(sizeof(SettingLabelsEn) / sizeof(SettingLabelsEn[0]) == 16, "English settings caption count changed");
 static_assert(sizeof(SettingLabelsZhCn) / sizeof(SettingLabelsZhCn[0]) == 16, "Chinese settings caption count changed");
@@ -62,8 +63,8 @@ constexpr int32 BodyFontSize = 13;
 constexpr int32 PreviewFontSize = 18;
 constexpr int32 ButtonFontSize = 16;
 FString SettingName(int32 I) { return I < 16 ? FString(SettingNames[I]) : (I % 2 == 0 ? FString::Printf(TEXT("EnabledType%d"), (I-16)/2+1) : FString::Printf(TEXT("LabelType%d"), (I-16)/2+1)); }
-// 0.9.3 reports every catalogued source except the two drilling phases and both Core events.
-bool DefaultWaveEnabled(int32 Type) { return Type != 1 && Type != 6 && Type != 32 && Type != 34; }
+// 0.9.4 reports every catalogued source except the two drilling phases, both Core sources, and Haunted Cave.
+bool DefaultWaveEnabled(int32 Type) { return Type != 1 && Type != 6 && Type != 32 && Type != 34 && Type != 46; }
 FString SettingDefault(int32 I) { return I < 16 ? FString(SettingDefaults[I]) : I % 2 == 0 ? FString(DefaultWaveEnabled((I-16)/2+1) ? TEXT("true") : TEXT("false")) : FString(TEXT("[!] ")) + nwi::WaveTypes[(I-16)/2+1].title; }
 bool IsTextSetting(int32 I) { return I == 0 || (I >= 16 && I % 2 == 1); }
 bool IsBoolSetting(int32 I) { return I == 6 || I == 15 || (I >= 16 && I % 2 == 0); }
@@ -151,7 +152,7 @@ void BuildSettings()
         auto* Slot = Grid->AddChildToGrid(Widget, Row, Column); Slot->SetPadding(FMargin(4.f, 2.f));
         Slot->SetVerticalAlignment(VAlign_Center); Slot->SetHorizontalAlignment(Fill ? HAlign_Fill : HAlign_Left);
     };
-    AddText(TEXT("Title"), TEXT("Enemy Wave Indicator  |  0.9.3"), nullptr, PageTitleFontSize);
+    AddText(TEXT("Title"), TEXT("Enemy Wave Indicator  |  0.9.4"), nullptr, PageTitleFontSize);
     AddText(TEXT("WaveSection"), TEXT("Wave broadcasts"), nullptr, SectionTitleFontSize);
     auto* WaveGrid = BP->WidgetTree->ConstructWidget<UGridPanel>(UGridPanel::StaticClass(), TEXT("WaveGrid")); WaveGrid->bIsVariable = true; Root->AddChildToVerticalBox(WaveGrid);
     WaveGrid->SetColumnFill(2, 1.f); WaveGrid->SetColumnFill(5, 1.f);
@@ -192,7 +193,7 @@ void BuildSettings()
     auto Localize = [&](const TCHAR* Widget, const FString& English, const FString& ZhCn) {
         auto* SetText = SetLocalizedWidgetText(G, Chinese, Widget, English, ZhCn); Link(Exec, TEXT("then"), SetText, TEXT("execute")); Exec = SetText;
     };
-    Localize(TEXT("Title"), TEXT("Enemy Wave Indicator  |  0.9.3"), TEXT("敌潮指示器  |  0.9.3"));
+    Localize(TEXT("Title"), TEXT("Enemy Wave Indicator  |  0.9.4"), TEXT("敌潮指示器  |  0.9.4"));
     Localize(TEXT("WaveSection"), TEXT("Wave broadcasts"), TEXT("虫潮播报"));
     for (int32 Wave = 0; Wave < nwi::WaveTypeCount; ++Wave) Localize(*FString::Printf(TEXT("WaveName%d"), Wave), nwi::WaveTypes[Wave].title, WaveTitlesZhCn[Wave]);
     Localize(TEXT("TextSection"), TEXT("Warning text"), TEXT("播报警示文本"));
@@ -257,7 +258,7 @@ void AddControllerSettings(UBlueprint* BP)
     auto* Info = HubResult(BP, TEXT("GetModInfo"));
     // Match the last working registration contract: no runtime calls inside GetModInfo.
     const TCHAR* Names[] = {TEXT("ModName"), TEXT("ModAuthor"), TEXT("ModVersion")};
-    const TCHAR* Values[] = {TEXT("Enemy Wave Indicator"), TEXT("LostPatrol"), TEXT("0.9.3 test")};
+    const TCHAR* Values[] = {TEXT("Enemy Wave Indicator"), TEXT("LostPatrol"), TEXT("0.9.4 test")};
     for (int32 I = 0; I < 3; ++I)
         GetDefault<UEdGraphSchema_K2>()->TrySetDefaultText(*Pin(Info, Names[I]), FText::FromString(Values[I]));
 }

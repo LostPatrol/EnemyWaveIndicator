@@ -1,11 +1,11 @@
 <!-- Native handoff and editor-only Blueprint build boundary. -->
-# Presentation authoring — 0.9.3
+# Presentation authoring — 0.9.4
 
 Open FSD.uproject in UE4.27.2. FSD is the required content mount name, not a shipped native module. The editor-only NwiAuthoring plugin emits nine production assets: Auto, Resources, Pulse, Marker, Settings page, Settings SaveGame, Red Material, InitCave and InitSpacerig.
 
-Auto is an always-relevant replicated actor created by host initializers. The native DLL binds only Auto.NwiPoll (zero arguments), validates NativeAbi=0x90300, and writes owned region fields. Clients skip native polling and render replicated regions. Clock expiry uses server world time; display preferences and visual pools remain local. Each pulse owns one reusable MID and has no collision, gameplay navigation or replication.
+Auto is an always-relevant replicated actor created by host initializers. The native DLL binds only Auto.NwiPoll (zero arguments), validates NativeAbi=0x90400, and writes owned region fields. Clients skip native polling and render replicated regions. Clock expiry uses server world time; display preferences and visual pools remain local. Each pulse owns one reusable MID and has no collision, gameplay navigation or replication.
 
-Settings expose 39 independent wave toggles and labels in a compact three-section layout. All sources default on except IDs 1, 6, 32 and 34. Text defaults to yellow/red 2 Hz alternation; sphere appearance remains independently editable. Existing saves gain the three appended event fields from their class defaults. The preview checks draft values without saving. Native source, filtering and measured timing are described in the repository README.
+Settings expose 47 independent wave toggles and labels in a compact three-section layout with 24 rows per wave column. All sources default on except IDs 1, 6, 32, 34 and 46. Text defaults to yellow/red 2 Hz alternation; sphere appearance remains independently editable. Existing saves gain appended fields from their class defaults. The preview checks draft values without saving. Native source, filtering and measured timing are described in the repository README.
 
 Prepare-ModHubDevkit.ps1 installs pinned development interface references. Never package _ModHub, NwiValidation, editor binaries or original game assets. The cook admits exactly 18 owned files and verifies their Pak hashes. The obsolete FSD reflection stub and approximate content-capture graph have been removed. BP_NwiVisualTest remains an unshipped resource/display regression fixture, not Auto's parent.
 

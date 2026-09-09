@@ -1,0 +1,118 @@
+{
+  "schemaVersion": 1,
+  "gameSteamBuild": "24903151",
+  "method": "Read-only UE4.27 package-table and Blueprint bytecode inspection of stock FSD-WindowsNoEditor.pak; MissionBP object references and native-call operands were decoded without loading the assets.",
+  "worldContextOpcode": {
+    "value": "0x17",
+    "name": "EX_Self"
+  },
+  "coveredEntrypoints": [
+    "SpawnEnemyGroupDescriptor",
+    "SpawnEnemyGroupDescriptorSpreadOut",
+    "SpawnEnemyGroupDescriptorWithCallbackSpreadOut",
+    "SpawnEnemiesAtLocation"
+  ],
+  "sources": [
+    {
+      "typeId": 39,
+      "key": "BP_Swarmageddon",
+      "missionDefinition": "/Game/GameElements/Missions/Warnings/Swarmageddon/WRN_Swarmagedon.WRN_Swarmagedon",
+      "missionBP": "/Game/GameElements/Missions/Warnings/Swarmageddon/BP_Swarmageddon.BP_Swarmageddon_C",
+      "classPath": "/Game/GameElements/Missions/Warnings/Swarmageddon/BP_Swarmageddon.BP_Swarmageddon_C",
+      "calls": [{"callee": "SpawnEnemyGroupDescriptor", "firstArgumentOpcode": "0x17", "sites": 5}],
+      "centers": "exact direct point argument",
+      "observedGroups": ["EG_Swarmageddon_Warning"]
+    },
+    {
+      "typeId": 40,
+      "key": "BP_ExploderInfestation",
+      "missionDefinition": "/Game/GameElements/Missions/Warnings/ExploderInfestation/WRN_ExploderInfestation.WRN_ExploderInfestation",
+      "missionBP": "/Game/GameElements/Missions/Warnings/ExploderInfestation/BP_ExploderInfestation.BP_ExploderInfestation_C",
+      "classPath": "/Game/GameElements/Missions/Warnings/ExploderInfestation/BP_ExploderInfestation.BP_ExploderInfestation_C",
+      "calls": [{"callee": "SpawnEnemyGroupDescriptor", "firstArgumentOpcode": "0x17", "sites": 6}],
+      "centers": "exact direct point argument",
+      "observedGroups": ["EG_Exploders_Warning"]
+    },
+    {
+      "typeId": 41,
+      "key": "BP_ScrabNestingGrounds",
+      "missionDefinition": "/Game/GameElements/Missions/Warnings/ScrabNestingGrounds/WRN_ScrabNestingGrounds.WRN_ScrabNestingGrounds",
+      "missionBP": "/Game/GameElements/Missions/Warnings/ScrabNestingGrounds/BP_ScrabNestingGrounds.BP_ScrabNestingGrounds_C",
+      "classPath": "/Game/GameElements/Missions/Warnings/ScrabNestingGrounds/BP_ScrabNestingGrounds.BP_ScrabNestingGrounds_C",
+      "calls": [{"callee": "SpawnEnemyGroupDescriptor", "firstArgumentOpcode": "0x17", "sites": 6}],
+      "centers": "exact direct point argument",
+      "observedGroups": ["EG_Scrabs_Warning"]
+    },
+    {
+      "typeId": 42,
+      "key": "BP_BloodSugar",
+      "missionDefinition": "/Game/GameElements/Missions/Mutators/BloodSugar/MMUT_BloodSugar.MMUT_BloodSugar",
+      "missionBP": "/Game/GameElements/Missions/Mutators/BloodSugar/BP_BloodSugar.BP_BloodSugar_C",
+      "classPath": "/Game/GameElements/Missions/Mutators/BloodSugar/BP_BloodSugar.BP_BloodSugar_C",
+      "calls": [
+        {"callee": "SpawnEnemyGroupDescriptorSpreadOut", "firstArgumentOpcode": "0x17", "sites": 1},
+        {"callee": "SpawnEnemiesAtLocation", "firstArgumentOpcode": "0x17", "sites": 1}
+      ],
+      "centers": "exact direct point or every exact game-selected batch point",
+      "observedGroups": ["EG_SW_Swarmers", "EG_SW_Grunts"]
+    },
+    {
+      "typeId": 43,
+      "key": "BP_RivalIncursionWarning",
+      "missionDefinition": "/Game/GameElements/Missions/Warnings/RivalIncursion/WRN_RivalIncursion.WRN_RivalIncursion",
+      "missionBP": "/Game/GameElements/Missions/Warnings/RivalIncursion/BP_RivalIncursionWarning.BP_RivalIncursionWarning_C",
+      "classPath": "/Game/GameElements/Missions/Warnings/RivalIncursion/BP_RivalIncursionWarning.BP_RivalIncursionWarning_C",
+      "calls": [{"callee": "SpawnEnemyGroupDescriptor", "firstArgumentOpcode": "0x17", "sites": 2}],
+      "centers": "exact direct point argument",
+      "observedGroups": ["EG_RivalIncursion_Warning"]
+    },
+    {
+      "typeId": 44,
+      "key": "BP_RockInfestation",
+      "missionDefinition": "/Game/GameElements/Missions/Warnings/RockInfestation/WRN_RockInfestation.WRN_RockInfestation",
+      "missionBP": "/Game/GameElements/Missions/Warnings/RockInfestation/BP_RockInfestation.BP_RockInfestation_C",
+      "classPath": "/Game/GameElements/Missions/Warnings/RockInfestation/BP_RockInfestation.BP_RockInfestation_C",
+      "calls": [{"callee": "SpawnEnemyGroupDescriptorSpreadOut", "firstArgumentOpcode": "0x17", "sites": 1}],
+      "centers": "every exact game-selected batch point; distinct points remain distinct",
+      "observedGroups": ["EG_RockInfestation"]
+    },
+    {
+      "typeId": 45,
+      "key": "BP_PlagueWarning",
+      "missionDefinition": "/Game/GameElements/Missions/Warnings/Plague/WRN_Plague.WRN_Plague",
+      "missionBP": "/Game/GameElements/Missions/Warnings/Plague/BP_PlagueWarning.BP_PlagueWarning_C",
+      "classPath": "/Game/GameElements/Missions/Warnings/Plague/BP_PlagueWarning.BP_PlagueWarning_C",
+      "calls": [{"callee": "SpawnEnemyGroupDescriptor", "firstArgumentOpcode": "0x17", "sites": 2}],
+      "centers": "exact direct point argument",
+      "observedGroups": ["EG_Plague_Warning_Glyphids"]
+    },
+    {
+      "typeId": 46,
+      "key": "BP_GhostMutator",
+      "missionDefinition": "/Game/GameElements/Missions/Warnings/Ghost/WRN_Ghost.WRN_Ghost",
+      "missionBP": "/Game/GameElements/Missions/Warnings/Ghost/BP_GhostMutator.BP_GhostMutator_C",
+      "classPath": "/Game/GameElements/Missions/Warnings/Ghost/BP_GhostMutator.BP_GhostMutator_C",
+      "calls": [{"callee": "SpawnEnemiesAtLocation", "firstArgumentOpcode": "0x17", "sites": 1}],
+      "centers": "exact direct point argument",
+      "observedGroups": ["ED_Spider_ExploderTankGhost"]
+    }
+  ],
+  "aliases": [
+    {
+      "typeId": 34,
+      "classPath": "/Game/GameElements/Missions/Warnings/CoreCorruption/BP_CoreCorruption_Crystal.BP_CoreCorruption_Crystal_C",
+      "calls": [{"callee": "SpawnEnemyGroupDescriptorWithCallbackSpreadOut", "firstArgumentOpcode": "0x17", "sites": 1}],
+      "centers": "every exact game-selected batch point",
+      "observedGroups": ["EG_CoreRiftWaveEnemies"]
+    }
+  ],
+  "excludedDirectSources": [
+    "Caretaker direct reinforcements",
+    "Spore Tower child sources",
+    "Tunnel ambushes",
+    "Escort flying rocks",
+    "boss and brood summons",
+    "death parasites",
+    "procedurally pre-placed encounters"
+  ]
+}

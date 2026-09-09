@@ -1,10 +1,10 @@
-<!-- Bilingual player reference for every wave type available in Enemy Wave Indicator 0.9.2. -->
+<!-- Bilingual player reference for every wave type available in Enemy Wave Indicator 0.9.4. -->
 
 # Wave Types / 虫潮类型
 
-Enemy Wave Indicator 0.9.2 provides separate switches and labels for one natural-wave source and 38 stock scripted wave types: 35 wave controllers plus three direct machine-event sources. Every type is enabled by default except IDs **1, 6, 32, and 34**. After changing a setting in Mod Hub, select **Apply and save**. The settings UI follows the game language in English or Simplified Chinese, while editable marker defaults remain English.
+Enemy Wave Indicator 0.9.4 provides separate switches and labels for one natural-wave source and 46 stock scripted wave types: 35 wave controllers, three direct machine-event sources, and eight mission-warning or anomaly sources. Every type is enabled by default except IDs **1, 6, 32, 34, and 46**. After changing a setting in Mod Hub, select **Apply and save**. The settings UI follows the game language in English or Simplified Chinese, while editable marker defaults remain English.
 
-Enemy Wave Indicator 0.9.2 为自然潮和 38 种游戏自带的脚本虫潮类型提供独立开关与提示文字，其中包括 35 种虫潮控制器和 3 种直接刷怪的机械事件。除 ID **1、6、32、34** 外，其余类型默认全部开启；在 Mod Hub 中修改设置后，请点击**应用并保存**。设置界面会随游戏语言显示英文或简体中文，但可编辑的标记默认内容始终保留英文。
+Enemy Wave Indicator 0.9.4 为自然潮和 46 种游戏自带的脚本虫潮类型提供独立开关与提示文字，其中包括 35 种虫潮控制器、3 种直接刷怪的机械事件，以及 8 种任务警告或异变来源。除 ID **1、6、32、34、46** 外，其余类型默认全部开启；在 Mod Hub 中修改设置后，请点击**应用并保存**。设置界面会随游戏语言显示英文或简体中文，但可编辑的标记默认内容始终保留英文。
 
 ## Main settings / 主要设置
 
@@ -41,11 +41,19 @@ Enemy Wave Indicator 0.9.2 为自然潮和 38 种游戏自带的脚本虫潮类�
 | 30 | Motherlode wave<br>定点提取压力潮 | `EWC_Spiders_Motherlode` | Recurring pressure waves during Point Extraction.<br>定点提取任务中随时间反复出现、频率逐渐加快的压力潮。 |
 | 32 | Core Stone event<br>核心岩事件 | `EWC_CoreRift` | Corespawn waves emerging from rifts during a Core Stone event.<br>核心岩事件启动后，从裂隙中出现的吗喽虫潮。 |
 | 33 | Rival communications event<br>强敌科技通讯事件 | `EWC_BombEvent` | Enemy waves during the Rival Communications Router event.<br>关闭强敌科技通讯天线事件期间出现的虫潮。 |
-| 34 | Core Corruption warning<br>核心侵扰警告 | `EWC_CoreCorruption` | Corespawn pressure produced by the Core Corruption mission warning.<br>带有核心侵扰警告的任务中，由强化核心岩持续产生的吗喽虫潮。 |
+| 34 | Core Corruption warning<br>核心侵扰警告 | `EWC_CoreCorruption`, `BP_CoreCorruption_Crystal` | Corespawn pressure produced by the warning controller and its crystal-owned direct reinforcements.<br>带有核心侵扰警告的任务中，由控制器及核心水晶直接增援产生的吗喽虫潮。 |
 | 35 | Hacking defense<br>骇入防守 | `EWC_HackBuilding` | Waves attacking Hack-C during hacking objectives such as a Data Deposit.<br>强敌科技数据存储站等骇入目标中，保护骇入仓时出现的防守虫潮。 |
 | 36 | Tritilyte Deposit<br>三提石矿藏 | `BP_ExplosiveBarrelsEvent` | Enemy waves spawned directly by the Tritilyte Deposit machine event.<br>三提石矿藏机械事件直接生成的敌潮。 |
-| 37 | Ebonite Mutation<br>矿化爆发 | `BP_RockEnemiesEvent` | Ebonite enemy waves spawned directly by the Ebonite Mutation machine event.<br>矿化爆发机械事件直接生成的矿化异虫潮。 |
+| 37 | Ebonite Mutation<br>矿化爆发（机械事件） | `BP_RockEnemiesEvent` | Ebonite enemy waves spawned directly by the Ebonite Mutation machine event.<br>矿化爆发机械事件直接生成的矿化异虫潮。 |
 | 38 | Kursite Infection<br>氪石感染 | `BP_AmberEvent` | Infected enemy waves spawned directly by the Kursite Infection machine event.<br>氪石感染机械事件直接生成的感染异虫潮。 |
+| 39 | Swarmageddon<br>蜂拥浩劫 | `BP_Swarmageddon` | Repeating swarmer groups created by the Swarmageddon warning.<br>蜂拥浩劫警告反复生成的小型蜂拥异虫群。 |
+| 40 | Exploder Infestation<br>自爆群袭 | `BP_ExploderInfestation` | Exploder groups created directly by the mission warning.<br>自爆群袭警告直接生成的自爆异虫群。 |
+| 41 | Scrab Nesting Grounds<br>掠痕集居 | `BP_ScrabNestingGrounds` | Scrab groups created directly by the mission warning.<br>掠痕集居警告直接生成的掠痕群。 |
+| 42 | Blood Sugar<br>凝血化糖 | `BP_BloodSugar` | Small swarmer or grunt groups from either of the anomaly's two spawn paths; spread requests retain each selected center.<br>凝血化糖异变通过两条路径生成的小股蜂拥或战士；散布请求保留每个实际中心。 |
+| 43 | Rival Presence<br>强敌环伺 | `BP_RivalIncursionWarning` | Periodic Rival robot groups, including Patrol Bots and Shredders.<br>强敌环伺警告定期生成的巡逻机器人、粉碎者等组合。 |
+| 44 | Ebonite Outbreak<br>矿化爆发（任务警告） | `BP_RockInfestation` | Mission-warning ebonite groups; every game-selected spread center is retained separately.<br>任务警告生成的矿化敌群；游戏选出的多个散布中心会分别保留。 |
+| 45 | Lithophage Outbreak<br>噬岩体爆发 | `BP_PlagueWarning` | Periodic Rockpox-infected Glyphid groups created by the warning.<br>噬岩体爆发警告定期生成的岩痘异虫群。 |
+| 46 | Haunted Cave<br>诡异洞穴 | `BP_GhostMutator` | The Unknown Horror's exact spawn position. This setting is off by default.<br>未知恐惧的精确生成点；此项默认关闭。 |
 
 ## Less useful settings / 较少使用的设置
 
@@ -57,6 +65,6 @@ These controllers are supported, but they are limited to tutorial or seasonal co
 | 13 | Oktoberfest beer ambush<br>啤酒节伏击 | `EWC_OktoberFest_BeerAmbush` | A beer-related ambush used by the seasonal Oktoberfest event.<br>啤酒节季节活动中与啤酒目标相关的伏击潮。 |
 | 31 | Tutorial grunts<br>教程战士潮 | `EWC_TutorialGrunts` | Controlled Glyphid Grunt waves used by the introductory tutorial.<br>新手教程中用于战斗教学的异虫战士潮。 |
 
-[wave-controller-audit.json](wave-controller-audit.json) and [event-wave-audit.json](event-wave-audit.json) contain the machine-readable stock-source audits behind this list / 这两个文件包含本清单对应的游戏控制器与事件来源审计数据。
+[wave-controller-audit.json](wave-controller-audit.json), [event-wave-audit.json](event-wave-audit.json), and [mission-modifier-wave-audit.json](mission-modifier-wave-audit.json) contain the machine-readable stock-source audits behind this list / 这三个文件包含本清单对应的游戏控制器、机械事件和任务词条来源审计数据。
 
-The Core Stone setting also covers the direct reinforcement call owned by `BP_RiftCrystal`, in addition to `EWC_CoreRift`. The stock OMEN Modular Exterminator Blueprint has no creature-wave spawn call: it creates stationary tower modules, so there is no separate OMEN wave setting to expose.<br>“核心岩事件”设置除 `EWC_CoreRift` 外，也会覆盖 `BP_RiftCrystal` 直接发起的增援刷怪。游戏自带的模块化除虫器蓝图不会触发生物虫潮，只会生成固定炮塔模块，因此没有可单独配置的“除虫器虫潮”。
+The Core Stone setting also covers `BP_RiftCrystal`; Core Corruption also covers `BP_CoreCorruption_Crystal`. The stock OMEN Modular Exterminator Blueprint has no creature-wave spawn call: it creates stationary tower modules, so there is no separate OMEN wave setting to expose.<br>“核心岩事件”还覆盖 `BP_RiftCrystal`，“核心侵扰警告”还覆盖 `BP_CoreCorruption_Crystal`。游戏自带的模块化除虫器蓝图不会触发生物虫潮，只会生成固定炮塔模块，因此没有可单独配置的“除虫器虫潮”。

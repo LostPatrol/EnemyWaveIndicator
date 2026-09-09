@@ -56,7 +56,7 @@ if ($LASTEXITCODE -ne 0) { throw "Pak listing failed. See $evidence" }
     Pak = Get-FileHash -LiteralPath $pak; Files = @($files | Get-FileHash); AssetsOnly = $true;
     ContainsGameAssetCopies = $false; InlineMaterialShaders = $true;
     PackagingConfig = Get-FileHash -LiteralPath (Join-Path $projectRoot 'engine\FSD\Config\DefaultGame.ini');
-    SeparateNativeBootstrapRequired = $false; ContentOnly = $false; RuntimeDllRequired = $true; Version = '0.9.3';
+    SeparateNativeBootstrapRequired = $false; ContentOnly = $false; RuntimeDllRequired = $true; Version = '0.9.4';
     DependencyAudit = Get-FileHash -LiteralPath $dependencyLog; PakHashesVerified = $true; GameDeployed = $false } |
     ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $evidence 'verification.json') -Encoding utf8
 Write-Output $evidence
