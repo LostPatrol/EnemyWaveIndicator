@@ -54,11 +54,11 @@ The DLL and Pak must come from the same release. When updating manually, replace
 
 ## Gallery
 
-| Egg Hunt ambush | Mod Hub settings |
+| Egg Hunt ambush | Salvage defense |
 |---|---|
-| ![Egg Hunt ambush marker](docs/media/egg_ambush.png) | ![Enemy Wave Indicator Mod Hub settings](docs/media/modhub-new-1.png) |
-
-![Excavation marker](docs/media/excavation_1.png)
+| ![Egg Hunt ambush marker](docs/media/egg_ambush.png) | ![Salvage defense marker](docs/media/salvage_defense_1.png) |
+| Excavation | Mod Hub settings |
+| ![Excavation marker](docs/media/excavation_1.png) | ![Enemy Wave Indicator Mod Hub settings](docs/media/modhub-new-1.png) |
 
 ## Troubleshooting
 
