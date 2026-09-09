@@ -3,10 +3,13 @@
 param([Parameter(Mandatory)][string]$BuildDirectory, [Parameter(Mandatory)][string]$PresentationCook)
 $ErrorActionPreference='Stop'
 $root=Split-Path $PSScriptRoot -Parent
+# Public release identity; legacy names below are runtime compatibility identifiers only.
+$version='0.9.1'
+$archiveName="EnemyWaveIndicator-$version.zip"
 $native=Get-Content -LiteralPath (Join-Path $BuildDirectory 'verification.json') -Raw | ConvertFrom-Json
 $cook=Get-Content -LiteralPath (Join-Path $PresentationCook 'verification.json') -Raw | ConvertFrom-Json
-if ($native.ProbeVersion -ne '0.9.1' -or !$native.OfflinePassed -or !$native.CaptureOfflinePassed -or !$native.DispatchOfflinePassed -or !$native.PresentationOfflinePassed) { throw 'Missing native validation.' }
-if (!$cook.Success -or $cook.ContentOnly -or !$cook.RuntimeDllRequired -or $cook.Version -ne '0.9.1' -or !$cook.AssetsOnly -or $cook.ContainsGameAssetCopies -or !$cook.InlineMaterialShaders -or !$cook.PakHashesVerified -or $cook.Files.Count -ne 18) { throw 'Missing native-Pak cook validation.' }
+if ($native.ProbeVersion -ne $version -or !$native.OfflinePassed -or !$native.CaptureOfflinePassed -or !$native.DispatchOfflinePassed -or !$native.PresentationOfflinePassed) { throw 'Missing native validation.' }
+if (!$cook.Success -or $cook.ContentOnly -or !$cook.RuntimeDllRequired -or $cook.Version -ne $version -or !$cook.AssetsOnly -or $cook.ContainsGameAssetCopies -or !$cook.InlineMaterialShaders -or !$cook.PakHashesVerified -or $cook.Files.Count -ne 18) { throw 'Missing native-Pak cook validation.' }
 $assets=Get-Content -LiteralPath (Join-Path $cook.Verification 'verification.json') -Raw | ConvertFrom-Json
 if (!$assets.Success -or !$assets.Validation.success -or !$assets.Validation.native_contract_test -or !$assets.Validation.replication_metadata_test -or $assets.Validation.content_only -or !$assets.Validation.automatic_pool_test -or !$assets.Validation.settings_test -or !$assets.Validation.async_resource_tests -or !$assets.Validation.red_material_test -or $assets.Validation.edge_cases -ne 1452) { throw 'Missing native Blueprint validation.' }
 if (!$native.SourceFiles -or !$assets.SourceFiles -or !$assets.Assets -or !$cook.DependencyAudit.Hash -or !$cook.PackagingConfig.Hash) { throw 'Missing input hashes.' }
@@ -20,7 +23,7 @@ $actual=@($cook.Files | ForEach-Object { Split-Path $_.Path -Leaf })
 if (@(Compare-Object ($expected | Sort-Object) ($actual | Sort-Object)).Count) { throw 'Unexpected package entries.' }
 $audit=Get-Content -LiteralPath $cook.DependencyAudit.Path -Raw | ConvertFrom-Json
 if (!$audit.passed -or $audit.contentOnly -or $audit.nativeAbi -ne 589824 -or $audit.assets -ne 9) { throw 'Invalid dependency audit.' }
-$output=Join-Path $root ('agent\codex\mintcat-0.9.1-'+(Get-Date -Format 'yyyyMMdd-HHmmss-fff'))
+$output=Join-Path $root ("agent\codex\EnemyWaveIndicator-$version-"+(Get-Date -Format 'yyyyMMdd-HHmmss-fff'))
 New-Item -ItemType Directory -Path $output | Out-Null
 $pak=Join-Path $output 'NormalWaveIndicator_P.pak'
 Copy-Item -LiteralPath $dll -Destination $output
@@ -32,7 +35,7 @@ $sourceNames=@([regex]::Matches($catalog,'\{L"([^"]+)", L"') | ForEach-Object { 
 if ($sourceNames.Count -ne 36) { throw 'Unexpected wave catalog.' }
 $licensePath=Join-Path $output 'LICENSES.txt'; Set-Content -LiteralPath $licensePath -Value $licenses -Encoding utf8
 @{
-    Version='0.9.1'; DistributionTarget='MintCat'; Status='36 stock wave types test candidate; real-game and network validation pending'
+    Version=$version; ArchiveName=$archiveName; DistributionTarget='MintCat'; Status='36 stock wave types test candidate; real-game and network validation pending'
     RuntimeDllRequired=$true; ModioSubscriptionOnly=$false; MintCatInstallTested=$false; NetworkTested=$false; ReleaseReady=$false
     Capture='strict natural scheduler chain; exact initiating scripted-controller class; per-request queue provenance; successful registered regular enemies'
     Position='source center when available; queued spawn origin otherwise'; Weight='successful count times descriptor base DifficultyRating'
@@ -46,5 +49,10 @@ $licensePath=Join-Path $output 'LICENSES.txt'; Set-Content -LiteralPath $license
     Files=@{'main.dll'=$native.SHA256;'NormalWaveIndicator_P.pak'=(Get-FileHash $pak).Hash;'LICENSES.txt'=(Get-FileHash $licensePath).Hash}
     Verification=$cook.Verification; Cook=$PresentationCook; NativeBuild=$BuildDirectory
 } | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $output 'manifest.json') -Encoding utf8
-Compress-Archive -LiteralPath (Join-Path $output 'main.dll'),$pak,$licensePath -DestinationPath ($output+'.zip')
+$stagedArchive=$output+'.zip'
+Compress-Archive -LiteralPath (Join-Path $output 'main.dll'),$pak,$licensePath -DestinationPath $stagedArchive
+# The outer archive is public-facing. Only internal runtime identifiers retain the legacy name.
+$dist=Join-Path $root 'dist'
+New-Item -ItemType Directory -Path $dist -Force | Out-Null
+Copy-Item -LiteralPath $stagedArchive -Destination (Join-Path $dist $archiveName) -Force
 Write-Output $output

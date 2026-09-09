@@ -45,6 +45,7 @@ foreach($p in @($source,$asset,$files[0].Path,$config,$pak,$audit,$dll)) {
 $release=& $script -BuildDirectory $nativeDir -PresentationCook $cookDir
 $m=Get-Content (Join-Path $release 'manifest.json') -Raw | ConvertFrom-Json
 if($m.ModioSubscriptionOnly -or !$m.RuntimeDllRequired -or $m.MintCatInstallTested -or $m.NetworkTested -or $m.ReleaseReady){throw 'Untruthful acceptance metadata.'}
+if($m.ArchiveName -ne 'EnemyWaveIndicator-0.9.1.zip'){throw 'Unexpected public archive name.'}
 if(!$m.Localization.Automatic -or @($m.Localization.Languages).Count -ne 2 -or 'en' -notin $m.Localization.Languages -or 'zh-CN' -notin $m.Localization.Languages -or $m.Localization.MarkerDefaults -notmatch 'English'){throw 'Missing bilingual localization metadata.'}
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $zip=[IO.Compression.ZipFile]::OpenRead($release+'.zip')
@@ -56,4 +57,8 @@ try {
         if($hash -ne $m.Files.($entry.FullName)){throw 'ZIP payload differs from manifest.'}
     }
 } finally {$zip.Dispose()}
+$publicArchive=Join-Path $testRoot 'dist\EnemyWaveIndicator-0.9.1.zip'
+if(!(Test-Path -LiteralPath $publicArchive)){throw 'Missing public EnemyWaveIndicator archive.'}
+if((Get-FileHash -LiteralPath $publicArchive).Hash -ne (Get-FileHash -LiteralPath ($release+'.zip')).Hash){throw 'Public archive differs from staged archive.'}
+if(Test-Path -LiteralPath (Join-Path $testRoot 'dist\NormalWaveIndicator-0.9.1.zip')){throw 'Legacy public archive name was generated.'}
 Write-Output "PASS: $rejections refusal cases and all three ZIP hashes. Evidence: $testRoot"
