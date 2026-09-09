@@ -54,6 +54,12 @@ static_assert(sizeof(SettingLabelsEn) / sizeof(SettingLabelsEn[0]) == 16, "Engli
 static_assert(sizeof(SettingLabelsZhCn) / sizeof(SettingLabelsZhCn[0]) == 16, "Chinese settings caption count changed");
 static_assert(sizeof(WaveTitlesZhCn) / sizeof(WaveTitlesZhCn[0]) == nwi::WaveTypeCount, "Chinese wave title count changed");
 constexpr int32 SettingCount = 16 + 2 * (nwi::WaveTypeCount - 1);
+// Explicit typography avoids UMG's large default font reversing the visual hierarchy in game.
+constexpr int32 PageTitleFontSize = 21;
+constexpr int32 SectionTitleFontSize = 19;
+constexpr int32 BodyFontSize = 13;
+constexpr int32 PreviewFontSize = 18;
+constexpr int32 ButtonFontSize = 16;
 FString SettingName(int32 I) { return I < 16 ? FString(SettingNames[I]) : (I % 2 == 0 ? FString::Printf(TEXT("EnabledType%d"), (I-16)/2+1) : FString::Printf(TEXT("LabelType%d"), (I-16)/2+1)); }
 // 0.9.1 reports every catalogued source except the two drilling phases and both Core events.
 bool DefaultWaveEnabled(int32 Type) { return Type != 1 && Type != 6 && Type != 32 && Type != 34; }
@@ -111,9 +117,12 @@ void BuildSettings()
     GetDefault<UEdGraphSchema_K2>()->TrySetDefaultText(*Pin(Info, TEXT("PageName")), FText::FromString(TEXT("Indicator settings")));
     auto* Mode = HubResult(BP, TEXT("GetContainerMode")); Value(Mode, TEXT("bStretchToContainer"), TEXT("true"));
     auto* Root = BP->WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("SettingsPanel")); auto* Scroll=BP->WidgetTree->ConstructWidget<UScrollBox>(UScrollBox::StaticClass(),TEXT("SettingsScroll"));Scroll->AddChild(Root);auto* Frame=BP->WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(),TEXT("SettingsFrame"));BP->WidgetTree->RootWidget=Frame;
-    auto AddText = [&](const TCHAR* Name, const TCHAR* Label, UVerticalBox* Parent = nullptr, int32 Size = 14) {
+    auto SetFontSize = [](UTextBlock* Text, int32 Size) {
+        auto Font = Text->Font; Font.Size = Size; Text->SetFont(Font);
+    };
+    auto AddText = [&](const TCHAR* Name, const TCHAR* Label, UVerticalBox* Parent = nullptr, int32 Size = BodyFontSize) {
         auto* T = BP->WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), Name); T->SetText(FText::FromString(Label));
-        auto Font = T->Font; Font.Size = Size; T->SetFont(Font); T->bIsVariable = true; (Parent ? Parent : Root)->AddChildToVerticalBox(T); return T;
+        SetFontSize(T, Size); T->bIsVariable = true; (Parent ? Parent : Root)->AddChildToVerticalBox(T); return T;
     };
     auto AddInput = [&](int32 I) {
         const FName Name(*FString::Printf(TEXT("Input%s"), *SettingName(I))); UWidget* Input = nullptr;
@@ -131,8 +140,8 @@ void BuildSettings()
         auto* Slot = Grid->AddChildToGrid(Widget, Row, Column); Slot->SetPadding(FMargin(4.f, 2.f));
         Slot->SetVerticalAlignment(VAlign_Center); Slot->SetHorizontalAlignment(Fill ? HAlign_Fill : HAlign_Left);
     };
-    AddText(TEXT("Title"), TEXT("Enemy Wave Indicator  |  0.9.1"), nullptr, 18);
-    AddText(TEXT("WaveSection"), TEXT("Wave broadcasts"), nullptr, 17);
+    AddText(TEXT("Title"), TEXT("Enemy Wave Indicator  |  0.9.1"), nullptr, PageTitleFontSize);
+    AddText(TEXT("WaveSection"), TEXT("Wave broadcasts"), nullptr, SectionTitleFontSize);
     auto* WaveGrid = BP->WidgetTree->ConstructWidget<UGridPanel>(UGridPanel::StaticClass(), TEXT("WaveGrid")); WaveGrid->bIsVariable = true; Root->AddChildToVerticalBox(WaveGrid);
     WaveGrid->SetColumnFill(2, 1.f); WaveGrid->SetColumnFill(5, 1.f);
     // Two columns keep all 36 independent switches and marker texts visible without wasting a full row per control.
@@ -140,28 +149,28 @@ void BuildSettings()
         const int32 Enable = Wave == 0 ? 15 : 16 + 2 * (Wave - 1); const int32 Label = Wave == 0 ? 0 : Enable + 1;
         const int32 Row = Wave % 18; const int32 Column = (Wave / 18) * 3;
         GridAdd(WaveGrid, AddInput(Enable), Row, Column);
-        auto* Name = BP->WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), *FString::Printf(TEXT("WaveName%d"), Wave)); Name->bIsVariable = true; Name->SetText(FText::FromString(nwi::WaveTypes[Wave].title)); GridAdd(WaveGrid, Name, Row, Column + 1);
+        auto* Name = BP->WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), *FString::Printf(TEXT("WaveName%d"), Wave)); Name->bIsVariable = true; Name->SetText(FText::FromString(nwi::WaveTypes[Wave].title)); SetFontSize(Name, BodyFontSize); GridAdd(WaveGrid, Name, Row, Column + 1);
         GridAdd(WaveGrid, AddInput(Label), Row, Column + 2, true);
     }
     auto AddControl = [&](UGridPanel* Grid, int32 I, int32 Row, int32 Pair) {
-        auto* Caption = BP->WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), *FString::Printf(TEXT("Caption%d"), I)); Caption->bIsVariable = true; Caption->SetText(FText::FromString(SettingCaption(I, false)));
+        auto* Caption = BP->WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), *FString::Printf(TEXT("Caption%d"), I)); Caption->bIsVariable = true; Caption->SetText(FText::FromString(SettingCaption(I, false))); SetFontSize(Caption, BodyFontSize);
         GridAdd(Grid, Caption, Row, Pair * 2); GridAdd(Grid, AddInput(I), Row, Pair * 2 + 1, true); Grid->SetColumnFill(Pair * 2 + 1, 1.f);
     };
-    AddText(TEXT("TextSection"), TEXT("Warning text"), nullptr, 17);
+    AddText(TEXT("TextSection"), TEXT("Warning text"), nullptr, SectionTitleFontSize);
     auto* TextGrid = BP->WidgetTree->ConstructWidget<UGridPanel>(UGridPanel::StaticClass(), TEXT("TextGrid")); TextGrid->bIsVariable = true; Root->AddChildToVerticalBox(TextGrid);
     AddControl(TextGrid,6,0,0); AddControl(TextGrid,8,0,1);
     AddControl(TextGrid,9,1,0); AddControl(TextGrid,10,1,1); AddControl(TextGrid,11,1,2);
     AddControl(TextGrid,12,2,0); AddControl(TextGrid,13,2,1); AddControl(TextGrid,14,2,2);
     AddText(TEXT("PreviewCaption"),TEXT("Live text preview (edits are saved with Apply)"));
-    auto* Preview=BP->WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(),TEXT("TextPreview"));Preview->SetText(FText::FromString(TEXT("[!] NATURAL WAVE")));Preview->bIsVariable=true;Root->AddChildToVerticalBox(Preview);
-    AddText(TEXT("SphereSection"), TEXT("Warning sphere"), nullptr, 17);
+    auto* Preview=BP->WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(),TEXT("TextPreview"));Preview->SetText(FText::FromString(TEXT("[!] NATURAL WAVE")));Preview->bIsVariable=true;SetFontSize(Preview,PreviewFontSize);Root->AddChildToVerticalBox(Preview);
+    AddText(TEXT("SphereSection"), TEXT("Warning sphere"), nullptr, SectionTitleFontSize);
     auto* SphereGrid = BP->WidgetTree->ConstructWidget<UGridPanel>(UGridPanel::StaticClass(), TEXT("SphereGrid")); SphereGrid->bIsVariable = true; Root->AddChildToVerticalBox(SphereGrid);
     AddControl(SphereGrid,1,0,0); AddControl(SphereGrid,2,0,1);
     AddControl(SphereGrid,3,1,0); AddControl(SphereGrid,4,1,1); AddControl(SphereGrid,5,1,2); AddControl(SphereGrid,7,1,3);
     auto* Swatch=BP->WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(),TEXT("SpherePreview"));Swatch->bIsVariable=true;Swatch->Brush.ImageSize=FVector2D(160,36);Root->AddChildToVerticalBox(Swatch);
     auto* ScrollSlot=Frame->AddChildToVerticalBox(Scroll);ScrollSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
     auto* Button = BP->WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("ApplyButton")); Button->bIsVariable = true;
-    auto* ButtonText = BP->WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("ApplyText")); ButtonText->SetText(FText::FromString(TEXT("Apply and save"))); ButtonText->bIsVariable = true; Button->AddChild(ButtonText); Frame->AddChildToVerticalBox(Button);
+    auto* ButtonText = BP->WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("ApplyText")); ButtonText->SetText(FText::FromString(TEXT("Apply and save"))); ButtonText->bIsVariable = true; SetFontSize(ButtonText, ButtonFontSize); Button->AddChild(ButtonText); Frame->AddChildToVerticalBox(Button);
     auto* Status = AddText(TEXT("SaveStatus"), TEXT("Distance is straight-line meters. Duration changes apply to new spawn events.")); Status->bIsVariable = true;
     Compile(BP); auto* G = Graph(BP);
     auto* Config = Get(G, TEXT("Settings"));

@@ -411,6 +411,17 @@ bool ValidateAutomatic(UClass* PulseClass, UClass* WidgetClass)
     auto* TextGrid = Cast<UGridPanel>(Page->WidgetTree->FindWidget(TEXT("TextGrid")));
     auto* SphereGrid = Cast<UGridPanel>(Page->WidgetTree->FindWidget(TEXT("SphereGrid")));
     NWI_REQUIRE(SettingsPanel && WaveGrid && TextGrid && SphereGrid);
+    auto* PageTitle = Cast<UTextBlock>(Page->WidgetTree->FindWidget(TEXT("Title")));
+    auto* SectionTitle = Cast<UTextBlock>(Page->WidgetTree->FindWidget(TEXT("WaveSection")));
+    auto* WaveBody = Cast<UTextBlock>(Page->WidgetTree->FindWidget(TEXT("WaveName2")));
+    auto* ControlBody = Cast<UTextBlock>(Page->WidgetTree->FindWidget(TEXT("Caption9")));
+    auto* PreviewText = Cast<UTextBlock>(Page->WidgetTree->FindWidget(TEXT("TextPreview")));
+    auto* ApplyText = Cast<UTextBlock>(Page->WidgetTree->FindWidget(TEXT("ApplyText")));
+    NWI_REQUIRE(PageTitle && SectionTitle && WaveBody && ControlBody && PreviewText && ApplyText);
+    NWI_REQUIRE(PageTitle->Font.Size == 21 && SectionTitle->Font.Size == 19);
+    NWI_REQUIRE(WaveBody->Font.Size == 13 && ControlBody->Font.Size == 13);
+    NWI_REQUIRE(PreviewText->Font.Size == 18 && ApplyText->Font.Size == 16);
+    NWI_REQUIRE(PageTitle->Font.Size > SectionTitle->Font.Size && SectionTitle->Font.Size > WaveBody->Font.Size);
     NWI_REQUIRE(SettingsPanel->GetChildAt(2) == WaveGrid && SettingsPanel->GetChildAt(4) == TextGrid && SettingsPanel->GetChildAt(8) == SphereGrid);
     NWI_REQUIRE(WaveGrid->GetChildrenCount() == nwi::WaveTypeCount * 3 && TextGrid->GetChildrenCount() == 16 && SphereGrid->GetChildrenCount() == 12);
     NWI_REQUIRE(TextOutput(Page, TEXT("GetPageInfo"), TEXT("PageName")) == TEXT("Indicator settings"));
@@ -508,7 +519,7 @@ bool ValidateAutomatic(UClass* PulseClass, UClass* WidgetClass)
         if(I%2) NWI_REQUIRE(FindFProperty<FTextProperty>(WidgetClass,TEXT("BaseLabel"))->GetPropertyValue_InContainer(Huds[0]).ToString()==FString::Printf(TEXT("TYPE %u"),I));
         NWI_REQUIRE(FindFProperty<FIntProperty>(Class,*FString::Printf(TEXT("NativeEnabled%u"),I))->GetPropertyValue_InContainer(Controller)==int32(I%2));
     }
-    UE_LOG(LogTemp,Display,TEXT("NWI_TEST Mod Hub interface discovery and stable metadata, compact ordered English/zh-CN page contents, documented Chinese wave names and unchanged English marker defaults passed"));
+    UE_LOG(LogTemp,Display,TEXT("NWI_TEST Mod Hub interface discovery, stable metadata, explicit 21/19/13 heading-body typography, compact English/zh-CN page contents and unchanged English marker defaults passed"));
     UE_LOG(LogTemp,Display,TEXT("NWI_TEST 36 wave types: all default on except IDs 1/6/32/34, yellow-red text defaults, independent persistence and replicated source selection passed"));
     // Real Slate attachment matters: visibility alone cannot recover a viewport cleared after Init.
     auto* Viewport = NewObject<UGameViewportClient>(GEngine);
