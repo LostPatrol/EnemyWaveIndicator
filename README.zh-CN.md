@@ -34,7 +34,7 @@ Enemy Wave Indicator 会用发光球体、可自定义文字和距离信息，�
 2. 在 mod.io 订阅 [Mod Hub](https://mod.io/g/drg/m/mod-hub)。
 3. 在 MintCat 中把下载的 Enemy Wave Indicator Release ZIP 作为本地 Mod 导入。
 4. 启用 Enemy Wave Indicator 和 Mod Hub，点击 **Apply Changes / Save Changes**，等待安装完成。
-5. 启动游戏，在空间站等待约 40 秒，打开 Mod Hub，选择需要显示的虫潮类型，然后点击**应用并保存**。
+5. 启动游戏并进入空间站。本 Mod 会在正式游戏 World 与 Mod Hub 控制器就绪后立即初始化；随后打开 Mod Hub，选择需要显示的虫潮类型，再点击**应用并保存**。
 
 MintCat 会安装 DLL，并把它管理的 Pak 内容合并到游戏中。使用 MintCat 后，不要再手动复制同一份 Pak 或 DLL。
 
@@ -48,7 +48,7 @@ MintCat 会安装 DLL，并把它管理的 Pak 内容合并到游戏中。使用
 6. 打开 Enemy Wave Indicator 的 Release ZIP，复制：
    - `main.dll` 到 `FSD\Binaries\Win64\ue4ss\mods\NormalWaveIndicator\main.dll`
    - `NormalWaveIndicator_P.pak` 到 `FSD\Content\Paks\NormalWaveIndicator_P.pak`
-7. 启动游戏，在空间站等待约 40 秒，然后通过 Mod Hub 配置本 Mod。
+7. 启动游戏并进入空间站，待空间站完成加载后即可通过 Mod Hub 配置本 Mod。
 
 DLL 和 Pak 必须来自同一个版本。手动更新时需要同时替换这两个文件。如果其他加载器已经安装了自己的 `dwmapi.dll`，请先确认兼容性再决定是否覆盖。
 
@@ -62,7 +62,7 @@ DLL 和 Pak 必须来自同一个版本。手动更新时需要同时替换这�
 
 ## 常见问题
 
-- **Mod Hub 中没有出现本 Mod：**确认 Mod Hub 已启用，并在空间站等待约 40 秒。当前 0.9.1 包会在控制器启动后自动要求 Mod Hub 重新扫描；若使用的是本次热修复前构建的压缩包，请在 MintCat 中重新导入。
+- **Mod Hub 中没有出现本 Mod：**确认 Mod Hub 已启用，并确认空间站已经完成加载。当前 0.9.1 包没有固定启动延时：首次条件检查通过时便会立即初始化，然后要求 Mod Hub 重新扫描。若使用的是本次热修复前构建的压缩包，请在 MintCat 中重新导入。
 - **四种默认关闭的事件没有显示：**请在 Mod Hub 中开启对应类型，再点击**应用并保存**。
 - **完全没有标记：**确认 `main.dll` 和 `NormalWaveIndicator_P.pak` 来自同一版本。房主需要安装 DLL，客机需要匹配的 Pak 内容才能显示自定义标记。
 - **MintCat 提示重复或松散 Pak：**先确认 MintCat 已管理本 Mod，再删除手动安装的 `NormalWaveIndicator_P.pak`，然后重新应用更改。

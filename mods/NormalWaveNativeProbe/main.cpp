@@ -29,11 +29,13 @@ ObjectName objectName = nullptr;
 using FindFirst = void* (*)(const wchar_t*);
 using SafeProcessEvent = bool (*)(void*, void*, void*);
 using GetParmsSize = uint16_t* (*)(void*);
+using HasActorOfClass = bool (*)(void*, void*);
 decltype(nwi::PresentationApi::find) staticFind = nullptr;
 decltype(nwi::PresentationApi::valid) validObject = nullptr;
 FindFirst findFirst = nullptr;
 SafeProcessEvent safeProcessEvent = nullptr;
 GetParmsSize getParmsSize = nullptr;
+HasActorOfClass hasActorOfClass = nullptr;
 bool apiChecked = false;
 
 // Use named exports only, with the audited image's RVA as an additional compatibility guard.
@@ -91,6 +93,19 @@ bool guardedRefreshModHub(void* world) {
 bool refreshModHub(void* world) noexcept {
     try { return guardedRefreshModHub(world); } catch (...) { return false; }
 }
+bool modHubReadyUnchecked(void* world) {
+    constexpr wchar_t path[] = L"/Game/ModHub/Mod_ModHub.Mod_ModHub_C";
+    const nwi::WideView name{path, std::size(path) - 1};
+    void* cls = staticFind(&name);
+    return validObject(cls) && hasActorOfClass(world, cls);
+}
+bool guardedModHubReady(void* world) {
+    __try { return modHubReadyUnchecked(world); }
+    __except (GetExceptionCode() == 0xE06D7363 ? EXCEPTION_CONTINUE_SEARCH : EXCEPTION_EXECUTE_HANDLER) { return false; }
+}
+bool modHubReady(void* world) noexcept {
+    try { return guardedModHubReady(world); } catch (...) { return false; }
+}
 
 // Only DispatchProbe's per-callback engine identity gate can invoke this action.
 void showPresentation(nwi::ThreadSample& sample) noexcept {
@@ -99,11 +114,13 @@ void showPresentation(nwi::ThreadSample& sample) noexcept {
         automaticAttempted = true;
         if (!nwi::automatic::configure(GetModuleHandleW(L"UE4SSL.dll"), GetModuleHandleW(L"FSD-Win64-Shipping.exe"), sample.tid)) presentation.status = 4;
     }
-    presentation.tick(GetTickCount64());
+    presentation.tick();
     if (activeWorld.disabled) presentation.status = 4;
     sample.bootstrapStatus = presentation.status;
     sample.visualActors = presentation.spawned;
     sample.classLoads = presentation.loads;
+    sample.bootstrapReadinessChecks = presentation.readinessChecks;
+    sample.bootstrapPreparationFailures = presentation.preparationFailures;
     sample.hubRefreshAttempts = presentation.refreshAttempts;
     sample.hubRefreshes = presentation.refreshes;
     sample.hubRefreshFailures = presentation.refreshFailures;
@@ -153,12 +170,13 @@ void configureDispatch() noexcept {
     auto process = resolve<SafeProcessEvent>(runtime,
         "?SafeProcessEvent@Seh@RC@@YA_NPEAVUObject@Unreal@2@PEAVUFunction@42@PEAX@Z", 0x78efd0);
     auto parms = resolve<GetParmsSize>(runtime, "?GetParmsSize@UFunction@Unreal@RC@@QEAAAEAGXZ", 0x1f7ee0);
-    if (find && load && valid && spawn && findViewport && objectWorld && objectName && process && parms) {
+    auto hasActor = resolve<HasActorOfClass>(runtime, "ue4ssl_host_has_actor_of_class_v1", 0x769a80);
+    if (find && load && valid && spawn && findViewport && objectWorld && objectName && process && parms && hasActor) {
         staticFind = find; validObject = valid; findFirst = findViewport;
-        safeProcessEvent = process; getParmsSize = parms;
+        safeProcessEvent = process; getParmsSize = parms; hasActorOfClass = hasActor;
         activeWorld.configure({findViewport, valid, &readViewportWorld});
         presentation.configure({find, load, valid, spawn, &currentWorld, &worldKind,
-            &nwi::automatic::prepareClass, &refreshModHub}, GetTickCount64());
+            &modHubReady, &nwi::automatic::prepareClass, &refreshModHub});
     }
     dispatchProbe.configure({dispatch, &sampleThread, &sampleClock, &showPresentation});
 }
@@ -190,6 +208,7 @@ void record(const char* event) noexcept {
         "\"identity_source\":\"engine_globals\",\"engine_identity_available\":%s,\"engine_thread_id\":%u,"
         "\"runtime_initialized_samples\":%llu,\"identity_read_failures\":%llu,"
         "\"bootstrap_status\":%u,\"visual_test_actors\":%u,\"visual_class_loads\":%u,"
+        "\"bootstrap_readiness_checks\":%u,\"bootstrap_preparation_failures\":%u,"
         "\"hub_refresh_attempts\":%u,\"hub_refreshes\":%u,\"hub_refresh_failures\":%u,"
         "\"world_source\":\"game_viewport\",\"viewport_finds\":%u,\"world_reads\":%u,"
         "\"world_changes\":%u,\"world_faults\":%u,\"last_valid_world\":%llu,"
@@ -211,6 +230,7 @@ void record(const char* event) noexcept {
         probe.latencyMax, probe.completed ? static_cast<double>(probe.latencyTotal) / probe.completed : 0.0,
         engineIdentity.available() ? "true" : "false", probe.expectedTid, probe.runtimeInitialized, probe.identityReadFailures,
         probe.bootstrapStatus, probe.visualActors, probe.classLoads,
+        probe.bootstrapReadinessChecks, probe.bootstrapPreparationFailures,
         probe.hubRefreshAttempts, probe.hubRefreshes, probe.hubRefreshFailures,
         probe.viewportFinds, probe.worldReads, probe.worldChanges, probe.worldFaults, probe.activeWorld,
         probe.worldKind, probe.excludedWorlds, probe.nativeWaves, probe.tagged, probe.spawnSuccesses, probe.delivered,

@@ -12,8 +12,10 @@ bool synchronous = false, reject = false;
 nwi::ThreadSample sample{42, true, true};
 unsigned calls = 0;
 unsigned actions = 0;
+uint32_t actionStatus = 3;
 void action(nwi::ThreadSample& value) {
-    ++actions; value.bootstrapStatus = 3; value.visualActors = 1;
+    ++actions; value.bootstrapStatus = actionStatus; value.visualActors = 1;
+    value.bootstrapReadinessChecks = 4; value.bootstrapPreparationFailures = 0;
     value.hubRefreshAttempts = 2; value.hubRefreshes = 1; value.hubRefreshFailures = 1;
 }
 bool enqueue(nwi::Callback callback, void* context) {
@@ -27,7 +29,7 @@ uint64_t clockNow() { return now; }
 nwi::ThreadSample readThread() { return sample; }
 void drain() { auto cb = queuedCallback; auto ctx = queuedContext; queuedCallback = nullptr; cb(ctx); }
 void reset(nwi::DispatchProbe& p) {
-    now = 0; calls = 0; synchronous = reject = false;
+    now = 0; calls = 0; synchronous = reject = false; actionStatus = 3;
     queuedCallback = nullptr; sample = {42, true, true};
     p.configure({enqueue, readThread, clockNow}); p.start();
 }
@@ -38,11 +40,32 @@ int main() {
         // An off-thread delivery executes no gameplay action and retains the previous snapshot.
         nwi::DispatchProbe p; reset(p); actions = 0;
         p.configure({enqueue, readThread, clockNow, action}); p.pump(); drain(); p.pump();
-        REQUIRE(actions == 1 && p.stats.visualActors == 1 && p.stats.hubRefreshes == 1 && p.stats.hubRefreshFailures == 1);
+        REQUIRE(actions == 1 && p.stats.visualActors == 1 && p.stats.bootstrapReadinessChecks == 4
+            && p.stats.hubRefreshes == 1 && p.stats.hubRefreshFailures == 1);
         sample.gameThread = false; now = 1000; p.pump(); drain(); p.pump();
         REQUIRE(actions == 1 && p.stats.otherThread == 1 && p.stats.visualActors == 1 && !p.stats.disabled);
         sample.gameThread = true; now = 2000; p.pump(); drain(); p.pump();
         REQUIRE(actions == 2 && p.stats.gameThread == 2);
+    }
+    {
+        // Pending readiness receives prompt condition checks, but a ready first sample has no forced delay.
+        nwi::DispatchProbe p; reset(p); actions = 0; actionStatus = 2;
+        p.configure({enqueue, readThread, clockNow, action}); p.pump(); drain(); p.pump();
+        REQUIRE(calls == 1 && p.stats.bootstrapStatus == 2);
+        now = 249; p.pump(); REQUIRE(calls == 1);
+        now = 250; p.pump(); REQUIRE(calls == 2); drain(); actionStatus = 3; p.pump();
+        REQUIRE(p.stats.bootstrapStatus == 2); // The queued callback sampled before the state change.
+        now = 500; p.pump(); drain(); p.pump();
+        REQUIRE(p.stats.bootstrapStatus == 3);
+    }
+    {
+        // Waiting for a real World never expires at the post-readiness diagnostic request cap.
+        nwi::DispatchProbe p; reset(p); synchronous = true; actionStatus = 2;
+        p.configure({enqueue, readThread, clockNow, action});
+        for (unsigned i = 0; i < 601; ++i) { now = i * 1000ULL; p.pump(); }
+        REQUIRE(calls == 601 && p.stats.bootstrapStatus == 2);
+        actionStatus = 3; now = 601000; p.pump(); p.pump();
+        REQUIRE(calls == 602 && p.stats.bootstrapStatus == 3);
     }
     // Object actions require a current, timely, initialized game-thread sample.
     for (int mode = 0; mode < 7; ++mode) {

@@ -34,7 +34,7 @@ Download the matching 0.9.1 package from [GitHub Releases](https://github.com/Lo
 2. Subscribe to [Mod Hub](https://mod.io/g/drg/m/mod-hub) in mod.io.
 3. In MintCat, import the downloaded Enemy Wave Indicator release ZIP as a local mod.
 4. Enable Enemy Wave Indicator and Mod Hub, then select **Apply Changes / Save Changes** and wait for installation to finish.
-5. Start DRG, wait about 40 seconds in the Space Rig, open Mod Hub, adjust the wave types you want, and select **Apply and save**.
+5. Start DRG and enter the Space Rig. The mod initializes as soon as the gameplay World and Mod Hub controller are ready; open Mod Hub, adjust the wave types you want, and select **Apply and save**.
 
 MintCat installs the DLL and merges the Pak content it manages. Do not also copy the same Pak or DLL into the game folders manually.
 
@@ -48,7 +48,7 @@ MintCat installs the DLL and merges the Pak content it manages. Do not also copy
 6. Open the Enemy Wave Indicator release ZIP and copy:
    - `main.dll` to `FSD\Binaries\Win64\ue4ss\mods\NormalWaveIndicator\main.dll`
    - `NormalWaveIndicator_P.pak` to `FSD\Content\Paks\NormalWaveIndicator_P.pak`
-7. Start DRG, wait about 40 seconds in the Space Rig, then configure the mod in Mod Hub.
+7. Start DRG, enter the Space Rig, then configure the mod in Mod Hub once the Space Rig finishes loading.
 
 The DLL and Pak must come from the same release. When updating manually, replace both files. If another loader already owns `dwmapi.dll`, verify compatibility before replacing it.
 
@@ -62,7 +62,7 @@ The DLL and Pak must come from the same release. When updating manually, replace
 
 ## Troubleshooting
 
-- **The mod is missing from Mod Hub:** confirm that Mod Hub is enabled and wait about 40 seconds in the Space Rig. The current 0.9.1 package automatically asks Mod Hub to rescan after its controller starts; packages built before this hotfix must be reimported in MintCat.
+- **The mod is missing from Mod Hub:** confirm that Mod Hub is enabled and that the Space Rig has finished loading. The current 0.9.1 package has no fixed startup delay: it initializes on the first readiness check and then asks Mod Hub to rescan. Packages built before this hotfix must be reimported in MintCat.
 - **One of the four default-disabled events does not appear:** enable its matching type in Mod Hub and select **Apply and save**.
 - **Nothing appears:** verify that `main.dll` and `NormalWaveIndicator_P.pak` are from the same version. The host needs the DLL; clients need matching Pak content to render the custom markers.
 - **MintCat reports a duplicate or loose Pak:** remove the manually installed `NormalWaveIndicator_P.pak` after confirming MintCat manages the mod, then apply changes again.

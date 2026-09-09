@@ -7,7 +7,8 @@
 namespace {
 int worlds[12]{}, classToken = 0, actorToken = 0;
 void* world = nullptr;
-bool cached = false, loadFails = false, spawnFails = false, prepareFails = false, refreshFails = false, badArguments = false;
+bool cached = false, loadFails = false, spawnFails = false, prepareFails = false, refreshFails = false;
+bool worldIsReady = true, badArguments = false;
 unsigned finds = 0, loads = 0, spawns = 0, preparations = 0, refreshCalls = 0;
 const wchar_t* expectedClass() {
     return world == &worlds[10] ? L"/Game/NormalWaveIndicator/InitSpacerig.InitSpacerig_C"
@@ -31,6 +32,7 @@ nwi::WorldKind worldKind(void* value) {
     return value == &worlds[11] ? nwi::WorldKind::Excluded
         : value == &worlds[10] ? nwi::WorldKind::SpaceRig : nwi::WorldKind::Mission;
 }
+bool ready(void* value) { if (value != world) badArguments = true; return worldIsReady; }
 // Cold-start regression: binding cannot succeed until the entry class and its dependencies are loaded.
 bool prepare(void* cls) {
     ++preparations;
@@ -57,36 +59,36 @@ void* spawn(void* w, void* cls, const nwi::Position3* p) {
 bool refresh(void* w) { ++refreshCalls; if (w != world) badArguments = true; return !refreshFails; }
 void setup(nwi::PresentationBootstrap& p) {
     world = &worlds[0]; cached = loadFails = spawnFails = prepareFails = refreshFails = badArguments = false;
+    worldIsReady = true;
     finds = loads = spawns = preparations = refreshCalls = 0;
-    p.configure({find, load, valid, spawn, currentWorld, worldKind, prepare, refresh}, 0);
+    p.configure({find, load, valid, spawn, currentWorld, worldKind, ready, prepare, refresh});
 }
 #define REQUIRE(x) do { if (!(x)) { printf("FAIL line %d: %s\n", __LINE__, #x); return 1; } } while (0)
 }
 int main() {
     {
         nwi::PresentationBootstrap p; setup(p); world = &worlds[10];
-        p.tick(30000); p.tick(35000);
+        p.tick();
         REQUIRE(p.kind == nwi::WorldKind::SpaceRig && loads == 1 && preparations == 1 && spawns == 1 && refreshCalls == 1 && !badArguments);
         // A preloaded class from an integration entry still receives the native binding on mission travel.
-        world = &worlds[0]; p.tick(40000); p.tick(45000);
+        world = &worlds[0]; p.tick();
         REQUIRE(p.kind == nwi::WorldKind::Mission && loads == 1 && preparations == 2 && spawns == 2 && !badArguments);
     }
     {
         // Mod Hub may not exist on the first post-spawn callback; retry without duplicating Init.
         nwi::PresentationBootstrap p; setup(p); refreshFails = true;
-        p.tick(30000); p.tick(35000);
+        p.tick();
         REQUIRE(p.status == 7 && spawns == 1 && refreshCalls == 1);
-        p.tick(35999); REQUIRE(refreshCalls == 1);
-        refreshFails = false; p.tick(36000);
+        refreshFails = false; p.tick();
         REQUIRE(p.status == 3 && p.refreshes == 1 && p.refreshFailures == 1 && refreshCalls == 2 && spawns == 1);
     }
     {
         // A permanently absent Mod Hub has a strict retry cap and never becomes an actor-spawn loop.
         nwi::PresentationBootstrap p; setup(p); refreshFails = true;
-        p.tick(30000); p.tick(35000);
-        for (unsigned i = 1; i < nwi::PresentationBootstrap::MaxRefreshAttempts; ++i) p.tick(35000 + i * 1000);
+        p.tick();
+        for (unsigned i = 1; i < nwi::PresentationBootstrap::MaxRefreshAttempts; ++i) p.tick();
         REQUIRE(p.status == 8 && refreshCalls == nwi::PresentationBootstrap::MaxRefreshAttempts && spawns == 1);
-        for (int i = 0; i < 100; ++i) p.tick(50000 + i * 1000);
+        for (int i = 0; i < 100; ++i) p.tick();
         REQUIRE(refreshCalls == nwi::PresentationBootstrap::MaxRefreshAttempts && spawns == 1);
     }
     {
@@ -104,12 +106,12 @@ int main() {
             REQUIRE(nwi::classifyWorldName(names[i], wcslen(names[i]) - 1) == nwi::WorldKind::Excluded);
         }
         nwi::PresentationBootstrap p; setup(p); world = &worlds[11];
-        for (int i = 0; i < 100; ++i) p.tick(30000 + i * 1000);
+        for (int i = 0; i < 100; ++i) p.tick();
         REQUIRE(p.status == 6 && !spawns && !loads && p.excluded == 1 && !p.attempted);
-        world = &worlds[0]; p.tick(140000); p.tick(145000);
+        world = &worlds[0]; p.tick();
         REQUIRE(spawns == 1 && p.status == 3);
-        world = &worlds[11]; p.tick(150000);
-        world = &worlds[0]; p.tick(160000);
+        world = &worlds[11]; p.tick();
+        world = &worlds[0]; p.tick();
         REQUIRE(spawns == 1 && p.status == 3 && p.excluded == 2);
     }
     {
@@ -132,38 +134,38 @@ int main() {
         REQUIRE(viewportSearches == 8 && reader.disabled); viewportMissing = false;
     }
     {
-        nwi::PresentationBootstrap p; setup(p);
-        p.tick(29999); REQUIRE(finds == 0);
-        p.tick(30000); p.tick(34999); REQUIRE(spawns == 0);
-        p.tick(35000); REQUIRE(spawns == 1 && loads == 1 && p.status == 3);
-        for (int i = 0; i < 100; ++i) p.tick(36000 + i);
+        nwi::PresentationBootstrap p; setup(p); worldIsReady = false;
+        for (int i = 0; i < 100; ++i) p.tick();
+        REQUIRE(finds == 0 && spawns == 0 && p.status == 2);
+        worldIsReady = true; p.tick();
+        REQUIRE(spawns == 1 && loads == 1 && p.status == 3);
+        for (int i = 0; i < 100; ++i) p.tick();
         REQUIRE(spawns == 1 && !badArguments);
         // Class pointers are reacquired, not retained across a world change/GC.
-        world = &worlds[1]; cached = false; p.tick(40000); p.tick(45000);
+        world = &worlds[1]; cached = false; p.tick();
         REQUIRE(spawns == 2 && loads == 2 && p.spawned == 2);
         for (int i = 2; i < 12; ++i) {
-            world = &worlds[i]; p.tick(50000 + i * 10000); p.tick(55000 + i * 10000);
+            world = &worlds[i]; p.tick();
         }
         REQUIRE(p.status == 5 && p.attempted == 8 && spawns == 8 && !badArguments);
     }
-    for (int failure = 0; failure < 3; ++failure) {
-        nwi::PresentationBootstrap p; setup(p); loadFails = failure == 0; spawnFails = failure == 1; prepareFails = failure == 2;
-        p.tick(30000); p.tick(35000); REQUIRE(p.status == 4);
-        for (int i = 0; i < 100; ++i) p.tick(40000 + i * 5000);
-        REQUIRE(loads == 1 && spawns == static_cast<unsigned>(failure == 1) && !badArguments);
+    for (int failure = 0; failure < 2; ++failure) {
+        nwi::PresentationBootstrap p; setup(p); loadFails = failure == 0; prepareFails = failure == 1;
+        for (unsigned i = 0; i < nwi::PresentationBootstrap::MaxPreparationAttempts; ++i) p.tick();
+        REQUIRE(p.status == 4 && p.preparationFailures == nwi::PresentationBootstrap::MaxPreparationAttempts);
+        for (int i = 0; i < 100; ++i) p.tick();
+        REQUIRE(loads == static_cast<unsigned>(failure == 0 ? nwi::PresentationBootstrap::MaxPreparationAttempts : 1)
+            && spawns == 0 && !badArguments);
     }
     {
-        nwi::PresentationBootstrap p; setup(p); p.tick(30000);
-        world = nullptr; p.tick(34000); world = &worlds[0]; p.tick(35000);
-        p.tick(39999); REQUIRE(spawns == 0); p.tick(40000); REQUIRE(spawns == 1);
+        nwi::PresentationBootstrap p; setup(p); spawnFails = true; p.tick();
+        REQUIRE(p.status == 4 && spawns == 1 && !badArguments);
     }
     {
-        nwi::PresentationBootstrap p; setup(p); p.tick(30000); p.tick(35000);
-        world = &worlds[1]; p.tick(40000);
-        world = &worlds[0]; p.tick(44000); // Old active world returns; discard the interrupted candidate.
-        world = &worlds[1]; p.tick(45000); p.tick(49999); REQUIRE(spawns == 1);
-        p.tick(50000); REQUIRE(spawns == 2 && !badArguments);
-        // find() accepts only our class name: loaded map paths can never influence bootstrap.
+        // A null travel World does not poison the next ready gameplay World.
+        nwi::PresentationBootstrap p; setup(p); world = nullptr; p.tick();
+        world = &worlds[0]; worldIsReady = false; p.tick(); REQUIRE(spawns == 0);
+        worldIsReady = true; p.tick(); REQUIRE(spawns == 1 && !badArguments);
     }
-    puts("PASS: cached viewport, bounded Mod Hub refresh, null travel world, bridge fault stop, eight lookup cap, active-world-only bootstrap, interrupted travel, reuse and creation limits.");
+    puts("PASS: readiness-driven startup, bounded preparation/Mod Hub retries, null travel world, bridge fault stop, exact active-world bootstrap, reuse and creation limits.");
 }

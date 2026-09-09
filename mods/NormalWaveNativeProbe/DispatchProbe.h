@@ -12,6 +12,7 @@ struct ThreadSample {
     bool runtimeInitialized = false, identityReadOk = true;
     bool actionRan = false; // Invalid-thread samples must never erase the last gameplay snapshot.
     uint32_t bootstrapStatus = 0, visualActors = 0, classLoads = 0;
+    uint32_t bootstrapReadinessChecks = 0, bootstrapPreparationFailures = 0;
     uint32_t hubRefreshAttempts = 0, hubRefreshes = 0, hubRefreshFailures = 0;
     uint32_t viewportFinds = 0, worldReads = 0, worldChanges = 0, worldFaults = 0;
     uint64_t activeWorld = 0;
@@ -35,16 +36,18 @@ struct ProbeApi {
 class DispatchProbe {
 public:
     static constexpr uint64_t IntervalMs = 1000; // Never turn this diagnostic into a frame loop.
+    static constexpr uint64_t ReadinessIntervalMs = 250; // Temporary condition polling; no minimum startup delay.
     static constexpr uint64_t SlowIntervalMs = 5000; // Extend coverage past ten minutes at lower cost.
     static constexpr uint64_t FastRequests = 60;
     static constexpr uint64_t TimeoutMs = 15000;
-    static constexpr uint64_t MaxRequests = 600; // Roughly 46 minutes with the two-stage schedule.
+    static constexpr uint64_t MaxRequests = 600; // Post-readiness diagnostic cap; readiness polling itself does not expire.
     struct Stats {
         uint64_t queued = 0, completed = 0, rejected = 0, timedOut = 0, stale = 0;
         uint64_t gameThread = 0, otherThread = 0, uninitialized = 0, latencyTotal = 0, latencyMax = 0;
         uint64_t runtimeInitialized = 0, identityReadFailures = 0;
         uint32_t lastTid = 0, expectedTid = 0;
         uint32_t bootstrapStatus = 0, visualActors = 0, classLoads = 0;
+        uint32_t bootstrapReadinessChecks = 0, bootstrapPreparationFailures = 0;
         uint32_t hubRefreshAttempts = 0, hubRefreshes = 0, hubRefreshFailures = 0;
         uint32_t viewportFinds = 0, worldReads = 0, worldChanges = 0, worldFaults = 0;
         uint64_t activeWorld = 0;
@@ -86,6 +89,8 @@ public:
                 stats.bootstrapStatus = result_.bootstrapStatus;
                 stats.visualActors = result_.visualActors;
                 stats.classLoads = result_.classLoads;
+                stats.bootstrapReadinessChecks = result_.bootstrapReadinessChecks;
+                stats.bootstrapPreparationFailures = result_.bootstrapPreparationFailures;
                 stats.hubRefreshAttempts = result_.hubRefreshAttempts;
                 stats.hubRefreshes = result_.hubRefreshes;
                 stats.hubRefreshFailures = result_.hubRefreshFailures;
@@ -121,10 +126,16 @@ public:
             }
             return; // Never replace a context that the host might still call.
         }
-        if (stats.disabled || stats.queued >= MaxRequests || now < nextAt_) return;
+        const bool waitingForReadiness = bootstrapPending();
+        if (stats.disabled || (!waitingForReadiness && stats.queued >= MaxRequests) || now < nextAt_) return;
         queuedAt_ = now;
         requestGeneration_ = generation_.load();
-        nextAt_ = now + (stats.queued + 1 < FastRequests ? IntervalMs : SlowIntervalMs);
+        // While startup conditions are pending, sample promptly; after 60 requests fall back to 1 Hz.
+        // This is a polling cadence, not a mandatory delay: a ready first sample initializes immediately.
+        const auto interval = waitingForReadiness
+            ? (stats.queued + 1 < FastRequests ? ReadinessIntervalMs : IntervalMs)
+            : (stats.queued + 1 < FastRequests ? IntervalMs : SlowIntervalMs);
+        nextAt_ = now + interval;
         slot_.store(1, std::memory_order_release);
         ++stats.queued;
         if (!api_.dispatch(&complete, this)) {
@@ -135,6 +146,11 @@ public:
         }
     }
 private:
+    bool bootstrapPending() const noexcept {
+        if (!api_.gameThreadAction) return false;
+        const auto value = stats.bootstrapStatus;
+        return value == 0 || value == 1 || value == 2 || value == 6 || value == 7;
+    }
     static void complete(void* context) noexcept {
         auto& self = *static_cast<DispatchProbe*>(context);
         ThreadSample result{};
