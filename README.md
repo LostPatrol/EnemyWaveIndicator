@@ -12,7 +12,7 @@ Enemy Wave Indicator marks detected enemy spawn areas with glowing spheres, cust
 ## Features
 
 - Natural waves plus 35 scripted wave types, each with its own enable switch and label.
-- Mod Hub settings automatically follow the game language in English or Simplified Chinese; editable marker defaults remain English in both languages.
+- The Mod Hub sidebar registration name stays `Enemy Wave Indicator`; the opened settings content follows the game's English or Simplified Chinese language, while editable marker defaults remain English in both languages.
 - Configurable sphere color, opacity, size, and display duration.
 - Two alternating text colors with configurable flashing speed.
 - Marker size scales with the number and base difficulty weight of spawned enemies.
@@ -62,7 +62,7 @@ The DLL and Pak must come from the same release. When updating manually, replace
 
 ## Troubleshooting
 
-- **The mod is missing from Mod Hub:** confirm that Mod Hub is enabled and that the Space Rig has finished loading. The current 0.9.1 package has no fixed startup delay: it initializes on the first readiness check, refreshes Mod Hub's discovered-mod array, and rebuilds its visible pages. Packages built before this hotfix must be reimported in MintCat.
+- **The mod is missing from Mod Hub:** confirm that Mod Hub is enabled and that the Space Rig has finished loading. The current 0.9.1 package has no fixed startup delay and uses the same stable, static Mod Hub registration metadata as the validated 0.9.0 build. If the ZIP SHA-256 differs from the release note, close the game and reimport it in MintCat.
 - **One of the four default-disabled events does not appear:** enable its matching type in Mod Hub and select **Apply and save**.
 - **Nothing appears:** verify that `main.dll` and `NormalWaveIndicator_P.pak` are from the same version. The host needs the DLL; clients need matching Pak content to render the custom markers.
 - **MintCat reports a duplicate or loose Pak:** remove the manually installed `NormalWaveIndicator_P.pak` after confirming MintCat manages the mod, then apply changes again.

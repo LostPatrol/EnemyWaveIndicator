@@ -319,6 +319,11 @@ bool ValidateAutomatic(UClass* PulseClass, UClass* WidgetClass)
     auto* Class = LoadClass<AActor>(nullptr, TEXT("/Game/NormalWaveIndicator/BP_NwiAuto.BP_NwiAuto_C"));
     NWI_REQUIRE(Test.World && Class);
     auto* Controller = Test.World->SpawnActor<AActor>(Class);
+    auto* HubModInterface = LoadClass<UInterface>(nullptr, TEXT("/Game/_ModHub/IHubMod.IHubMod_C"));
+    NWI_REQUIRE(HubModInterface && Class->ImplementsInterface(HubModInterface));
+    TArray<AActor*> DiscoveredMods;
+    UGameplayStatics::GetAllActorsWithInterface(Test.World, HubModInterface, DiscoveredMods);
+    NWI_REQUIRE(DiscoveredMods.Contains(Controller));
     NWI_REQUIRE(Class->FindFunctionByName(TEXT("NwiPoll")));
     auto* Service = Class->FindFunctionByName(TEXT("ServiceRegions"));
     auto* Attempted = FindFProperty<FBoolProperty>(Class, TEXT("PoolAttempted"));
@@ -421,8 +426,9 @@ bool ValidateAutomatic(UClass* PulseClass, UClass* WidgetClass)
     NWI_REQUIRE(Cast<UTextBlock>(ChinesePage->WidgetTree->FindWidget(TEXT("WaveName2")))->GetText().ToString() == TEXT("虫蛋伏击"));
     NWI_REQUIRE(Cast<UTextBlock>(ChinesePage->WidgetTree->FindWidget(TEXT("TextSection")))->GetText().ToString() == TEXT("播报警示文本"));
     NWI_REQUIRE(Cast<UTextBlock>(ChinesePage->WidgetTree->FindWidget(TEXT("SphereSection")))->GetText().ToString() == TEXT("警示球体"));
-    NWI_REQUIRE(TextOutput(ChinesePage, TEXT("GetPageInfo"), TEXT("PageName")) == TEXT("指示器设置"));
-    NWI_REQUIRE(TextOutput(Controller, TEXT("GetModInfo"), TEXT("ModName")) == TEXT("敌潮指示器"));
+    // Discovery-facing metadata stays stable; only the actual page contents are localized.
+    NWI_REQUIRE(TextOutput(ChinesePage, TEXT("GetPageInfo"), TEXT("PageName")) == TEXT("Indicator settings"));
+    NWI_REQUIRE(TextOutput(Controller, TEXT("GetModInfo"), TEXT("ModName")) == TEXT("Enemy Wave Indicator"));
     NWI_REQUIRE(Cast<UEditableTextBox>(ChinesePage->WidgetTree->FindWidget(TEXT("InputLabel")))->GetText().ToString() == TEXT("[!] NATURAL WAVE"));
     NWI_REQUIRE(Cast<UEditableTextBox>(ChinesePage->WidgetTree->FindWidget(TEXT("InputLabelType2")))->GetText().ToString() == TEXT("[!] Egg hunt ambush"));
     const FString ChineseSlot = Slot + TEXT("_zh-CN");
@@ -502,7 +508,7 @@ bool ValidateAutomatic(UClass* PulseClass, UClass* WidgetClass)
         if(I%2) NWI_REQUIRE(FindFProperty<FTextProperty>(WidgetClass,TEXT("BaseLabel"))->GetPropertyValue_InContainer(Huds[0]).ToString()==FString::Printf(TEXT("TYPE %u"),I));
         NWI_REQUIRE(FindFProperty<FIntProperty>(Class,*FString::Printf(TEXT("NativeEnabled%u"),I))->GetPropertyValue_InContainer(Controller)==int32(I%2));
     }
-    UE_LOG(LogTemp,Display,TEXT("NWI_TEST compact ordered English/zh-CN UI, documented Chinese wave names and unchanged English marker defaults passed"));
+    UE_LOG(LogTemp,Display,TEXT("NWI_TEST Mod Hub interface discovery and stable metadata, compact ordered English/zh-CN page contents, documented Chinese wave names and unchanged English marker defaults passed"));
     UE_LOG(LogTemp,Display,TEXT("NWI_TEST 36 wave types: all default on except IDs 1/6/32/34, yellow-red text defaults, independent persistence and replicated source selection passed"));
     // Real Slate attachment matters: visibility alone cannot recover a viewport cleared after Init.
     auto* Viewport = NewObject<UGameViewportClient>(GEngine);

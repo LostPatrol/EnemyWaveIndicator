@@ -107,7 +107,8 @@ void BuildSettings()
     Variable(BP, TEXT("SaveSlot"), Type(UEdGraphSchema_K2::PC_String), TEXT("NormalWaveIndicator_v3"));
     check(FBlueprintEditorUtils::ImplementNewInterface(BP, HubInterface(TEXT("IHubPageWidget"))->GetFName()));
     auto* Info = HubResult(BP, TEXT("GetPageInfo"));
-    Link(LocalizedText(Info->GetGraph(), IsSimplifiedChinese(Info->GetGraph()), TEXT("Indicator settings"), TEXT("指示器设置")), TEXT("ReturnValue"), Info, TEXT("PageName"));
+    // Mod Hub consumes page metadata during discovery; keep this pure interface output constant.
+    GetDefault<UEdGraphSchema_K2>()->TrySetDefaultText(*Pin(Info, TEXT("PageName")), FText::FromString(TEXT("Indicator settings")));
     auto* Mode = HubResult(BP, TEXT("GetContainerMode")); Value(Mode, TEXT("bStretchToContainer"), TEXT("true"));
     auto* Root = BP->WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("SettingsPanel")); auto* Scroll=BP->WidgetTree->ConstructWidget<UScrollBox>(UScrollBox::StaticClass(),TEXT("SettingsScroll"));Scroll->AddChild(Root);auto* Frame=BP->WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(),TEXT("SettingsFrame"));BP->WidgetTree->RootWidget=Frame;
     auto AddText = [&](const TCHAR* Name, const TCHAR* Label, UVerticalBox* Parent = nullptr, int32 Size = 14) {
@@ -232,9 +233,11 @@ void AddControllerSettings(UBlueprint* BP)
     Variable(BP, TEXT("DurationSec"), Type(UEdGraphSchema_K2::PC_Float), TEXT("8"));
     check(FBlueprintEditorUtils::ImplementNewInterface(BP, HubInterface(TEXT("IHubMod"))->GetFName()));
     auto* Info = HubResult(BP, TEXT("GetModInfo"));
-    Link(LocalizedText(Info->GetGraph(), IsSimplifiedChinese(Info->GetGraph()), TEXT("Enemy Wave Indicator"), TEXT("敌潮指示器")), TEXT("ReturnValue"), Info, TEXT("ModName"));
-    GetDefault<UEdGraphSchema_K2>()->TrySetDefaultText(*Pin(Info, TEXT("ModAuthor")), FText::FromString(TEXT("LostPatrol")));
-    GetDefault<UEdGraphSchema_K2>()->TrySetDefaultText(*Pin(Info, TEXT("ModVersion")), FText::FromString(TEXT("0.9.1 test")));
+    // Match the last working registration contract: no runtime calls inside GetModInfo.
+    const TCHAR* Names[] = {TEXT("ModName"), TEXT("ModAuthor"), TEXT("ModVersion")};
+    const TCHAR* Values[] = {TEXT("Enemy Wave Indicator"), TEXT("LostPatrol"), TEXT("0.9.1 test")};
+    for (int32 I = 0; I < 3; ++I)
+        GetDefault<UEdGraphSchema_K2>()->TrySetDefaultText(*Pin(Info, Names[I]), FText::FromString(Values[I]));
 }
 
 void BuildControllerSettings(UBlueprint* BP, UEdGraph* G, UClass* PulseClass, UClass* HudClass)
