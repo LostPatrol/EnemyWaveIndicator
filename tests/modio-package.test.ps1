@@ -16,9 +16,9 @@ $names=@('BP_NwiAuto','BP_NwiResources','BP_NwiPulse','WBP_NwiMarker','SG_NwiSet
 $files=@($names | ForEach-Object {foreach($extension in @('uasset','uexp')) {$p=Join-Path $cookDir "$_.${extension}";Set-Content $p 'fixture cooked bytes';Get-FileHash $p}})
 $pak=Join-Path $cookDir 'NormalWavePresentation-assets-only.pak';Set-Content $pak 'fixture Pak payload'
 $audit=Join-Path $cookDir 'dependency-audit.json';@{passed=$true;contentOnly=$false;nativeAbi=589824;assets=9} | ConvertTo-Json | Set-Content $audit
-$native=@{ProbeVersion='0.9.0';OfflinePassed=$true;CaptureOfflinePassed=$true;DispatchOfflinePassed=$true;PresentationOfflinePassed=$true;SourceFiles=@(Get-FileHash $source);SHA256=(Get-FileHash $dll).Hash}
+$native=@{ProbeVersion='0.9.1';OfflinePassed=$true;CaptureOfflinePassed=$true;DispatchOfflinePassed=$true;PresentationOfflinePassed=$true;SourceFiles=@(Get-FileHash $source);SHA256=(Get-FileHash $dll).Hash}
 $assets=@{Success=$true;SourceFiles=@(Get-FileHash $source);Assets=@(Get-FileHash $asset);Validation=@{success=$true;native_contract_test=$true;replication_metadata_test=$true;content_only=$false;automatic_pool_test=$true;settings_test=$true;async_resource_tests=$true;red_material_test=$true;edge_cases=1452}}
-$cook=@{Success=$true;ContentOnly=$false;RuntimeDllRequired=$true;Version='0.9.0';AssetsOnly=$true;ContainsGameAssetCopies=$false;InlineMaterialShaders=$true;PakHashesVerified=$true;Files=$files;Verification=$assetsDir;Pak=Get-FileHash $pak;DependencyAudit=Get-FileHash $audit;PackagingConfig=Get-FileHash $config}
+$cook=@{Success=$true;ContentOnly=$false;RuntimeDllRequired=$true;Version='0.9.1';AssetsOnly=$true;ContainsGameAssetCopies=$false;InlineMaterialShaders=$true;PakHashesVerified=$true;Files=$files;Verification=$assetsDir;Pak=Get-FileHash $pak;DependencyAudit=Get-FileHash $audit;PackagingConfig=Get-FileHash $config}
 function Save-Fixture {$native | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $nativeDir 'verification.json');$assets | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $assetsDir 'verification.json');$cook | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $cookDir 'verification.json')}
 $script=Join-Path $testRoot 'scripts\Prepare-ModioRelease.ps1';$rejections=0
 function Assert-Rejected([string]$Pattern) {
@@ -30,7 +30,7 @@ function Assert-Rejected([string]$Pattern) {
 }
 Save-Fixture
 foreach($flag in @('OfflinePassed','CaptureOfflinePassed','DispatchOfflinePassed','PresentationOfflinePassed')) {$native[$flag]=$false;Save-Fixture;Assert-Rejected 'Missing native validation';$native[$flag]=$true}
-$native.ProbeVersion='0.6.0';Save-Fixture;Assert-Rejected 'Missing native validation';$native.ProbeVersion='0.9.0'
+$native.ProbeVersion='0.6.0';Save-Fixture;Assert-Rejected 'Missing native validation';$native.ProbeVersion='0.9.1'
 foreach($flag in @('Success','RuntimeDllRequired','AssetsOnly','InlineMaterialShaders','PakHashesVerified')) {$cook[$flag]=$false;Save-Fixture;Assert-Rejected 'Missing native-Pak';$cook[$flag]=$true}
 $cook.ContentOnly=$true;Save-Fixture;Assert-Rejected 'Missing native-Pak';$cook.ContentOnly=$false
 $cook.ContainsGameAssetCopies=$true;Save-Fixture;Assert-Rejected 'Missing native-Pak';$cook.ContainsGameAssetCopies=$false

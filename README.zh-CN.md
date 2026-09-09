@@ -20,13 +20,13 @@ Enemy Wave Indicator 会用发光球体、可自定义文字和距离信息，�
 - 所有玩家安装匹配版本内容时，可由房主向客机同步标记。
 - 本 Mod 只观察刷怪，不会改变敌人、伤害、奖励或任务进度。
 
-默认只启用**自然潮**。如需显示其他事件，请在 Mod Hub 中启用对应类型，并点击**应用并保存**。例如矿骡伏击对应**搜救：迷你矿骡伏击**；它的可编辑标记默认内容仍是英文。全部类型见[虫潮类型清单](docs/WAVE-TYPES.md)。
+0.9.1 默认开启全部虫潮播报，只有**深掘钻梯**、**执勤护送：钻进**、**核心岩事件**和**核心侵扰警告**默认关闭；警示文字默认以黄—红两色闪烁。在 Mod Hub 中修改任意选项后，请点击**应用并保存**。全部类型见[虫潮类型清单](docs/WAVE-TYPES.md)。
 
 ![自然潮标记](docs/media/normal_wave_1.png)
 
 ## 安装方法
 
-请从 [GitHub Releases](https://github.com/LostPatrol/EnemyWaveIndicator/releases/tag/v0.9.0-beta.1) 下载当前版本。压缩包同时包含 `main.dll` 和 `NormalWaveIndicator_P.pak`；为了兼容旧版本，内部文件名仍保留旧名称。
+0.9.1 发布后，请从 [GitHub Releases](https://github.com/LostPatrol/EnemyWaveIndicator/releases) 下载对应版本。压缩包同时包含 `main.dll` 和 `NormalWaveIndicator_P.pak`；为了兼容旧版本，内部文件名仍保留旧名称。
 
 ### 方式一：使用 MintCat（推荐）
 
@@ -58,14 +58,12 @@ DLL 和 Pak 必须来自同一个版本。手动更新时需要同时替换这�
 |---|---|
 | ![寻蛋任务伏击标记](docs/media/egg_ambush.png) | ![矿骡修复防守标记](docs/media/salvage_defense_1.png) |
 
-| 古脂矿体挖掘 | Mod Hub 设置页 |
-|---|---|
-| ![古脂矿体标记](docs/media/excavation_1.png) | ![Mod Hub 设置页](docs/media/modhub1.png) |
+![古脂矿体标记](docs/media/excavation_1.png)
 
 ## 常见问题
 
 - **Mod Hub 中没有出现本 Mod：**确认 Mod Hub 已启用，在空间站等待约 40 秒，并重启一次游戏。
-- **能显示自然潮，但某个任务事件不显示：**默认只启用自然潮。请在 Mod Hub 中开启对应类型，再点击**应用并保存**。
+- **四种默认关闭的事件没有显示：**请在 Mod Hub 中开启对应类型，再点击**应用并保存**。
 - **完全没有标记：**确认 `main.dll` 和 `NormalWaveIndicator_P.pak` 来自同一版本。房主需要安装 DLL，客机需要匹配的 Pak 内容才能显示自定义标记。
 - **MintCat 提示重复或松散 Pak：**先确认 MintCat 已管理本 Mod，再删除手动安装的 `NormalWaveIndicator_P.pak`，然后重新应用更改。
 - **从很早的手动安装版本升级：**先移走或备份旧 DLL 和 Pak，再安装当前版本，避免同时加载两份。
@@ -77,7 +75,7 @@ DLL 和 Pak 必须来自同一个版本。手动更新时需要同时替换这�
 - 标记会在受支持敌人开始生成时出现，不提供提前数秒的虫潮预测。
 - 新增 Mod 自定义控制器、部分直接生成的 Boss，以及少数事件自有的刷怪路径可能无法识别。
 - 联机同步和中途加入尚未完成完整双机验收。房主需要原生 DLL，参与玩家需要匹配版本的内容。
-- 为了兼容现有安装，Pak 内部路径、设置存档、DLL 目录和部分代码标识仍使用 `NormalWaveIndicator`。
+- 为了兼容现有安装，Pak 内部路径、DLL 目录和部分代码标识仍使用 `NormalWaveIndicator`。0.9.1 使用新的 `v3` 设置存档，以确保新版默认值生效；旧 `v2` 存档仍会保留。
 
 ## 许可证
 

@@ -63,7 +63,7 @@ try {
         EngineHeaderSHA256 = (Get-FileHash (Join-Path $projectRoot 'mods\NormalWaveNativeProbe\EngineThreadIdentity.h')).Hash
         PresentationHeaderSHA256 = (Get-FileHash (Join-Path $projectRoot 'mods\NormalWaveNativeProbe\PresentationBootstrap.h')).Hash
         WorldHeaderSHA256 = (Get-FileHash (Join-Path $projectRoot 'mods\NormalWaveNativeProbe\ActiveWorld.h')).Hash
-        ProbeVersion = '0.9.0'; DispatchOfflinePassed = $true; PresentationOfflinePassed = $true; CaptureOfflinePassed = $true
+        ProbeVersion = '0.9.1'; DispatchOfflinePassed = $true; PresentationOfflinePassed = $true; CaptureOfflinePassed = $true
         SourceFiles = @(@(Get-ChildItem (Join-Path $projectRoot 'mods\NormalWaveNativeProbe') -File | Where-Object Extension -in '.cpp','.h') + @(Get-Item (Join-Path $projectRoot 'engine\Authoring\NwiAuthoring\Source\NwiAuthoring\Public\NwiWaveTypes.h')) + @(Get-ChildItem $vendor -File -Recurse) | Get-FileHash)
         OfflinePassed = $true; InGameVerified = $false; GameThreadVerified = $false
         Runs = 2; Updates = 20001

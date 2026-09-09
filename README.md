@@ -20,13 +20,13 @@ Enemy Wave Indicator marks detected enemy spawn areas with glowing spheres, cust
 - Host-to-client marker synchronization when every player has matching mod content.
 - Read-only behavior: the mod observes spawning and does not change enemies, damage, rewards, or progression.
 
-Only **Natural wave** is enabled by default. Open Mod Hub to enable other events, then select **Apply and save** (shown as **应用并保存** in Simplified Chinese). For example, mini-MULE ambushes use **Salvage: mini-MULE ambush**. See the [complete wave-type list](docs/WAVE-TYPES.md).
+Version 0.9.1 enables every wave broadcast by default except **Drillevator**, **Escort: drilling**, **Core Stone event**, and **Core Corruption warning**. Marker text flashes yellow-red by default. Open Mod Hub and select **Apply and save** after changing any option. See the [complete wave-type list](docs/WAVE-TYPES.md).
 
 ![Natural wave markers](docs/media/normal_wave_1.png)
 
 ## Installation
 
-Download the current package from [GitHub Releases](https://github.com/LostPatrol/EnemyWaveIndicator/releases/tag/v0.9.0-beta.1). The release archive contains both `main.dll` and `NormalWaveIndicator_P.pak`; the old internal filenames are retained for compatibility.
+Download the matching 0.9.1 package from [GitHub Releases](https://github.com/LostPatrol/EnemyWaveIndicator/releases) when it is published. The release archive contains both `main.dll` and `NormalWaveIndicator_P.pak`; the old internal filenames are retained for compatibility.
 
 ### Option A: MintCat (recommended)
 
@@ -58,14 +58,12 @@ The DLL and Pak must come from the same release. When updating manually, replace
 |---|---|
 | ![Egg Hunt ambush marker](docs/media/egg_ambush.png) | ![Salvage defense marker](docs/media/salvage_defense_1.png) |
 
-| Excavation | Mod Hub settings |
-|---|---|
-| ![Excavation marker](docs/media/excavation_1.png) | ![Mod Hub settings](docs/media/modhub1.png) |
+![Excavation marker](docs/media/excavation_1.png)
 
 ## Troubleshooting
 
 - **The mod is missing from Mod Hub:** confirm that Mod Hub is enabled, wait about 40 seconds in the Space Rig, and restart the game once.
-- **Natural waves appear, but another event does not:** only natural waves are enabled by default. Enable the matching type in Mod Hub and select **Apply and save**.
+- **One of the four default-disabled events does not appear:** enable its matching type in Mod Hub and select **Apply and save**.
 - **Nothing appears:** verify that `main.dll` and `NormalWaveIndicator_P.pak` are from the same version. The host needs the DLL; clients need matching Pak content to render the custom markers.
 - **MintCat reports a duplicate or loose Pak:** remove the manually installed `NormalWaveIndicator_P.pak` after confirming MintCat manages the mod, then apply changes again.
 - **You are updating a very old manual installation:** remove or back up the old DLL and Pak before installing the current pair. Do not load two copies.
@@ -77,7 +75,7 @@ When reporting a problem, include the mission type, the wave/event that triggere
 - Markers appear when supported enemies begin spawning; this is not advance wave prediction.
 - New mod-defined controllers, some direct boss summons, and event-specific spawning paths may not be identified.
 - Multiplayer synchronization and late joining have not completed full two-machine validation. The host needs the native DLL, and participating clients need matching content.
-- The internal Pak path, save slot, DLL folder, and some code identifiers still use `NormalWaveIndicator` for compatibility.
+- The internal Pak path, DLL folder, and some code identifiers still use `NormalWaveIndicator` for compatibility. Version 0.9.1 starts a new `v3` settings slot so its changed defaults are applied; the old `v2` save is retained.
 
 ## License
 

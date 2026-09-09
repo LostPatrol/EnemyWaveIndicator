@@ -46,6 +46,8 @@
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
 #include "Components/VerticalBoxSlot.h"
+#include "Components/GridPanel.h"
+#include "Components/GridSlot.h"
 #include "Components/EditableTextBox.h"
 #include "Components/SpinBox.h"
 #include "Components/CheckBox.h"

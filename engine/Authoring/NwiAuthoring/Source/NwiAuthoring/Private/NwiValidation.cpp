@@ -399,8 +399,15 @@ bool ValidateAutomatic(UClass* PulseClass, UClass* WidgetClass)
     auto* TimeInput = Cast<USpinBox>(Page->WidgetTree->FindWidget(TEXT("InputDuration")));
     auto* Button = Cast<UButton>(Page->WidgetTree->FindWidget(TEXT("ApplyButton")));
     NWI_REQUIRE(LabelInput && RadiusInput && TimeInput && Button);
-    NWI_REQUIRE(Cast<UTextBlock>(Page->WidgetTree->FindWidget(TEXT("Title")))->GetText().ToString() == TEXT("Enemy Wave Indicator  |  Wave types test 0.9.0"));
-    NWI_REQUIRE(Cast<UTextBlock>(Page->WidgetTree->FindWidget(TEXT("Caption18")))->GetText().ToString() == TEXT("Show Egg hunt ambush"));
+    NWI_REQUIRE(Cast<UTextBlock>(Page->WidgetTree->FindWidget(TEXT("Title")))->GetText().ToString() == TEXT("Enemy Wave Indicator  |  0.9.1"));
+    NWI_REQUIRE(Cast<UTextBlock>(Page->WidgetTree->FindWidget(TEXT("WaveName2")))->GetText().ToString() == TEXT("Egg hunt ambush"));
+    auto* SettingsPanel = Cast<UVerticalBox>(Page->WidgetTree->FindWidget(TEXT("SettingsPanel")));
+    auto* WaveGrid = Cast<UGridPanel>(Page->WidgetTree->FindWidget(TEXT("WaveGrid")));
+    auto* TextGrid = Cast<UGridPanel>(Page->WidgetTree->FindWidget(TEXT("TextGrid")));
+    auto* SphereGrid = Cast<UGridPanel>(Page->WidgetTree->FindWidget(TEXT("SphereGrid")));
+    NWI_REQUIRE(SettingsPanel && WaveGrid && TextGrid && SphereGrid);
+    NWI_REQUIRE(SettingsPanel->GetChildAt(2) == WaveGrid && SettingsPanel->GetChildAt(4) == TextGrid && SettingsPanel->GetChildAt(8) == SphereGrid);
+    NWI_REQUIRE(WaveGrid->GetChildrenCount() == nwi::WaveTypeCount * 3 && TextGrid->GetChildrenCount() == 16 && SphereGrid->GetChildrenCount() == 12);
     NWI_REQUIRE(TextOutput(Page, TEXT("GetPageInfo"), TEXT("PageName")) == TEXT("Indicator settings"));
     NWI_REQUIRE(TextOutput(Controller, TEXT("GetModInfo"), TEXT("ModName")) == TEXT("Enemy Wave Indicator"));
     NWI_REQUIRE(Language.Set(TEXT("zh-CN")));
@@ -408,10 +415,12 @@ bool ValidateAutomatic(UClass* PulseClass, UClass* WidgetClass)
     NWI_REQUIRE(ChinesePage && ChinesePage->Initialize());
     FindFProperty<FObjectPropertyBase>(PageClass, TEXT("Settings"))->SetObjectPropertyValue_InContainer(ChinesePage, Settings);
     ChinesePage->ProcessEvent(PageClass->FindFunctionByName(TEXT("Construct")), nullptr);
-    NWI_REQUIRE(Cast<UTextBlock>(ChinesePage->WidgetTree->FindWidget(TEXT("Title")))->GetText().ToString() == TEXT("敌潮指示器  |  虫潮类型测试 0.9.0"));
-    NWI_REQUIRE(Cast<UTextBlock>(ChinesePage->WidgetTree->FindWidget(TEXT("Caption15")))->GetText().ToString() == TEXT("显示自然潮"));
-    NWI_REQUIRE(Cast<UTextBlock>(ChinesePage->WidgetTree->FindWidget(TEXT("Caption18")))->GetText().ToString() == TEXT("显示虫蛋伏击"));
-    NWI_REQUIRE(Cast<UTextBlock>(ChinesePage->WidgetTree->FindWidget(TEXT("Caption19")))->GetText().ToString() == TEXT("虫蛋伏击提示文字（最多 64 个字符）"));
+    NWI_REQUIRE(Cast<UTextBlock>(ChinesePage->WidgetTree->FindWidget(TEXT("Title")))->GetText().ToString() == TEXT("敌潮指示器  |  0.9.1"));
+    NWI_REQUIRE(Cast<UTextBlock>(ChinesePage->WidgetTree->FindWidget(TEXT("WaveSection")))->GetText().ToString() == TEXT("虫潮播报"));
+    NWI_REQUIRE(Cast<UTextBlock>(ChinesePage->WidgetTree->FindWidget(TEXT("WaveName0")))->GetText().ToString() == TEXT("自然潮"));
+    NWI_REQUIRE(Cast<UTextBlock>(ChinesePage->WidgetTree->FindWidget(TEXT("WaveName2")))->GetText().ToString() == TEXT("虫蛋伏击"));
+    NWI_REQUIRE(Cast<UTextBlock>(ChinesePage->WidgetTree->FindWidget(TEXT("TextSection")))->GetText().ToString() == TEXT("播报警示文本"));
+    NWI_REQUIRE(Cast<UTextBlock>(ChinesePage->WidgetTree->FindWidget(TEXT("SphereSection")))->GetText().ToString() == TEXT("警示球体"));
     NWI_REQUIRE(TextOutput(ChinesePage, TEXT("GetPageInfo"), TEXT("PageName")) == TEXT("指示器设置"));
     NWI_REQUIRE(TextOutput(Controller, TEXT("GetModInfo"), TEXT("ModName")) == TEXT("敌潮指示器"));
     NWI_REQUIRE(Cast<UEditableTextBox>(ChinesePage->WidgetTree->FindWidget(TEXT("InputLabel")))->GetText().ToString() == TEXT("[!] NATURAL WAVE"));
@@ -422,12 +431,19 @@ bool ValidateAutomatic(UClass* PulseClass, UClass* WidgetClass)
     NWI_REQUIRE(Cast<UTextBlock>(ChinesePage->WidgetTree->FindWidget(TEXT("SaveStatus")))->GetText().ToString() == TEXT("已应用并保存。"));
     NWI_REQUIRE(UGameplayStatics::DeleteGameInSlot(ChineseSlot, 0));
     NWI_REQUIRE(Language.Set(TEXT("en")));
+    NWI_REQUIRE(Cast<UCheckBox>(Page->WidgetTree->FindWidget(TEXT("InputNaturalEnabled")))->IsChecked());
     for (uint32 I=1; I<nwi::WaveTypeCount; ++I) {
         auto* Toggle=Cast<UCheckBox>(Page->WidgetTree->FindWidget(*FString::Printf(TEXT("InputEnabledType%u"),I)));
         auto* Text=Cast<UEditableTextBox>(Page->WidgetTree->FindWidget(*FString::Printf(TEXT("InputLabelType%u"),I)));
-        NWI_REQUIRE(Toggle && Text && !Toggle->IsChecked()); // Only natural is enabled by default.
+        NWI_REQUIRE(Toggle && Text && Toggle->IsChecked()==(I!=1 && I!=6 && I!=32 && I!=34));
         Toggle->SetIsChecked((I%2)==1);Text->SetText(FText::FromString(FString::Printf(TEXT("TYPE %u"),I)));
     }
+    NWI_REQUIRE(Cast<USpinBox>(Page->WidgetTree->FindWidget(TEXT("InputTextAR")))->GetValue()==1.f);
+    NWI_REQUIRE(Cast<USpinBox>(Page->WidgetTree->FindWidget(TEXT("InputTextAG")))->GetValue()==1.f);
+    NWI_REQUIRE(Cast<USpinBox>(Page->WidgetTree->FindWidget(TEXT("InputTextAB")))->GetValue()==0.f);
+    NWI_REQUIRE(Cast<USpinBox>(Page->WidgetTree->FindWidget(TEXT("InputTextBR")))->GetValue()==1.f);
+    NWI_REQUIRE(Cast<USpinBox>(Page->WidgetTree->FindWidget(TEXT("InputTextBG")))->GetValue()==0.f);
+    NWI_REQUIRE(Cast<USpinBox>(Page->WidgetTree->FindWidget(TEXT("InputTextBB")))->GetValue()==0.f);
     LabelInput->SetText(FText::FromString(TEXT("WATCH OUT"))); RadiusInput->SetValue(6.f); TimeInput->SetValue(12.f);
     auto* OpacityInput=Cast<USpinBox>(Page->WidgetTree->FindWidget(TEXT("InputOpacity")));auto* HzInput=Cast<USpinBox>(Page->WidgetTree->FindWidget(TEXT("InputBlinkHz")));NWI_REQUIRE(OpacityInput && HzInput);
     OpacityInput->SetValue(.65f);HzInput->SetValue(2.f);
@@ -460,11 +476,11 @@ bool ValidateAutomatic(UClass* PulseClass, UClass* WidgetClass)
     auto* MarkerText = Cast<UTextBlock>(Huds[0]->WidgetTree->FindWidget(TEXT("MarkerText")));
     NWI_REQUIRE(MarkerText && MarkerText->GetText().ToString() == TEXT("WATCH OUT  |  5 m"));
     NWI_REQUIRE(MarkerText->GetRenderOpacity()==1.f);
-    NWI_REQUIRE(MarkerText->ColorAndOpacity.GetSpecifiedColor()==FLinearColor::Red || MarkerText->ColorAndOpacity.GetSpecifiedColor()==FLinearColor::White);
+    NWI_REQUIRE(MarkerText->ColorAndOpacity.GetSpecifiedColor()==FLinearColor::Red || MarkerText->ColorAndOpacity.GetSpecifiedColor()==FLinearColor::Yellow);
     NWI_REQUIRE(FindFProperty<FFloatProperty>(WidgetClass,TEXT("BlinkHz"))->GetPropertyValue_InContainer(Huds[0])==2.f);
     FindFProperty<FBoolProperty>(WidgetClass, TEXT("BlinkEnabled"))->SetPropertyValue_InContainer(Huds[0], false);
     Huds[0]->ProcessEvent(WidgetClass->FindFunctionByName(TEXT("UpdateWarning")), nullptr);
-    NWI_REQUIRE(MarkerText->GetRenderOpacity() == 1.f && MarkerText->ColorAndOpacity.GetSpecifiedColor()==FLinearColor::Red);
+    NWI_REQUIRE(MarkerText->GetRenderOpacity() == 1.f && MarkerText->ColorAndOpacity.GetSpecifiedColor()==FLinearColor::Yellow);
     auto* PagesFunction = Class->FindFunctionByName(TEXT("GetModPages")); NWI_REQUIRE(PagesFunction);
     FStructOnScope PageParams(PagesFunction); Controller->ProcessEvent(PagesFunction, PageParams.GetStructMemory());
     auto* PagesProperty = FindFProperty<FArrayProperty>(PagesFunction, TEXT("HubPages")); NWI_REQUIRE(PagesProperty);
@@ -486,8 +502,8 @@ bool ValidateAutomatic(UClass* PulseClass, UClass* WidgetClass)
         if(I%2) NWI_REQUIRE(FindFProperty<FTextProperty>(WidgetClass,TEXT("BaseLabel"))->GetPropertyValue_InContainer(Huds[0]).ToString()==FString::Printf(TEXT("TYPE %u"),I));
         NWI_REQUIRE(FindFProperty<FIntProperty>(Class,*FString::Printf(TEXT("NativeEnabled%u"),I))->GetPropertyValue_InContainer(Controller)==int32(I%2));
     }
-    UE_LOG(LogTemp,Display,TEXT("NWI_TEST bilingual English/zh-CN UI, documented Chinese wave names and unchanged English marker defaults passed"));
-    UE_LOG(LogTemp,Display,TEXT("NWI_TEST 36 wave types: default natural only, independent checkbox/text persistence, native enable fields, replicated source label/visibility selection passed"));
+    UE_LOG(LogTemp,Display,TEXT("NWI_TEST compact ordered English/zh-CN UI, documented Chinese wave names and unchanged English marker defaults passed"));
+    UE_LOG(LogTemp,Display,TEXT("NWI_TEST 36 wave types: all default on except IDs 1/6/32/34, yellow-red text defaults, independent persistence and replicated source selection passed"));
     // Real Slate attachment matters: visibility alone cannot recover a viewport cleared after Init.
     auto* Viewport = NewObject<UGameViewportClient>(GEngine);
     auto Overlay = SNew(SOverlay);

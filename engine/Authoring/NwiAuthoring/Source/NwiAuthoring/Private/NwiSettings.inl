@@ -31,18 +31,14 @@ UK2Node_VariableSet* WriteField(UEdGraph* G, UClass* Owner, const TCHAR* Name, U
 
 const TCHAR* SettingNames[] = {TEXT("Label"), TEXT("Duration"), TEXT("Radius"), TEXT("Red"), TEXT("Green"), TEXT("Blue"), TEXT("Blink"), TEXT("Opacity"), TEXT("BlinkHz"), TEXT("TextAR"), TEXT("TextAG"), TEXT("TextAB"), TEXT("TextBR"), TEXT("TextBG"), TEXT("TextBB"), TEXT("NaturalEnabled")};
 // Marker defaults are deliberately English in every culture; only their settings captions are localized.
-const TCHAR* SettingDefaults[] = {TEXT("[!] NATURAL WAVE"), TEXT("8"), TEXT("3.75"), TEXT("3"), TEXT("0.01"), TEXT("0.005"), TEXT("true"), TEXT("0.4"), TEXT("2"), TEXT("1"), TEXT("0"), TEXT("0"), TEXT("1"), TEXT("1"), TEXT("1"), TEXT("true")};
+const TCHAR* SettingDefaults[] = {TEXT("[!] NATURAL WAVE"), TEXT("8"), TEXT("3.75"), TEXT("3"), TEXT("0.01"), TEXT("0.005"), TEXT("true"), TEXT("0.4"), TEXT("2"), TEXT("1"), TEXT("1"), TEXT("0"), TEXT("1"), TEXT("0"), TEXT("0"), TEXT("true")};
 const TCHAR* SettingLabelsEn[] = {
-    TEXT("Natural wave text (up to 64 characters)"), TEXT("Visibility after the last spawn (seconds, 1 - 30)"), TEXT("Sphere size (0.5 - 12; default 3.75)"),
-    TEXT("Sphere red (linear intensity, 0 - 5)"), TEXT("Sphere green (0 - 5)"), TEXT("Sphere blue (0 - 5)"), TEXT("Flash text between colors A and B"),
-    TEXT("Sphere opacity (0 transparent - 1 opaque; default 0.4)"), TEXT("Text flash cycles per second (0.1 - 10; default 2)"), TEXT("Text A red"),
-    TEXT("Text A green"), TEXT("Text A blue"), TEXT("Text B red"), TEXT("Text B green"), TEXT("Text B blue"), TEXT("Show natural waves")
+    TEXT("Natural marker text"), TEXT("Duration (s)"), TEXT("Size"), TEXT("Sphere R"), TEXT("Sphere G"), TEXT("Sphere B"), TEXT("Flash A / B"),
+    TEXT("Opacity"), TEXT("Flash rate (Hz)"), TEXT("Text A · R"), TEXT("Text A · G"), TEXT("Text A · B"), TEXT("Text B · R"), TEXT("Text B · G"), TEXT("Text B · B"), TEXT("Natural waves")
 };
 const TCHAR* SettingLabelsZhCn[] = {
-    TEXT("自然潮提示文字（最多 64 个字符）"), TEXT("最后一只敌人生成后的显示时间（秒，1 - 30）"), TEXT("球体大小（0.5 - 12；默认 3.75）"),
-    TEXT("球体红色（线性强度，0 - 5）"), TEXT("球体绿色（0 - 5）"), TEXT("球体蓝色（0 - 5）"), TEXT("在颜色 A 与 B 之间闪烁提示文字"),
-    TEXT("球体不透明度（0 为透明，1 为不透明；默认 0.4）"), TEXT("提示文字每秒闪烁周期数（0.1 - 10；默认 2）"), TEXT("文字颜色 A：红色"),
-    TEXT("文字颜色 A：绿色"), TEXT("文字颜色 A：蓝色"), TEXT("文字颜色 B：红色"), TEXT("文字颜色 B：绿色"), TEXT("文字颜色 B：蓝色"), TEXT("显示自然潮")
+    TEXT("自然潮标记文字"), TEXT("显示时长（秒）"), TEXT("尺寸"), TEXT("球体 R"), TEXT("球体 G"), TEXT("球体 B"), TEXT("闪烁 A / B"),
+    TEXT("不透明度"), TEXT("闪烁频率（Hz）"), TEXT("文字 A · R"), TEXT("文字 A · G"), TEXT("文字 A · B"), TEXT("文字 B · R"), TEXT("文字 B · G"), TEXT("文字 B · B"), TEXT("自然潮")
 };
 // These names mirror docs/WAVE-TYPES.md and are UI captions, never marker defaults.
 const TCHAR* WaveTitlesZhCn[] = {
@@ -59,7 +55,9 @@ static_assert(sizeof(SettingLabelsZhCn) / sizeof(SettingLabelsZhCn[0]) == 16, "C
 static_assert(sizeof(WaveTitlesZhCn) / sizeof(WaveTitlesZhCn[0]) == nwi::WaveTypeCount, "Chinese wave title count changed");
 constexpr int32 SettingCount = 16 + 2 * (nwi::WaveTypeCount - 1);
 FString SettingName(int32 I) { return I < 16 ? FString(SettingNames[I]) : (I % 2 == 0 ? FString::Printf(TEXT("EnabledType%d"), (I-16)/2+1) : FString::Printf(TEXT("LabelType%d"), (I-16)/2+1)); }
-FString SettingDefault(int32 I) { return I < 16 ? FString(SettingDefaults[I]) : I % 2 == 0 ? FString(TEXT("false")) : FString(TEXT("[!] ")) + nwi::WaveTypes[(I-16)/2+1].title; }
+// 0.9.1 reports every catalogued source except the two drilling phases and both Core events.
+bool DefaultWaveEnabled(int32 Type) { return Type != 1 && Type != 6 && Type != 32 && Type != 34; }
+FString SettingDefault(int32 I) { return I < 16 ? FString(SettingDefaults[I]) : I % 2 == 0 ? FString(DefaultWaveEnabled((I-16)/2+1) ? TEXT("true") : TEXT("false")) : FString(TEXT("[!] ")) + nwi::WaveTypes[(I-16)/2+1].title; }
 bool IsTextSetting(int32 I) { return I == 0 || (I >= 16 && I % 2 == 1); }
 bool IsBoolSetting(int32 I) { return I == 6 || I == 15 || (I >= 16 && I % 2 == 0); }
 FString SettingCaption(int32 I, bool Chinese)
@@ -106,21 +104,17 @@ void BuildSettings()
     auto* SaveBP = Blueprint(TEXT("SG_NwiSettings"), false, USaveGame::StaticClass()); AddSettings(SaveBP); Compile(SaveBP); Save(SaveBP);
     auto* BP = CastChecked<UWidgetBlueprint>(Blueprint(TEXT("WBP_NwiSettings"), true));
     Variable(BP, TEXT("Settings"), Type(UEdGraphSchema_K2::PC_Object, SaveBP->GeneratedClass));
-    Variable(BP, TEXT("SaveSlot"), Type(UEdGraphSchema_K2::PC_String), TEXT("NormalWaveIndicator_v2"));
+    Variable(BP, TEXT("SaveSlot"), Type(UEdGraphSchema_K2::PC_String), TEXT("NormalWaveIndicator_v3"));
     check(FBlueprintEditorUtils::ImplementNewInterface(BP, HubInterface(TEXT("IHubPageWidget"))->GetFName()));
     auto* Info = HubResult(BP, TEXT("GetPageInfo"));
     Link(LocalizedText(Info->GetGraph(), IsSimplifiedChinese(Info->GetGraph()), TEXT("Indicator settings"), TEXT("指示器设置")), TEXT("ReturnValue"), Info, TEXT("PageName"));
     auto* Mode = HubResult(BP, TEXT("GetContainerMode")); Value(Mode, TEXT("bStretchToContainer"), TEXT("true"));
     auto* Root = BP->WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("SettingsPanel")); auto* Scroll=BP->WidgetTree->ConstructWidget<UScrollBox>(UScrollBox::StaticClass(),TEXT("SettingsScroll"));Scroll->AddChild(Root);auto* Frame=BP->WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(),TEXT("SettingsFrame"));BP->WidgetTree->RootWidget=Frame;
-    auto AddText = [&](const TCHAR* Name, const TCHAR* Label) {
+    auto AddText = [&](const TCHAR* Name, const TCHAR* Label, UVerticalBox* Parent = nullptr, int32 Size = 14) {
         auto* T = BP->WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), Name); T->SetText(FText::FromString(Label));
-        auto Font = T->Font; Font.Size = 16; T->SetFont(Font); T->bIsVariable = true; Root->AddChildToVerticalBox(T); return T;
+        auto Font = T->Font; Font.Size = Size; T->SetFont(Font); T->bIsVariable = true; (Parent ? Parent : Root)->AddChildToVerticalBox(T); return T;
     };
-    AddText(TEXT("Title"), TEXT("Enemy Wave Indicator  |  Wave types test 0.9.0"));
-    for (int32 I = 0; I < SettingCount; ++I)
-    {
-        const FString Caption = SettingCaption(I, false);
-        AddText(*FString::Printf(TEXT("Caption%d"), I), *Caption);
+    auto AddInput = [&](int32 I) {
         const FName Name(*FString::Printf(TEXT("Input%s"), *SettingName(I))); UWidget* Input = nullptr;
         if (IsTextSetting(I)) Input = BP->WidgetTree->ConstructWidget<UEditableTextBox>(UEditableTextBox::StaticClass(), Name);
         else if (IsBoolSetting(I)) Input = BP->WidgetTree->ConstructWidget<UCheckBox>(UCheckBox::StaticClass(), Name);
@@ -130,11 +124,41 @@ void BuildSettings()
             Spin->SetMinSliderValue(I == 1 ? 1.f : I == 2 ? .5f : I == 8 ? .1f : 0.f); Spin->SetMaxSliderValue(I == 1 ? 30.f : I == 2 ? 12.f : I == 8 ? 10.f : I >= 7 ? 1.f : 5.f);
             Spin->SetDelta(.1f); Input = Spin;
         }
-        Input->bIsVariable = true; Root->AddChildToVerticalBox(Input);
+        Input->bIsVariable = true; return Input;
+    };
+    auto GridAdd = [](UGridPanel* Grid, UWidget* Widget, int32 Row, int32 Column, bool Fill = false) {
+        auto* Slot = Grid->AddChildToGrid(Widget, Row, Column); Slot->SetPadding(FMargin(4.f, 2.f));
+        Slot->SetVerticalAlignment(VAlign_Center); Slot->SetHorizontalAlignment(Fill ? HAlign_Fill : HAlign_Left);
+    };
+    AddText(TEXT("Title"), TEXT("Enemy Wave Indicator  |  0.9.1"), nullptr, 18);
+    AddText(TEXT("WaveSection"), TEXT("Wave broadcasts"), nullptr, 17);
+    auto* WaveGrid = BP->WidgetTree->ConstructWidget<UGridPanel>(UGridPanel::StaticClass(), TEXT("WaveGrid")); WaveGrid->bIsVariable = true; Root->AddChildToVerticalBox(WaveGrid);
+    WaveGrid->SetColumnFill(2, 1.f); WaveGrid->SetColumnFill(5, 1.f);
+    // Two columns keep all 36 independent switches and marker texts visible without wasting a full row per control.
+    for (int32 Wave = 0; Wave < nwi::WaveTypeCount; ++Wave) {
+        const int32 Enable = Wave == 0 ? 15 : 16 + 2 * (Wave - 1); const int32 Label = Wave == 0 ? 0 : Enable + 1;
+        const int32 Row = Wave % 18; const int32 Column = (Wave / 18) * 3;
+        GridAdd(WaveGrid, AddInput(Enable), Row, Column);
+        auto* Name = BP->WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), *FString::Printf(TEXT("WaveName%d"), Wave)); Name->bIsVariable = true; Name->SetText(FText::FromString(nwi::WaveTypes[Wave].title)); GridAdd(WaveGrid, Name, Row, Column + 1);
+        GridAdd(WaveGrid, AddInput(Label), Row, Column + 2, true);
     }
-    AddText(TEXT("PreviewCaption"),TEXT("Live sphere RGBA swatch and text preview (edits are saved with Apply)"));
-    auto* Swatch=BP->WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(),TEXT("SpherePreview"));Swatch->bIsVariable=true;Swatch->Brush.ImageSize=FVector2D(160,60);Frame->AddChildToVerticalBox(Swatch);
-    auto* Preview=BP->WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(),TEXT("TextPreview"));Preview->SetText(FText::FromString(TEXT("[!] NATURAL WAVE")));Preview->bIsVariable=true;Frame->AddChildToVerticalBox(Preview);auto* ScrollSlot=Frame->AddChildToVerticalBox(Scroll);ScrollSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+    auto AddControl = [&](UGridPanel* Grid, int32 I, int32 Row, int32 Pair) {
+        auto* Caption = BP->WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), *FString::Printf(TEXT("Caption%d"), I)); Caption->bIsVariable = true; Caption->SetText(FText::FromString(SettingCaption(I, false)));
+        GridAdd(Grid, Caption, Row, Pair * 2); GridAdd(Grid, AddInput(I), Row, Pair * 2 + 1, true); Grid->SetColumnFill(Pair * 2 + 1, 1.f);
+    };
+    AddText(TEXT("TextSection"), TEXT("Warning text"), nullptr, 17);
+    auto* TextGrid = BP->WidgetTree->ConstructWidget<UGridPanel>(UGridPanel::StaticClass(), TEXT("TextGrid")); TextGrid->bIsVariable = true; Root->AddChildToVerticalBox(TextGrid);
+    AddControl(TextGrid,6,0,0); AddControl(TextGrid,8,0,1);
+    AddControl(TextGrid,9,1,0); AddControl(TextGrid,10,1,1); AddControl(TextGrid,11,1,2);
+    AddControl(TextGrid,12,2,0); AddControl(TextGrid,13,2,1); AddControl(TextGrid,14,2,2);
+    AddText(TEXT("PreviewCaption"),TEXT("Live text preview (edits are saved with Apply)"));
+    auto* Preview=BP->WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(),TEXT("TextPreview"));Preview->SetText(FText::FromString(TEXT("[!] NATURAL WAVE")));Preview->bIsVariable=true;Root->AddChildToVerticalBox(Preview);
+    AddText(TEXT("SphereSection"), TEXT("Warning sphere"), nullptr, 17);
+    auto* SphereGrid = BP->WidgetTree->ConstructWidget<UGridPanel>(UGridPanel::StaticClass(), TEXT("SphereGrid")); SphereGrid->bIsVariable = true; Root->AddChildToVerticalBox(SphereGrid);
+    AddControl(SphereGrid,1,0,0); AddControl(SphereGrid,2,0,1);
+    AddControl(SphereGrid,3,1,0); AddControl(SphereGrid,4,1,1); AddControl(SphereGrid,5,1,2); AddControl(SphereGrid,7,1,3);
+    auto* Swatch=BP->WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(),TEXT("SpherePreview"));Swatch->bIsVariable=true;Swatch->Brush.ImageSize=FVector2D(160,36);Root->AddChildToVerticalBox(Swatch);
+    auto* ScrollSlot=Frame->AddChildToVerticalBox(Scroll);ScrollSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
     auto* Button = BP->WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("ApplyButton")); Button->bIsVariable = true;
     auto* ButtonText = BP->WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("ApplyText")); ButtonText->SetText(FText::FromString(TEXT("Apply and save"))); ButtonText->bIsVariable = true; Button->AddChild(ButtonText); Frame->AddChildToVerticalBox(Button);
     auto* Status = AddText(TEXT("SaveStatus"), TEXT("Distance is straight-line meters. Duration changes apply to new spawn events.")); Status->bIsVariable = true;
@@ -146,9 +170,14 @@ void BuildSettings()
     auto Localize = [&](const TCHAR* Widget, const FString& English, const FString& ZhCn) {
         auto* SetText = SetLocalizedWidgetText(G, Chinese, Widget, English, ZhCn); Link(Exec, TEXT("then"), SetText, TEXT("execute")); Exec = SetText;
     };
-    Localize(TEXT("Title"), TEXT("Enemy Wave Indicator  |  Wave types test 0.9.0"), TEXT("敌潮指示器  |  虫潮类型测试 0.9.0"));
-    for (int32 I = 0; I < SettingCount; ++I) Localize(*FString::Printf(TEXT("Caption%d"), I), SettingCaption(I, false), SettingCaption(I, true));
-    Localize(TEXT("PreviewCaption"), TEXT("Live sphere RGBA swatch and text preview (edits are saved with Apply)"), TEXT("实时球体 RGBA 色样与文字预览（点击“应用并保存”后保存修改）"));
+    Localize(TEXT("Title"), TEXT("Enemy Wave Indicator  |  0.9.1"), TEXT("敌潮指示器  |  0.9.1"));
+    Localize(TEXT("WaveSection"), TEXT("Wave broadcasts"), TEXT("虫潮播报"));
+    for (int32 Wave = 0; Wave < nwi::WaveTypeCount; ++Wave) Localize(*FString::Printf(TEXT("WaveName%d"), Wave), nwi::WaveTypes[Wave].title, WaveTitlesZhCn[Wave]);
+    Localize(TEXT("TextSection"), TEXT("Warning text"), TEXT("播报警示文本"));
+    for (int32 I : {6,8,9,10,11,12,13,14}) Localize(*FString::Printf(TEXT("Caption%d"), I), SettingCaption(I, false), SettingCaption(I, true));
+    Localize(TEXT("PreviewCaption"), TEXT("Live text preview (edits are saved with Apply)"), TEXT("实时文字预览（点击“应用并保存”后保存修改）"));
+    Localize(TEXT("SphereSection"), TEXT("Warning sphere"), TEXT("警示球体"));
+    for (int32 I : {1,2,3,4,5,7}) Localize(*FString::Printf(TEXT("Caption%d"), I), SettingCaption(I, false), SettingCaption(I, true));
     Localize(TEXT("ApplyText"), TEXT("Apply and save"), TEXT("应用并保存"));
     Localize(TEXT("SaveStatus"), TEXT("Distance is straight-line meters. Duration changes apply to new spawn events."), TEXT("距离为直线距离（米）。显示时间的修改将在新敌潮事件中生效。"));
     for (int32 I = 0; I < SettingCount; ++I) {
@@ -205,7 +234,7 @@ void AddControllerSettings(UBlueprint* BP)
     auto* Info = HubResult(BP, TEXT("GetModInfo"));
     Link(LocalizedText(Info->GetGraph(), IsSimplifiedChinese(Info->GetGraph()), TEXT("Enemy Wave Indicator"), TEXT("敌潮指示器")), TEXT("ReturnValue"), Info, TEXT("ModName"));
     GetDefault<UEdGraphSchema_K2>()->TrySetDefaultText(*Pin(Info, TEXT("ModAuthor")), FText::FromString(TEXT("LostPatrol")));
-    GetDefault<UEdGraphSchema_K2>()->TrySetDefaultText(*Pin(Info, TEXT("ModVersion")), FText::FromString(TEXT("0.9.0 test")));
+    GetDefault<UEdGraphSchema_K2>()->TrySetDefaultText(*Pin(Info, TEXT("ModVersion")), FText::FromString(TEXT("0.9.1 test")));
 }
 
 void BuildControllerSettings(UBlueprint* BP, UEdGraph* G, UClass* PulseClass, UClass* HudClass)
@@ -217,9 +246,9 @@ void BuildControllerSettings(UBlueprint* BP, UEdGraph* G, UClass* PulseClass, UC
     auto* Begin = Event(G, AActor::StaticClass(), TEXT("ReceiveBeginPlay"));
     auto* Parent = Node<UK2Node_CallParentFunction>(G); Parent->SetFromFunction(AActor::StaticClass()->FindFunctionByName(TEXT("ReceiveBeginPlay"))); Parent->AllocateDefaultPins(); Link(Begin, TEXT("then"), Parent, TEXT("execute"));
     auto* Prepare = Call(G, BP->ParentClass, TEXT("PrepareResources")); Link(Parent, TEXT("then"), Prepare, TEXT("execute"));
-    auto* Exists = Call(G, UGameplayStatics::StaticClass(), TEXT("DoesSaveGameExist")); Value(Exists, TEXT("SlotName"), TEXT("NormalWaveIndicator_v2")); Link(Prepare, TEXT("then"), Exists, TEXT("execute"));
+    auto* Exists = Call(G, UGameplayStatics::StaticClass(), TEXT("DoesSaveGameExist")); Value(Exists, TEXT("SlotName"), TEXT("NormalWaveIndicator_v3")); Link(Prepare, TEXT("then"), Exists, TEXT("execute"));
     auto* HasFile = Branch(G, Exists, TEXT("ReturnValue")); Link(Exists, TEXT("then"), HasFile, TEXT("execute"));
-    auto* Load = Call(G, UGameplayStatics::StaticClass(), TEXT("LoadGameFromSlot")); Value(Load, TEXT("SlotName"), TEXT("NormalWaveIndicator_v2")); Link(HasFile, TEXT("then"), Load, TEXT("execute"));
+    auto* Load = Call(G, UGameplayStatics::StaticClass(), TEXT("LoadGameFromSlot")); Value(Load, TEXT("SlotName"), TEXT("NormalWaveIndicator_v3")); Link(HasFile, TEXT("then"), Load, TEXT("execute"));
     auto* LoadedCast = Node<UK2Node_DynamicCast>(G); LoadedCast->TargetType = SaveClass; LoadedCast->AllocateDefaultPins();
     check(GetDefault<UEdGraphSchema_K2>()->TryCreateConnection(Pin(Load, TEXT("ReturnValue")), LoadedCast->GetCastSourcePin())); Link(Load, TEXT("then"), LoadedCast, TEXT("execute"));
     auto* Store = Set(G, TEXT("Settings")); check(GetDefault<UEdGraphSchema_K2>()->TryCreateConnection(LoadedCast->GetCastResultPin(), Pin(Store, TEXT("Settings")))); Link(LoadedCast, TEXT("then"), Store, TEXT("execute"));

@@ -1,10 +1,10 @@
-<!-- Bilingual player reference for every wave type available in Enemy Wave Indicator 0.9.0. -->
+<!-- Bilingual player reference for every wave type available in Enemy Wave Indicator 0.9.1. -->
 
 # Wave Types / 虫潮类型
 
-Enemy Wave Indicator 0.9.0 provides separate switches and labels for one natural-wave source and 35 stock scripted wave controllers. Only **Natural wave** is enabled by default; after changing a setting in Mod Hub, select **Apply and save**. The settings UI follows the game language in English or Simplified Chinese, while editable marker defaults remain English.
+Enemy Wave Indicator 0.9.1 provides separate switches and labels for one natural-wave source and 35 stock scripted wave controllers. Every type is enabled by default except IDs **1, 6, 32, and 34**. After changing a setting in Mod Hub, select **Apply and save**. The settings UI follows the game language in English or Simplified Chinese, while editable marker defaults remain English.
 
-Enemy Wave Indicator 0.9.0 为自然潮和 35 种游戏自带的脚本虫潮控制器提供独立开关与提示文字。默认只启用**自然潮**；在 Mod Hub 中修改设置后，请点击**应用并保存**。设置界面会随游戏语言显示英文或简体中文，但可编辑的标记默认内容始终保留英文。
+Enemy Wave Indicator 0.9.1 为自然潮和 35 种游戏自带的脚本虫潮控制器提供独立开关与提示文字。除 ID **1、6、32、34** 外，其余类型默认全部开启；在 Mod Hub 中修改设置后，请点击**应用并保存**。设置界面会随游戏语言显示英文或简体中文，但可编辑的标记默认内容始终保留英文。
 
 ## Main settings / 主要设置
 
@@ -37,7 +37,7 @@ Enemy Wave Indicator 0.9.0 为自然潮和 35 种游戏自带的脚本虫潮控�
 | 26 | Salvage: defense<br>搜救：据点防守 | `EWC_Salvage_Defend` | Waves during the Uplink and Fuel Cell defense stages.<br>搜救任务中防守定位装置和燃料电池时出现的虫潮。 |
 | 27 | Salvage: extraction<br>搜救：撤离 | `EWC_Salvage_End` | The final enemy pressure after the Drop Pod has been prepared for departure.<br>搜救任务燃料电池防守完成后，等待空降仓充能至最终撤离阶段出现的虫潮。 |
 | 28 | Industrial Sabotage: drones<br>设施破坏：无人机 | `EWC_ShieledGenerator_DronePresure_Facility` | Patrol Bot and Shredder pressure during the power-station sequence.<br>设施破坏护盾阶段由巡逻机器人、粉碎者等构成的特殊潮。（两个发电站骇入完成后，护盾降下前，在看守者附近触发） |
-| 29 | Dreadnought wave<br>无畏异虫虫潮 | `EWC_Spiders_Boss` | Dreadnought-related enemy spawns during an Elimination encounter.<br>消灭任务中与无畏异虫战斗相关的敌人生成。 |
+| 29 | Dreadnought wave<br>无畏异虫虫潮 | `EWC_Spiders_Boss` | A rare announced Dreadnought wave outside the Elimination cocoon flow; it directly spawns one standard Dreadnought, one Hiveguard, or the Arbalest/Lacerator pair.<br>不经过消灭任务虫茧流程的稀有播报型无畏异虫潮；它会直接生成 1 只普通无畏异虫、1 只巢主无畏异虫，或一对无畏异虫双子。 |
 | 30 | Motherlode wave<br>定点提取压力潮 | `EWC_Spiders_Motherlode` | Recurring pressure waves during Point Extraction.<br>定点提取任务中随时间反复出现、频率逐渐加快的压力潮。 |
 | 32 | Core Stone event<br>核心岩事件 | `EWC_CoreRift` | Corespawn waves emerging from rifts during a Core Stone event.<br>核心岩事件启动后，从裂隙中出现的吗喽虫潮。 |
 | 33 | Rival communications event<br>强敌科技通讯事件 | `EWC_BombEvent` | Enemy waves during the Rival Communications Router event.<br>关闭强敌科技通讯天线事件期间出现的虫潮。 |
@@ -55,3 +55,5 @@ These controllers are supported, but they are limited to tutorial or seasonal co
 | 31 | Tutorial grunts<br>教程战士潮 | `EWC_TutorialGrunts` | Controlled Glyphid Grunt waves used by the introductory tutorial.<br>新手教程中用于战斗教学的异虫战士潮。 |
 
 [wave-controller-audit.json](wave-controller-audit.json) contains the machine-readable stock-controller audit behind this list / 该文件包含本清单对应的游戏控制器审计数据。
+
+Machine events such as Tritilyte Deposit, Kursite Infection, and Ebonite Mutation are not missing controller entries: their event Blueprints call the spawning library directly instead of creating an `EnemyWaveController`, so they are outside this controller-based catalog.<br>三提石矿藏、氪石感染和矿化爆发等机械事件并不是漏列了某个控制器：它们的事件蓝图会直接调用刷怪接口，并不会创建 `EnemyWaveController`，因此不属于这份基于控制器的清单。
