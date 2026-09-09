@@ -233,7 +233,7 @@ void BuildRedMaterial()
     auto* Package = CreatePackage(TEXT("/Game/EnemyWaveIndicator/M_NwiRedPulse"));
     auto* Material = NewObject<UMaterial>(Package, TEXT("M_NwiRedPulse"), RF_Public | RF_Standalone);
     auto* Tint = NewObject<UMaterialExpressionVectorParameter>(Material);
-    Tint->ParameterName = TEXT("Tint"); Tint->DefaultValue = FLinearColor(3.0f, 0.01f, 0.005f, 1.0f);
+    Tint->ParameterName = TEXT("Tint"); Tint->DefaultValue = FLinearColor(1.0f, 0.01f, 0.005f, 1.0f);
     auto* Alpha = NewObject<UMaterialExpressionScalarParameter>(Material);
     Alpha->ParameterName = TEXT("Alpha"); Alpha->DefaultValue = 1.0f;
     auto* Rim = NewObject<UMaterialExpressionFresnel>(Material);

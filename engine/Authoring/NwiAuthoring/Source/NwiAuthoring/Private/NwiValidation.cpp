@@ -103,7 +103,7 @@ bool ValidateInWorld(UClass* PulseClass)
     NWI_REQUIRE(Material && Scale && Alpha);
     FLinearColor Tint;
     NWI_REQUIRE(Material->GetVectorParameterValue(FMaterialParameterInfo(TEXT("Tint")), Tint));
-    NWI_REQUIRE(Tint.Equals(FLinearColor(3.0f, 0.01f, 0.005f, 1.0f)) && !Material->TwoSided);
+    NWI_REQUIRE(Tint.Equals(FLinearColor(1.0f, 0.01f, 0.005f, 1.0f)) && !Material->TwoSided);
     NWI_REQUIRE(Material->GetShadingModels().HasShadingModel(MSM_Unlit));
     NWI_REQUIRE(Initialize(Actor, Material, Scale, Alpha));
     NWI_REQUIRE(!Actor->IsHidden() && Actor->IsActorTickEnabled() && Actor->PrimaryActorTick.IsTickFunctionRegistered());
@@ -390,6 +390,21 @@ bool ValidateAutomatic(UClass* PulseClass, UClass* WidgetClass)
     for (int32 I = 0; I < 8; ++I) NWI_REQUIRE(Pulses[I]->IsHidden() && Huds[I]->GetVisibility() == ESlateVisibility::Collapsed);
     // Exercise the serialized page's actual button delegate, disk round trip and pool update.
     auto* Settings = FindFProperty<FObjectPropertyBase>(Class, TEXT("Settings"))->GetObjectPropertyValue_InContainer(Controller);
+    FFloatProperty* SphereChannels[] = {
+        Settings ? FindFProperty<FFloatProperty>(Settings->GetClass(), TEXT("Red")) : nullptr,
+        Settings ? FindFProperty<FFloatProperty>(Settings->GetClass(), TEXT("Green")) : nullptr,
+        Settings ? FindFProperty<FFloatProperty>(Settings->GetClass(), TEXT("Blue")) : nullptr
+    };
+    auto* SettingsRevision = Settings ? FindFProperty<FIntProperty>(Settings->GetClass(), TEXT("Revision")) : nullptr;
+    NWI_REQUIRE(SphereChannels[0] && SphereChannels[1] && SphereChannels[2] && SettingsRevision);
+    NWI_REQUIRE(SphereChannels[0]->GetPropertyValue_InContainer(Settings) == 1.f);
+    // Persisted settings may contain HDR-era values; runtime must normalize them before opening the page.
+    for (auto* Channel : SphereChannels) Channel->SetPropertyValue_InContainer(Settings, 1.5f);
+    SettingsRevision->SetPropertyValue_InContainer(Settings, SettingsRevision->GetPropertyValue_InContainer(Settings) + 1);
+    Controller->ProcessEvent(Class->FindFunctionByName(TEXT("RefreshSettings")), nullptr);
+    FLinearColor ClampedSphereTint;
+    NWI_REQUIRE(Cast<UMaterialInstanceDynamic>(Mids[0])->GetVectorParameterValue(FMaterialParameterInfo(TEXT("Tint")), ClampedSphereTint));
+    NWI_REQUIRE(ClampedSphereTint.Equals(FLinearColor::White));
     auto* PageClass = LoadClass<UUserWidget>(nullptr, TEXT("/Game/EnemyWaveIndicator/WBP_NwiSettings.WBP_NwiSettings_C"));
     FScopedLanguage Language;
     NWI_REQUIRE(Language.Set(TEXT("en")));
@@ -435,8 +450,14 @@ bool ValidateAutomatic(UClass* PulseClass, UClass* WidgetClass)
     NWI_REQUIRE(Cast<UTextBlock>(ChinesePage->WidgetTree->FindWidget(TEXT("WaveSection")))->GetText().ToString() == TEXT("虫潮播报"));
     NWI_REQUIRE(Cast<UTextBlock>(ChinesePage->WidgetTree->FindWidget(TEXT("WaveName0")))->GetText().ToString() == TEXT("自然潮"));
     NWI_REQUIRE(Cast<UTextBlock>(ChinesePage->WidgetTree->FindWidget(TEXT("WaveName2")))->GetText().ToString() == TEXT("虫蛋伏击"));
+    NWI_REQUIRE(Cast<UTextBlock>(ChinesePage->WidgetTree->FindWidget(TEXT("WaveName25")))->GetText().ToString() == TEXT("搜救行动：矿骡伏击"));
+    NWI_REQUIRE(Cast<UTextBlock>(ChinesePage->WidgetTree->FindWidget(TEXT("WaveName26")))->GetText().ToString() == TEXT("搜救行动：据点防守"));
+    NWI_REQUIRE(Cast<UTextBlock>(ChinesePage->WidgetTree->FindWidget(TEXT("WaveName27")))->GetText().ToString() == TEXT("搜救行动：撤离"));
+    NWI_REQUIRE(Cast<UTextBlock>(ChinesePage->WidgetTree->FindWidget(TEXT("WaveName29")))->GetText().ToString() == TEXT("无畏异虫潮"));
     NWI_REQUIRE(Cast<UTextBlock>(ChinesePage->WidgetTree->FindWidget(TEXT("TextSection")))->GetText().ToString() == TEXT("播报警示文本"));
     NWI_REQUIRE(Cast<UTextBlock>(ChinesePage->WidgetTree->FindWidget(TEXT("SphereSection")))->GetText().ToString() == TEXT("警示球体"));
+    NWI_REQUIRE(Cast<UTextBlock>(ChinesePage->WidgetTree->FindWidget(TEXT("PreviewCaption")))->GetText().ToString() == TEXT("实时文字预览"));
+    NWI_REQUIRE(Cast<UTextBlock>(ChinesePage->WidgetTree->FindWidget(TEXT("SaveStatus")))->GetText().IsEmpty());
     // Discovery-facing metadata stays stable; only the actual page contents are localized.
     NWI_REQUIRE(TextOutput(ChinesePage, TEXT("GetPageInfo"), TEXT("PageName")) == TEXT("Indicator settings"));
     NWI_REQUIRE(TextOutput(Controller, TEXT("GetModInfo"), TEXT("ModName")) == TEXT("Enemy Wave Indicator"));
@@ -461,6 +482,12 @@ bool ValidateAutomatic(UClass* PulseClass, UClass* WidgetClass)
     NWI_REQUIRE(Cast<USpinBox>(Page->WidgetTree->FindWidget(TEXT("InputTextBR")))->GetValue()==1.f);
     NWI_REQUIRE(Cast<USpinBox>(Page->WidgetTree->FindWidget(TEXT("InputTextBG")))->GetValue()==0.f);
     NWI_REQUIRE(Cast<USpinBox>(Page->WidgetTree->FindWidget(TEXT("InputTextBB")))->GetValue()==0.f);
+    for (const TCHAR* Name : {TEXT("InputRed"), TEXT("InputGreen"), TEXT("InputBlue")}) {
+        auto* Channel = Cast<USpinBox>(Page->WidgetTree->FindWidget(Name));
+        NWI_REQUIRE(Channel && Channel->GetMaxValue() == 1.f && Channel->GetMaxSliderValue() == 1.f);
+        NWI_REQUIRE(Channel->GetValue() == 1.f); // Construct clamps legacy saved values before displaying them.
+        Channel->SetValue(1.1f);
+    }
     LabelInput->SetText(FText::FromString(TEXT("WATCH OUT"))); RadiusInput->SetValue(6.f); TimeInput->SetValue(12.f);
     auto* OpacityInput=Cast<USpinBox>(Page->WidgetTree->FindWidget(TEXT("InputOpacity")));auto* HzInput=Cast<USpinBox>(Page->WidgetTree->FindWidget(TEXT("InputBlinkHz")));NWI_REQUIRE(OpacityInput && HzInput);
     OpacityInput->SetValue(.65f);HzInput->SetValue(2.f);
@@ -470,6 +497,7 @@ bool ValidateAutomatic(UClass* PulseClass, UClass* WidgetClass)
     NWI_REQUIRE(FindFProperty<FFloatProperty>(Settings->GetClass(),TEXT("Opacity"))->GetPropertyValue_InContainer(Settings)==.4f); // Preview has no save side effects.
     Button->OnClicked.Broadcast();
     NWI_REQUIRE(FindFProperty<FStrProperty>(Settings->GetClass(), TEXT("Label"))->GetPropertyValue_InContainer(Settings) == TEXT("WATCH OUT"));
+    for (auto* Channel : SphereChannels) NWI_REQUIRE(Channel->GetPropertyValue_InContainer(Settings) == 1.f);
     NWI_REQUIRE(Cast<UTextBlock>(Page->WidgetTree->FindWidget(TEXT("SaveStatus")))->GetText().ToString() == TEXT("Applied and saved."));
     auto* Reloaded = UGameplayStatics::LoadGameFromSlot(Slot, 0);
     NWI_REQUIRE(Reloaded && UGameplayStatics::DeleteGameInSlot(Slot, 0));

@@ -31,7 +31,7 @@ UK2Node_VariableSet* WriteField(UEdGraph* G, UClass* Owner, const TCHAR* Name, U
 
 const TCHAR* SettingNames[] = {TEXT("Label"), TEXT("Duration"), TEXT("Radius"), TEXT("Red"), TEXT("Green"), TEXT("Blue"), TEXT("Blink"), TEXT("Opacity"), TEXT("BlinkHz"), TEXT("TextAR"), TEXT("TextAG"), TEXT("TextAB"), TEXT("TextBR"), TEXT("TextBG"), TEXT("TextBB"), TEXT("NaturalEnabled")};
 // Marker defaults are deliberately English in every culture; only their settings captions are localized.
-const TCHAR* SettingDefaults[] = {TEXT("[!] NATURAL WAVE"), TEXT("8"), TEXT("3.75"), TEXT("3"), TEXT("0.01"), TEXT("0.005"), TEXT("true"), TEXT("0.4"), TEXT("2"), TEXT("1"), TEXT("1"), TEXT("0"), TEXT("1"), TEXT("0"), TEXT("0"), TEXT("true")};
+const TCHAR* SettingDefaults[] = {TEXT("[!] NATURAL WAVE"), TEXT("8"), TEXT("3.75"), TEXT("1"), TEXT("0.01"), TEXT("0.005"), TEXT("true"), TEXT("0.4"), TEXT("2"), TEXT("1"), TEXT("1"), TEXT("0"), TEXT("1"), TEXT("0"), TEXT("0"), TEXT("true")};
 const TCHAR* SettingLabelsEn[] = {
     TEXT("Natural marker text"), TEXT("Duration (s)"), TEXT("Size"), TEXT("Sphere R"), TEXT("Sphere G"), TEXT("Sphere B"), TEXT("Flash A / B"),
     TEXT("Opacity"), TEXT("Flash rate (Hz)"), TEXT("Text A · R"), TEXT("Text A · G"), TEXT("Text A · B"), TEXT("Text B · R"), TEXT("Text B · G"), TEXT("Text B · B"), TEXT("Natural waves")
@@ -47,7 +47,7 @@ const TCHAR* WaveTitlesZhCn[] = {
     TEXT("重型采掘：挖掘"), TEXT("重型采掘：升空"), TEXT("播报潮／通用潮"), TEXT("啤酒节伏击"), TEXT("设施破坏：发电站"),
     TEXT("噬岩体陨石防守"), TEXT("就地精炼：恒压潮"), TEXT("就地精炼：炼油虫潮"), TEXT("就地精炼：管道故障"), TEXT("就地精炼：撤离"),
     TEXT("特殊虫潮：战士"), TEXT("特殊虫潮：异虫蝇"), TEXT("特殊虫潮：岩痘"), TEXT("特殊虫潮：禁卫"), TEXT("特殊虫潮：蜂拥"),
-    TEXT("搜救：迷你矿骡伏击"), TEXT("搜救：据点防守"), TEXT("搜救：撤离"), TEXT("设施破坏：无人机"), TEXT("无畏异虫虫潮"),
+    TEXT("搜救行动：矿骡伏击"), TEXT("搜救行动：据点防守"), TEXT("搜救行动：撤离"), TEXT("设施破坏：无人机"), TEXT("无畏异虫潮"),
     TEXT("定点提取压力潮"), TEXT("教程战士潮"), TEXT("核心岩事件"), TEXT("强敌科技通讯事件"), TEXT("核心侵扰警告"), TEXT("骇入防守")
 };
 static_assert(sizeof(SettingLabelsEn) / sizeof(SettingLabelsEn[0]) == 16, "English settings caption count changed");
@@ -66,6 +66,16 @@ bool DefaultWaveEnabled(int32 Type) { return Type != 1 && Type != 6 && Type != 3
 FString SettingDefault(int32 I) { return I < 16 ? FString(SettingDefaults[I]) : I % 2 == 0 ? FString(DefaultWaveEnabled((I-16)/2+1) ? TEXT("true") : TEXT("false")) : FString(TEXT("[!] ")) + nwi::WaveTypes[(I-16)/2+1].title; }
 bool IsTextSetting(int32 I) { return I == 0 || (I >= 16 && I % 2 == 1); }
 bool IsBoolSetting(int32 I) { return I == 6 || I == 15 || (I >= 16 && I % 2 == 0); }
+float NumericMinimum(int32 I) { return I == 1 ? 1.f : I == 2 ? .5f : I == 8 ? .1f : 0.f; }
+float NumericMaximum(int32 I) { return I == 1 ? 30.f : I == 2 ? 12.f : I == 8 ? 10.f : 1.f; }
+UK2Node_CallFunction* ClampNumericSetting(UEdGraph* G, UEdGraphNode* Source, const TCHAR* SourceOutput, int32 I)
+{
+    auto* Clamp = Call(G, UKismetMathLibrary::StaticClass(), TEXT("FClamp"));
+    Link(Source, SourceOutput, Clamp, TEXT("Value"));
+    Value(Clamp, TEXT("Min"), *FString::SanitizeFloat(NumericMinimum(I)));
+    Value(Clamp, TEXT("Max"), *FString::SanitizeFloat(NumericMaximum(I)));
+    return Clamp;
+}
 FString SettingCaption(int32 I, bool Chinese)
 {
     if (I < 16) return Chinese ? FString(SettingLabelsZhCn[I]) : FString(SettingLabelsEn[I]);
@@ -130,8 +140,8 @@ void BuildSettings()
         else if (IsBoolSetting(I)) Input = BP->WidgetTree->ConstructWidget<UCheckBox>(UCheckBox::StaticClass(), Name);
         else {
             auto* Spin = BP->WidgetTree->ConstructWidget<USpinBox>(USpinBox::StaticClass(), Name);
-            Spin->SetMinValue(I == 1 ? 1.f : I == 2 ? 0.5f : I == 8 ? .1f : 0.f); Spin->SetMaxValue(I == 1 ? 30.f : I == 2 ? 12.f : I == 8 ? 10.f : I >= 7 ? 1.f : 5.f);
-            Spin->SetMinSliderValue(I == 1 ? 1.f : I == 2 ? .5f : I == 8 ? .1f : 0.f); Spin->SetMaxSliderValue(I == 1 ? 30.f : I == 2 ? 12.f : I == 8 ? 10.f : I >= 7 ? 1.f : 5.f);
+            Spin->SetMinValue(NumericMinimum(I)); Spin->SetMaxValue(NumericMaximum(I));
+            Spin->SetMinSliderValue(NumericMinimum(I)); Spin->SetMaxSliderValue(NumericMaximum(I));
             Spin->SetDelta(.1f); Input = Spin;
         }
         Input->bIsVariable = true; return Input;
@@ -161,7 +171,7 @@ void BuildSettings()
     AddControl(TextGrid,6,0,0); AddControl(TextGrid,8,0,1);
     AddControl(TextGrid,9,1,0); AddControl(TextGrid,10,1,1); AddControl(TextGrid,11,1,2);
     AddControl(TextGrid,12,2,0); AddControl(TextGrid,13,2,1); AddControl(TextGrid,14,2,2);
-    AddText(TEXT("PreviewCaption"),TEXT("Live text preview (edits are saved with Apply)"));
+    AddText(TEXT("PreviewCaption"),TEXT("Live text preview"));
     auto* Preview=BP->WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(),TEXT("TextPreview"));Preview->SetText(FText::FromString(TEXT("[!] NATURAL WAVE")));Preview->bIsVariable=true;SetFontSize(Preview,PreviewFontSize);Root->AddChildToVerticalBox(Preview);
     AddText(TEXT("SphereSection"), TEXT("Warning sphere"), nullptr, SectionTitleFontSize);
     auto* SphereGrid = BP->WidgetTree->ConstructWidget<UGridPanel>(UGridPanel::StaticClass(), TEXT("SphereGrid")); SphereGrid->bIsVariable = true; Root->AddChildToVerticalBox(SphereGrid);
@@ -171,7 +181,7 @@ void BuildSettings()
     auto* ScrollSlot=Frame->AddChildToVerticalBox(Scroll);ScrollSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
     auto* Button = BP->WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("ApplyButton")); Button->bIsVariable = true;
     auto* ButtonText = BP->WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("ApplyText")); ButtonText->SetText(FText::FromString(TEXT("Apply and save"))); ButtonText->bIsVariable = true; SetFontSize(ButtonText, ButtonFontSize); Button->AddChild(ButtonText); Frame->AddChildToVerticalBox(Button);
-    auto* Status = AddText(TEXT("SaveStatus"), TEXT("Distance is straight-line meters. Duration changes apply to new spawn events.")); Status->bIsVariable = true;
+    auto* Status = AddText(TEXT("SaveStatus"), TEXT("")); Status->bIsVariable = true;
     Compile(BP); auto* G = Graph(BP);
     auto* Config = Get(G, TEXT("Settings"));
     auto* Construct = Event(G, UUserWidget::StaticClass(), TEXT("Construct")); auto* Gate = Branch(G, Valid(G, Config, TEXT("Settings")), TEXT("ReturnValue")); Link(Construct, TEXT("then"), Gate, TEXT("execute"));
@@ -185,18 +195,18 @@ void BuildSettings()
     for (int32 Wave = 0; Wave < nwi::WaveTypeCount; ++Wave) Localize(*FString::Printf(TEXT("WaveName%d"), Wave), nwi::WaveTypes[Wave].title, WaveTitlesZhCn[Wave]);
     Localize(TEXT("TextSection"), TEXT("Warning text"), TEXT("播报警示文本"));
     for (int32 I : {6,8,9,10,11,12,13,14}) Localize(*FString::Printf(TEXT("Caption%d"), I), SettingCaption(I, false), SettingCaption(I, true));
-    Localize(TEXT("PreviewCaption"), TEXT("Live text preview (edits are saved with Apply)"), TEXT("实时文字预览（点击“应用并保存”后保存修改）"));
+    Localize(TEXT("PreviewCaption"), TEXT("Live text preview"), TEXT("实时文字预览"));
     Localize(TEXT("SphereSection"), TEXT("Warning sphere"), TEXT("警示球体"));
     for (int32 I : {1,2,3,4,5,7}) Localize(*FString::Printf(TEXT("Caption%d"), I), SettingCaption(I, false), SettingCaption(I, true));
     Localize(TEXT("ApplyText"), TEXT("Apply and save"), TEXT("应用并保存"));
-    Localize(TEXT("SaveStatus"), TEXT("Distance is straight-line meters. Duration changes apply to new spawn events."), TEXT("距离为直线距离（米）。显示时间的修改将在新敌潮事件中生效。"));
     for (int32 I = 0; I < SettingCount; ++I) {
         auto* Input = Get(G, *FString::Printf(TEXT("Input%s"), *SettingName(I)));
         auto* Read = Field(G, SaveBP->GeneratedClass, *SettingName(I), Config, TEXT("Settings"));
         auto* SetInput = Call(G, IsTextSetting(I) ? UEditableTextBox::StaticClass() : IsBoolSetting(I) ? UCheckBox::StaticClass() : USpinBox::StaticClass(), IsTextSetting(I) ? TEXT("SetText") : IsBoolSetting(I) ? TEXT("SetIsChecked") : TEXT("SetValue"));
         Link(Input, *FString::Printf(TEXT("Input%s"), *SettingName(I)), SetInput, TEXT("self"));
         if (IsTextSetting(I)) { auto* T = Call(G, UKismetTextLibrary::StaticClass(), TEXT("Conv_StringToText")); Link(Read, *SettingName(I), T, TEXT("InString")); Link(T, TEXT("ReturnValue"), SetInput, TEXT("InText")); }
-        else Link(Read, *SettingName(I), SetInput, IsBoolSetting(I) ? TEXT("InIsChecked") : TEXT("NewValue"));
+        else if (IsBoolSetting(I)) Link(Read, *SettingName(I), SetInput, TEXT("InIsChecked"));
+        else Link(ClampNumericSetting(G, Read, *SettingName(I), I), TEXT("ReturnValue"), SetInput, TEXT("NewValue"));
         Link(Exec, TEXT("then"), SetInput, TEXT("execute")); Exec = SetInput;
     }
     // Preview reads draft controls every widget tick, without saving or changing gameplay.
@@ -219,6 +229,7 @@ void BuildSettings()
             auto* T = Call(G, UKismetTextLibrary::StaticClass(), TEXT("Conv_TextToString")); Link(Read, TEXT("ReturnValue"), T, TEXT("InText"));
             auto* Limit = Call(G, UKismetStringLibrary::StaticClass(), TEXT("Left")); Link(T, TEXT("ReturnValue"), Limit, TEXT("SourceString")); Value(Limit, TEXT("Count"), TEXT("64")); Source = Limit;
         }
+        else if (!IsBoolSetting(I)) Source = ClampNumericSetting(G, Read, TEXT("ReturnValue"), I);
         auto* Write = WriteField(G, SaveBP->GeneratedClass, *SettingName(I), Config, TEXT("Settings")); Link(Source, TEXT("ReturnValue"), Write, *SettingName(I)); Link(Exec, TEXT("then"), Write, TEXT("execute")); Exec = Write;
     }
     auto* Revision = Field(G, SaveBP->GeneratedClass, TEXT("Revision"), Config, TEXT("Settings")); auto* Increment = Call(G, UKismetMathLibrary::StaticClass(), TEXT("Add_IntInt")); Link(Revision, TEXT("Revision"), Increment, TEXT("A")); Value(Increment, TEXT("B"), TEXT("1"));
@@ -294,7 +305,7 @@ void BuildControllerSettings(UBlueprint* BP, UEdGraph* G, UClass* PulseClass, UC
     auto* CacheTime = Set(G, TEXT("DurationSec")); Link(ClampTime, TEXT("ReturnValue"), CacheTime, TEXT("DurationSec")); Link(Commit, TEXT("then"), CacheTime, TEXT("execute")); UEdGraphNode* Exec = CacheTime;
     auto* Tint = Call(G, UKismetMathLibrary::StaticClass(), TEXT("MakeColor"));
     for (int32 I = 3; I < 6; ++I) {
-        auto* Channel = Field(G, SaveClass, *SettingName(I), Config, TEXT("Settings")); auto* Clamp = Call(G, UKismetMathLibrary::StaticClass(), TEXT("FClamp")); Link(Channel, *SettingName(I), Clamp, TEXT("Value")); Value(Clamp, TEXT("Max"), TEXT("5")); Link(Clamp, TEXT("ReturnValue"), Tint, I == 3 ? TEXT("R") : I == 4 ? TEXT("G") : TEXT("B"));
+        auto* Channel = Field(G, SaveClass, *SettingName(I), Config, TEXT("Settings")); auto* Clamp = Call(G, UKismetMathLibrary::StaticClass(), TEXT("FClamp")); Link(Channel, *SettingName(I), Clamp, TEXT("Value")); Value(Clamp, TEXT("Max"), TEXT("1")); Link(Clamp, TEXT("ReturnValue"), Tint, I == 3 ? TEXT("R") : I == 4 ? TEXT("G") : TEXT("B"));
     }
     Value(Tint, TEXT("A"), TEXT("1"));
     auto* Natural=Call(G,UKismetMathLibrary::StaticClass(),TEXT("SelectInt"));Value(Natural,TEXT("A"),TEXT("1"));Value(Natural,TEXT("B"),TEXT("0"));Link(Field(G,SaveClass,TEXT("NaturalEnabled"),Config,TEXT("Settings")),TEXT("NaturalEnabled"),Natural,TEXT("bPickA"));

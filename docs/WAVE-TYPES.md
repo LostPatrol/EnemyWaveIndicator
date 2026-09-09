@@ -33,11 +33,11 @@ Enemy Wave Indicator 0.9.1 为自然潮和 35 种游戏自带的脚本虫潮控�
 | 22 | Special swarm: rockpox<br>特殊虫潮：岩痘 | `EWC_SW_Plague_RockpoxInfectedEnemies` | A special swarm composed mainly of Rockpox-infected enemies.<br>以岩痘敌人为主的特殊虫潮。 |
 | 23 | Special swarm: praetorians<br>特殊虫潮：禁卫 | `EWC_SW_Pretorians` | A special swarm featuring many Glyphid Praetorians.<br>包含大量异虫禁卫的特殊虫潮。 |
 | 24 | Special swarm: swarmers<br>特殊虫潮：蜂拥 | `EWC_SW_Swarmers` | A special swarm dominated by small Glyphid Swarmers.<br>以蜂拥异虫为主的特殊虫潮。 |
-| 25 | Salvage: mini-MULE ambush<br>搜救：迷你矿骡伏击 | `EWC_Salvage_Ambush` | A localized ambush tied to recovering a broken mini-M.U.L.E.<br>搜救任务中首次接近损坏的迷你矿骡时触发的虫潮。 |
-| 26 | Salvage: defense<br>搜救：据点防守 | `EWC_Salvage_Defend` | Waves during the Uplink and Fuel Cell defense stages.<br>搜救任务中防守定位装置和燃料电池时出现的虫潮。 |
-| 27 | Salvage: extraction<br>搜救：撤离 | `EWC_Salvage_End` | The final enemy pressure after the Drop Pod has been prepared for departure.<br>搜救任务燃料电池防守完成后，等待空降仓充能至最终撤离阶段出现的虫潮。 |
+| 25 | Salvage: mini-MULE ambush<br>搜救行动：矿骡伏击 | `EWC_Salvage_Ambush` | A localized ambush tied to recovering a broken mini-M.U.L.E.<br>搜救行动中首次接近损坏的迷你矿骡时触发的虫潮。 |
+| 26 | Salvage: defense<br>搜救行动：据点防守 | `EWC_Salvage_Defend` | Waves during the Uplink and Fuel Cell defense stages.<br>搜救行动中防守定位装置和燃料电池时出现的虫潮。 |
+| 27 | Salvage: extraction<br>搜救行动：撤离 | `EWC_Salvage_End` | The final enemy pressure after the Drop Pod has been prepared for departure.<br>搜救行动的燃料电池防守完成后，等待空降仓充能至最终撤离阶段出现的虫潮。 |
 | 28 | Industrial Sabotage: drones<br>设施破坏：无人机 | `EWC_ShieledGenerator_DronePresure_Facility` | Patrol Bot and Shredder pressure during the power-station sequence.<br>设施破坏护盾阶段由巡逻机器人、粉碎者等构成的特殊潮。（两个发电站骇入完成后，护盾降下前，在看守者附近触发） |
-| 29 | Dreadnought wave<br>无畏异虫虫潮 | `EWC_Spiders_Boss` | A rare announced Dreadnought wave outside the Elimination cocoon flow; it directly spawns one standard Dreadnought, one Hiveguard, or the Arbalest/Lacerator pair.<br>不经过消灭任务虫茧流程的稀有播报型无畏异虫潮；它会直接生成 1 只普通无畏异虫、1 只巢主无畏异虫，或一对无畏异虫双子。 |
+| 29 | Dreadnought wave<br>无畏异虫潮 | `EWC_Spiders_Boss` | A rare announced Dreadnought wave outside the Elimination cocoon flow; it directly spawns one standard Dreadnought, one Hiveguard, or the Arbalest/Lacerator pair.<br>不经过消灭任务虫茧流程的稀有播报型无畏异虫潮；它会直接生成 1 只普通无畏异虫、1 只巢主无畏异虫，或一对无畏异虫双子。 |
 | 30 | Motherlode wave<br>定点提取压力潮 | `EWC_Spiders_Motherlode` | Recurring pressure waves during Point Extraction.<br>定点提取任务中随时间反复出现、频率逐渐加快的压力潮。 |
 | 32 | Core Stone event<br>核心岩事件 | `EWC_CoreRift` | Corespawn waves emerging from rifts during a Core Stone event.<br>核心岩事件启动后，从裂隙中出现的吗喽虫潮。 |
 | 33 | Rival communications event<br>强敌科技通讯事件 | `EWC_BombEvent` | Enemy waves during the Rival Communications Router event.<br>关闭强敌科技通讯天线事件期间出现的虫潮。 |

@@ -20,7 +20,7 @@ Enemy Wave Indicator marks detected enemy spawn areas with glowing spheres, cust
 - Host-to-client marker synchronization when every player has matching mod content.
 - Read-only behavior: the mod observes spawning and does not change enemies, damage, rewards, or progression.
 
-Version 0.9.1 enables every wave broadcast by default except **Drillevator**, **Escort: drilling**, **Core Stone event**, and **Core Corruption warning**. Marker text flashes yellow-red by default. Open Mod Hub and select **Apply and save** after changing any option. See the [complete wave-type list](docs/WAVE-TYPES.md).
+Version 0.9.1 enables every wave broadcast by default except **Drillevator**, **Escort: drilling**, **Core Stone event**, and **Core Corruption warning**. Marker text flashes yellow-red by default, and sphere RGB channels use a normalized 0–1 range. Open Mod Hub and select **Apply and save** after changing any option. See the [complete wave-type list](docs/WAVE-TYPES.md).
 
 ![Natural wave markers](docs/media/normal_wave_1.png)
 
