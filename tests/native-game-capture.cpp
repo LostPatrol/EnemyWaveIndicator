@@ -7,9 +7,9 @@
 #include <cstdio>
 #include <vector>
 #include <thread>
-#include "../mods/NormalWaveNativeProbe/GameCapture.h"
-#include "../mods/NormalWaveNativeProbe/OriginRegions.h"
-#include "../mods/NormalWaveNativeProbe/EnemyBuckets.h"
+#include "../mods/EnemyWaveNativeProbe/GameCapture.h"
+#include "../mods/EnemyWaveNativeProbe/OriginRegions.h"
+#include "../mods/EnemyWaveNativeProbe/EnemyBuckets.h"
 namespace {
 alignas(16) unsigned char owner[0x300]{};
 alignas(16) unsigned char normalContext[0x100]{}; // The actual normal entry receives a component, NOT UWorld.

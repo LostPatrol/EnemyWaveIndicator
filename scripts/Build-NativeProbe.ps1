@@ -16,7 +16,7 @@ try {
     & cl.exe /nologo /O2 /MT /W3 /c @vendorSources 2>&1 | Tee-Object build-minhook.txt | Out-Host
     if ($LASTEXITCODE -ne 0) { throw 'Pinned MinHook build failed.' }
     $hookObjects = @('buffer.obj','hook.obj','trampoline.obj','hde64.obj')
-    $nativeSources = @('main.cpp','GameCapture.cpp','AutomaticPresentation.cpp') | ForEach-Object { Join-Path $projectRoot ('mods\NormalWaveNativeProbe\' + $_) }
+    $nativeSources = @('main.cpp','GameCapture.cpp','AutomaticPresentation.cpp') | ForEach-Object { Join-Path $projectRoot ('mods\EnemyWaveNativeProbe\' + $_) }
     # Static CRT avoids passing STL/CRT ownership across the module boundary or shipping new runtimes.
     & cl.exe /nologo /std:c++17 /O2 /MT /EHsc /W4 /WX /utf-8 /LD /Zi @nativeSources @hookObjects /link /OUT:main.dll /DEBUG /INCREMENTAL:NO 2>&1 | Tee-Object build-dll.txt | Out-Host
     if ($LASTEXITCODE -ne 0) { throw 'Native probe compilation failed.' }
@@ -58,13 +58,13 @@ try {
         Description = 'Synthetic standalone host only; not an in-game compatibility result.'
         BuildDirectory = $output; Compiler = $toolchain; WindowsSdk = $env:WindowsSDKVersion
         SHA256 = (Get-FileHash main.dll -Algorithm SHA256).Hash
-        SourceSHA256 = (Get-FileHash (Join-Path $projectRoot 'mods\NormalWaveNativeProbe\main.cpp')).Hash
-        HeaderSHA256 = (Get-FileHash (Join-Path $projectRoot 'mods\NormalWaveNativeProbe\DispatchProbe.h')).Hash
-        EngineHeaderSHA256 = (Get-FileHash (Join-Path $projectRoot 'mods\NormalWaveNativeProbe\EngineThreadIdentity.h')).Hash
-        PresentationHeaderSHA256 = (Get-FileHash (Join-Path $projectRoot 'mods\NormalWaveNativeProbe\PresentationBootstrap.h')).Hash
-        WorldHeaderSHA256 = (Get-FileHash (Join-Path $projectRoot 'mods\NormalWaveNativeProbe\ActiveWorld.h')).Hash
+        SourceSHA256 = (Get-FileHash (Join-Path $projectRoot 'mods\EnemyWaveNativeProbe\main.cpp')).Hash
+        HeaderSHA256 = (Get-FileHash (Join-Path $projectRoot 'mods\EnemyWaveNativeProbe\DispatchProbe.h')).Hash
+        EngineHeaderSHA256 = (Get-FileHash (Join-Path $projectRoot 'mods\EnemyWaveNativeProbe\EngineThreadIdentity.h')).Hash
+        PresentationHeaderSHA256 = (Get-FileHash (Join-Path $projectRoot 'mods\EnemyWaveNativeProbe\PresentationBootstrap.h')).Hash
+        WorldHeaderSHA256 = (Get-FileHash (Join-Path $projectRoot 'mods\EnemyWaveNativeProbe\ActiveWorld.h')).Hash
         ProbeVersion = '0.9.1'; DispatchOfflinePassed = $true; PresentationOfflinePassed = $true; CaptureOfflinePassed = $true
-        SourceFiles = @(@(Get-ChildItem (Join-Path $projectRoot 'mods\NormalWaveNativeProbe') -File | Where-Object Extension -in '.cpp','.h') + @(Get-Item (Join-Path $projectRoot 'engine\Authoring\NwiAuthoring\Source\NwiAuthoring\Public\NwiWaveTypes.h')) + @(Get-ChildItem $vendor -File -Recurse) | Get-FileHash)
+        SourceFiles = @(@(Get-ChildItem (Join-Path $projectRoot 'mods\EnemyWaveNativeProbe') -File | Where-Object Extension -in '.cpp','.h') + @(Get-Item (Join-Path $projectRoot 'engine\Authoring\NwiAuthoring\Source\NwiAuthoring\Public\NwiWaveTypes.h')) + @(Get-ChildItem $vendor -File -Recurse) | Get-FileHash)
         OfflinePassed = $true; InGameVerified = $false; GameThreadVerified = $false
         Runs = 2; Updates = 20001
     } | ConvertTo-Json | Set-Content verification.json -Encoding utf8

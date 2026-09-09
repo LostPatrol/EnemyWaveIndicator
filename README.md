@@ -26,7 +26,7 @@ Version 0.9.1 enables every wave broadcast by default except **Drillevator**, **
 
 ## Installation
 
-Download the matching 0.9.1 package from [GitHub Releases](https://github.com/LostPatrol/EnemyWaveIndicator/releases) when it is published. The release archive contains both `main.dll` and `NormalWaveIndicator_P.pak`; the old internal filenames are retained for compatibility.
+Download the matching 0.9.1 package from [GitHub Releases](https://github.com/LostPatrol/EnemyWaveIndicator/releases) when it is published. The release archive contains `main.dll`, `EnemyWaveIndicator_P.pak`, and the redistributed dependency licenses.
 
 ### Option A: MintCat (recommended)
 
@@ -46,8 +46,8 @@ MintCat installs the DLL and merges the Pak content it manages. Do not also copy
 4. In Steam, open **Deep Rock Galactic → Manage → Browse local files**, then enter `FSD\Binaries\Win64`.
 5. Extract the runtime into `Win64` while preserving its directory structure. `dwmapi.dll` and the `ue4ss` directory should both be directly inside `Win64`.
 6. Open the Enemy Wave Indicator release ZIP and copy:
-   - `main.dll` to `FSD\Binaries\Win64\ue4ss\mods\NormalWaveIndicator\main.dll`
-   - `NormalWaveIndicator_P.pak` to `FSD\Content\Paks\NormalWaveIndicator_P.pak`
+   - `main.dll` to `FSD\Binaries\Win64\ue4ss\mods\EnemyWaveIndicator\main.dll`
+   - `EnemyWaveIndicator_P.pak` to `FSD\Content\Paks\EnemyWaveIndicator_P.pak`
 7. Start DRG, enter the Space Rig, then configure the mod in Mod Hub once the Space Rig finishes loading.
 
 The DLL and Pak must come from the same release. When updating manually, replace both files. If another loader already owns `dwmapi.dll`, verify compatibility before replacing it.
@@ -64,8 +64,8 @@ The DLL and Pak must come from the same release. When updating manually, replace
 
 - **The mod is missing from Mod Hub:** confirm that Mod Hub is enabled and that the Space Rig has finished loading. The current 0.9.1 package has no fixed startup delay and uses the same stable, static Mod Hub registration metadata as the validated 0.9.0 build. If the ZIP SHA-256 differs from the release note, close the game and reimport it in MintCat.
 - **One of the four default-disabled events does not appear:** enable its matching type in Mod Hub and select **Apply and save**.
-- **Nothing appears:** verify that `main.dll` and `NormalWaveIndicator_P.pak` are from the same version. The host needs the DLL; clients need matching Pak content to render the custom markers.
-- **MintCat reports a duplicate or loose Pak:** remove the manually installed `NormalWaveIndicator_P.pak` after confirming MintCat manages the mod, then apply changes again.
+- **Nothing appears:** verify that `main.dll` and `EnemyWaveIndicator_P.pak` are from the same version. The host needs the DLL; clients need matching Pak content to render the custom markers.
+- **MintCat reports a duplicate or loose Pak:** remove the manually installed `EnemyWaveIndicator_P.pak` after confirming MintCat manages the mod, then apply changes again.
 - **You are updating a very old manual installation:** remove or back up the old DLL and Pak before installing the current pair. Do not load two copies.
 
 When reporting a problem, include the mission type, the wave/event that triggered it, whether you were host or client, your installation method, and any `probe-*.jsonl` file created beside the mod DLL.
@@ -75,7 +75,7 @@ When reporting a problem, include the mission type, the wave/event that triggere
 - Markers appear when supported enemies begin spawning; this is not advance wave prediction.
 - New mod-defined controllers, some direct boss summons, and event-specific spawning paths may not be identified.
 - Multiplayer synchronization and late joining have not completed full two-machine validation. The host needs the native DLL, and participating clients need matching content.
-- The internal Pak path, DLL folder, and some code identifiers still use `NormalWaveIndicator` for compatibility. Version 0.9.1 starts a new `v3` settings slot so its changed defaults are applied; the old `v2` save is retained.
+- The internal asset root, Pak filename, manual DLL directory, and active settings slot all use `EnemyWaveIndicator`. Settings created before this internal rename are not imported or deleted.
 
 ## License
 

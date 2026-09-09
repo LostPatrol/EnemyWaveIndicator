@@ -1,7 +1,7 @@
 // Fake-host tests for bounded visual bootstrap; these do not load or simulate Unreal objects.
-#include "../mods/NormalWaveNativeProbe/PresentationBootstrap.h"
-#include "../mods/NormalWaveNativeProbe/ModHubRegistration.h"
-#include "../mods/NormalWaveNativeProbe/ActiveWorld.h"
+#include "../mods/EnemyWaveNativeProbe/PresentationBootstrap.h"
+#include "../mods/EnemyWaveNativeProbe/ModHubRegistration.h"
+#include "../mods/EnemyWaveNativeProbe/ActiveWorld.h"
 #include <cwchar>
 #include <cstdio>
 
@@ -15,8 +15,8 @@ int searchFunction = 0, refreshFunction = 0;
 unsigned hubFinds = 0, hubProcesses = 0;
 uint16_t hubParameterSize = 0;
 const wchar_t* expectedClass() {
-    return world == &worlds[10] ? L"/Game/NormalWaveIndicator/InitSpacerig.InitSpacerig_C"
-        : L"/Game/NormalWaveIndicator/InitCave.InitCave_C";
+    return world == &worlds[10] ? L"/Game/EnemyWaveIndicator/InitSpacerig.InitSpacerig_C"
+        : L"/Game/EnemyWaveIndicator/InitCave.InitCave_C";
 }
 bool equal(const nwi::WideView* v, const wchar_t* text) {
     return v && v->size == wcslen(text) && wmemcmp(v->data, text, v->size) == 0;

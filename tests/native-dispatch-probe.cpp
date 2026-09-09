@@ -1,8 +1,8 @@
 // Synthetic scheduling tests for the production single-slot core; no UE4SSL or game is loaded.
-#include "../mods/NormalWaveNativeProbe/DispatchProbe.h"
+#include "../mods/EnemyWaveNativeProbe/DispatchProbe.h"
 #include <cstdio>
 #include <thread>
-#include "../mods/NormalWaveNativeProbe/EngineThreadIdentity.h"
+#include "../mods/EnemyWaveNativeProbe/EngineThreadIdentity.h"
 
 namespace {
 uint64_t now = 0;

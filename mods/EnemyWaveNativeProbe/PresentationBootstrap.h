@@ -81,8 +81,8 @@ public:
             return;
         }
     }
-    inline static constexpr wchar_t RigClassPath[] = L"/Game/NormalWaveIndicator/InitSpacerig.InitSpacerig_C";
-    inline static constexpr wchar_t CaveClassPath[] = L"/Game/NormalWaveIndicator/InitCave.InitCave_C";
+    inline static constexpr wchar_t RigClassPath[] = L"/Game/EnemyWaveIndicator/InitSpacerig.InitSpacerig_C";
+    inline static constexpr wchar_t CaveClassPath[] = L"/Game/EnemyWaveIndicator/InitCave.InitCave_C";
 private:
     template<size_t N> static WideView view(const wchar_t (&text)[N]) noexcept { return {text, N - 1}; }
     PresentationApi api_{};

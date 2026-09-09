@@ -26,7 +26,7 @@ Enemy Wave Indicator 会用发光球体、可自定义文字和距离信息，�
 
 ## 安装方法
 
-0.9.1 发布后，请从 [GitHub Releases](https://github.com/LostPatrol/EnemyWaveIndicator/releases) 下载对应版本。压缩包同时包含 `main.dll` 和 `NormalWaveIndicator_P.pak`；为了兼容旧版本，内部文件名仍保留旧名称。
+0.9.1 发布后，请从 [GitHub Releases](https://github.com/LostPatrol/EnemyWaveIndicator/releases) 下载对应版本。压缩包包含 `main.dll`、`EnemyWaveIndicator_P.pak` 和再分发依赖的许可证。
 
 ### 方式一：使用 MintCat（推荐）
 
@@ -46,8 +46,8 @@ MintCat 会安装 DLL，并把它管理的 Pak 内容合并到游戏中。使用
 4. 在 Steam 中打开 **Deep Rock Galactic → 管理 → 浏览本地文件**，进入 `FSD\Binaries\Win64`。
 5. 把运行时按原目录结构解压到 `Win64`。完成后，`dwmapi.dll` 和 `ue4ss` 文件夹都应直接位于 `Win64` 下。
 6. 打开 Enemy Wave Indicator 的 Release ZIP，复制：
-   - `main.dll` 到 `FSD\Binaries\Win64\ue4ss\mods\NormalWaveIndicator\main.dll`
-   - `NormalWaveIndicator_P.pak` 到 `FSD\Content\Paks\NormalWaveIndicator_P.pak`
+   - `main.dll` 到 `FSD\Binaries\Win64\ue4ss\mods\EnemyWaveIndicator\main.dll`
+   - `EnemyWaveIndicator_P.pak` 到 `FSD\Content\Paks\EnemyWaveIndicator_P.pak`
 7. 启动游戏并进入空间站，待空间站完成加载后即可通过 Mod Hub 配置本 Mod。
 
 DLL 和 Pak 必须来自同一个版本。手动更新时需要同时替换这两个文件。如果其他加载器已经安装了自己的 `dwmapi.dll`，请先确认兼容性再决定是否覆盖。
@@ -64,8 +64,8 @@ DLL 和 Pak 必须来自同一个版本。手动更新时需要同时替换这�
 
 - **Mod Hub 中没有出现本 Mod：**确认 Mod Hub 已启用，并确认空间站已经完成加载。当前 0.9.1 包没有固定启动延时，且 Mod Hub 注册接口使用与 0.9.0 已验证版本一致的稳定静态元数据。若压缩包的 SHA-256 与发布说明不同，请关闭游戏后在 MintCat 中重新导入。
 - **四种默认关闭的事件没有显示：**请在 Mod Hub 中开启对应类型，再点击**应用并保存**。
-- **完全没有标记：**确认 `main.dll` 和 `NormalWaveIndicator_P.pak` 来自同一版本。房主需要安装 DLL，客机需要匹配的 Pak 内容才能显示自定义标记。
-- **MintCat 提示重复或松散 Pak：**先确认 MintCat 已管理本 Mod，再删除手动安装的 `NormalWaveIndicator_P.pak`，然后重新应用更改。
+- **完全没有标记：**确认 `main.dll` 和 `EnemyWaveIndicator_P.pak` 来自同一版本。房主需要安装 DLL，客机需要匹配的 Pak 内容才能显示自定义标记。
+- **MintCat 提示重复或松散 Pak：**先确认 MintCat 已管理本 Mod，再删除手动安装的 `EnemyWaveIndicator_P.pak`，然后重新应用更改。
 - **从很早的手动安装版本升级：**先移走或备份旧 DLL 和 Pak，再安装当前版本，避免同时加载两份。
 
 反馈问题时，请附上任务类型、触发问题的虫潮或事件、你是房主还是客机、安装方式，以及 Mod DLL 目录旁生成的 `probe-*.jsonl` 文件。
@@ -75,7 +75,7 @@ DLL 和 Pak 必须来自同一个版本。手动更新时需要同时替换这�
 - 标记会在受支持敌人开始生成时出现，不提供提前数秒的虫潮预测。
 - 新增 Mod 自定义控制器、部分直接生成的 Boss，以及少数事件自有的刷怪路径可能无法识别。
 - 联机同步和中途加入尚未完成完整双机验收。房主需要原生 DLL，参与玩家需要匹配版本的内容。
-- 为了兼容现有安装，Pak 内部路径、DLL 目录和部分代码标识仍使用 `NormalWaveIndicator`。0.9.1 使用新的 `v3` 设置存档，以确保新版默认值生效；旧 `v2` 存档仍会保留。
+- Pak 内资源根目录、Pak 文件名、手动安装 DLL 目录和当前设置存档槽均已统一为 `EnemyWaveIndicator`。内部重命名前的设置不会导入，也不会被删除。
 
 ## 许可证
 

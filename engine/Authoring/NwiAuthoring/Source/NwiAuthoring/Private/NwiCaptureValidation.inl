@@ -3,7 +3,7 @@ namespace {
 bool ValidateCapture()
 {
     FTestWorld Test;
-    auto* Class=LoadClass<AActor>(nullptr,TEXT("/Game/NormalWaveIndicator/BP_NwiAuto.BP_NwiAuto_C"));NWI_REQUIRE(Class);
+    auto* Class=LoadClass<AActor>(nullptr,TEXT("/Game/EnemyWaveIndicator/BP_NwiAuto.BP_NwiAuto_C"));NWI_REQUIRE(Class);
     NWI_REQUIRE(Class->FindFunctionByName(TEXT("NwiPoll")) && !Class->FindFunctionByName(TEXT("ObserveEnemy")));
     NWI_REQUIRE(FindFProperty<FIntProperty>(Class,TEXT("NativeAbi"))->GetPropertyValue_InContainer(Class->GetDefaultObject())==0x90000);
     for(int32 I=0;I<8;++I) for(const TCHAR* Prefix:{TEXT("RegionPoint"),TEXT("RegionSerial"),TEXT("RegionVisible"),TEXT("RegionExpires"),TEXT("RegionScale"),TEXT("RegionType")}) {
@@ -11,7 +11,7 @@ bool ValidateCapture()
     }
     // The actual native-loading entry assets deduplicate the controller across repeated initialization.
     AActor* OwningEntry = nullptr;
-    for(const TCHAR* Path : {TEXT("/Game/NormalWaveIndicator/InitCave.InitCave_C"), TEXT("/Game/NormalWaveIndicator/InitSpacerig.InitSpacerig_C")}) {
+    for(const TCHAR* Path : {TEXT("/Game/EnemyWaveIndicator/InitCave.InitCave_C"), TEXT("/Game/EnemyWaveIndicator/InitSpacerig.InitSpacerig_C")}) {
         auto* InitClass=LoadClass<AActor>(nullptr,Path); NWI_REQUIRE(InitClass);
         auto* Entry = Test.World->SpawnActor<AActor>(InitClass); NWI_REQUIRE(Entry);
         if (!OwningEntry) OwningEntry = Entry;

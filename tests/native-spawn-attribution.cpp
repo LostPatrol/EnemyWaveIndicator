@@ -1,5 +1,5 @@
 // Deterministic semantic tests against an independent vector model; no Unreal DLL or gameplay hook is used.
-#include "../mods/NormalWaveNativeProbe/SpawnAttribution.h"
+#include "../mods/EnemyWaveNativeProbe/SpawnAttribution.h"
 #include <cstdio>
 #include <limits>
 #include <vector>

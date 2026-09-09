@@ -17,7 +17,7 @@ void DeclareCapture(UBlueprint* BP)
 // Each display peer selects its own label/visibility from the replicated source ID.
 UK2Node_CallFunction* RegionSetting(UEdGraph* G, int32 I, bool Enabled)
 {
-    auto* SaveClass=LoadClass<USaveGame>(nullptr,TEXT("/Game/NormalWaveIndicator/SG_NwiSettings.SG_NwiSettings_C"));
+    auto* SaveClass=LoadClass<USaveGame>(nullptr,TEXT("/Game/EnemyWaveIndicator/SG_NwiSettings.SG_NwiSettings_C"));
     const auto Region=FString::Printf(TEXT("RegionType%d"),I);
     auto* Config=Get(G,TEXT("Settings"));
     const TCHAR* NaturalField=Enabled?TEXT("NaturalEnabled"):TEXT("Label");
@@ -49,7 +49,7 @@ UK2Node_CallFunction* UpdateRegionLabel(UEdGraph* G, UClass* HudClass, int32 I)
 // The host owns the replicated controller. Clients render the host-created instance.
 void BuildNativeInitializers()
 {
-    auto* Controller = LoadClass<AActor>(nullptr, TEXT("/Game/NormalWaveIndicator/BP_NwiAuto.BP_NwiAuto_C")); check(Controller);
+    auto* Controller = LoadClass<AActor>(nullptr, TEXT("/Game/EnemyWaveIndicator/BP_NwiAuto.BP_NwiAuto_C")); check(Controller);
     for (const TCHAR* Name : {TEXT("InitCave"), TEXT("InitSpacerig")}) {
         auto* BP = Blueprint(Name, false, AActor::StaticClass());
         Variable(BP, TEXT("OwnedController"), Type(UEdGraphSchema_K2::PC_Object, Controller)); Compile(BP);

@@ -19,7 +19,7 @@ try {
     [pscustomobject]@{
         Description = 'Synthetic bookkeeping only; requires a complete native mutation adapter before use.'
         Passed = $true; InGameVerified = $false; Deployed = $false
-        HeaderSHA256 = (Get-FileHash (Join-Path $projectRoot 'mods\NormalWaveNativeProbe\SpawnAttribution.h')).Hash
+        HeaderSHA256 = (Get-FileHash (Join-Path $projectRoot 'mods\EnemyWaveNativeProbe\SpawnAttribution.h')).Hash
         TestSHA256 = (Get-FileHash $source).Hash
         ReferenceOperations = 100000
     } | ConvertTo-Json | Set-Content verification.json -Encoding utf8

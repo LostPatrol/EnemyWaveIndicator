@@ -3,6 +3,7 @@
 param([Parameter(Mandatory)][string]$AuthoringBuild, [string]$EngineRoot)
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path $PSScriptRoot -Parent
+$AuthoringBuild = (Resolve-Path -LiteralPath $AuthoringBuild).Path
 $environment = & (Join-Path $PSScriptRoot 'Test-RenderingEnvironment.ps1') -EngineRoot $EngineRoot
 if (!$environment.CompatibleEditors.Count) { throw 'UE4.27.2 editor is missing.' }
 if (!$EngineRoot) { $EngineRoot = $environment.CompatibleEditors[0].Root }
@@ -43,7 +44,7 @@ if ($validationCode -ne 0 -or !(Test-Path -LiteralPath $resultFile)) { throw "Va
 $result = Get-Content -LiteralPath $resultFile -Raw | ConvertFrom-Json
 $validationLog = Get-Content -LiteralPath (Join-Path $evidence 'validate.log') -Raw
 if (!$result.success -or $validationLog -match 'Log\w+: Error:') { throw "Blueprint runtime validation failed. See $evidence" }
-$assets = @(Get-ChildItem (Join-Path $projectRoot 'engine\FSD\Content\NormalWaveIndicator') -Filter '*.uasset' -File | Get-FileHash)
+$assets = @(Get-ChildItem (Join-Path $projectRoot 'engine\FSD\Content\EnemyWaveIndicator') -Filter '*.uasset' -File | Get-FileHash)
 [pscustomobject]@{ Success = $true; AuthoringBuild = $AuthoringBuild; SourceFiles = @(Get-ChildItem (Join-Path $projectRoot 'engine\Authoring\NwiAuthoring') -Recurse -File | Get-FileHash); Assets = $assets; Validation = $result; GameDeployed = $false } |
     ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $evidence 'verification.json') -Encoding utf8
 Write-Output $evidence

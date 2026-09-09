@@ -14,7 +14,7 @@ $source=Join-Path $testRoot 'source\fixture.cpp';$asset=Join-Path $assetsDir 'fi
 Set-Content $source '// Synthetic build fixture';Set-Content $asset 'fixture asset';Set-Content $config '; Fixture packaging config';Set-Content $dll 'fixture native binary'
 $names=@('BP_NwiAuto','BP_NwiResources','BP_NwiPulse','WBP_NwiMarker','SG_NwiSettings','WBP_NwiSettings','M_NwiRedPulse','InitCave','InitSpacerig')
 $files=@($names | ForEach-Object {foreach($extension in @('uasset','uexp')) {$p=Join-Path $cookDir "$_.${extension}";Set-Content $p 'fixture cooked bytes';Get-FileHash $p}})
-$pak=Join-Path $cookDir 'NormalWavePresentation-assets-only.pak';Set-Content $pak 'fixture Pak payload'
+$pak=Join-Path $cookDir 'EnemyWavePresentation-assets-only.pak';Set-Content $pak 'fixture Pak payload'
 $audit=Join-Path $cookDir 'dependency-audit.json';@{passed=$true;contentOnly=$false;nativeAbi=589824;assets=9} | ConvertTo-Json | Set-Content $audit
 $native=@{ProbeVersion='0.9.1';OfflinePassed=$true;CaptureOfflinePassed=$true;DispatchOfflinePassed=$true;PresentationOfflinePassed=$true;SourceFiles=@(Get-FileHash $source);SHA256=(Get-FileHash $dll).Hash}
 $assets=@{Success=$true;SourceFiles=@(Get-FileHash $source);Assets=@(Get-FileHash $asset);Validation=@{success=$true;native_contract_test=$true;replication_metadata_test=$true;content_only=$false;automatic_pool_test=$true;settings_test=$true;async_resource_tests=$true;red_material_test=$true;edge_cases=1452}}
@@ -50,7 +50,7 @@ if(!$m.Localization.Automatic -or @($m.Localization.Languages).Count -ne 2 -or '
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $zip=[IO.Compression.ZipFile]::OpenRead($release+'.zip')
 try {
-    if(@(Compare-Object @('LICENSES.txt','NormalWaveIndicator_P.pak','main.dll') @($zip.Entries.FullName)).Count){throw 'Unexpected ZIP entries.'}
+    if(@(Compare-Object @('EnemyWaveIndicator_P.pak','LICENSES.txt','main.dll') @($zip.Entries.FullName)).Count){throw 'Unexpected ZIP entries.'}
     foreach($entry in $zip.Entries) {
         $stream=$entry.Open();$sha=[Security.Cryptography.SHA256]::Create()
         try {$hash=[BitConverter]::ToString($sha.ComputeHash($stream)).Replace('-','')} finally {$stream.Dispose();$sha.Dispose()}
@@ -60,5 +60,6 @@ try {
 $publicArchive=Join-Path $testRoot 'dist\EnemyWaveIndicator-0.9.1.zip'
 if(!(Test-Path -LiteralPath $publicArchive)){throw 'Missing public EnemyWaveIndicator archive.'}
 if((Get-FileHash -LiteralPath $publicArchive).Hash -ne (Get-FileHash -LiteralPath ($release+'.zip')).Hash){throw 'Public archive differs from staged archive.'}
-if(Test-Path -LiteralPath (Join-Path $testRoot 'dist\NormalWaveIndicator-0.9.1.zip')){throw 'Legacy public archive name was generated.'}
+$archives=@(Get-ChildItem -LiteralPath (Join-Path $testRoot 'dist') -Filter '*.zip' -File)
+if($archives.Count -ne 1 -or $archives[0].Name -ne 'EnemyWaveIndicator-0.9.1.zip'){throw 'Unexpected public archive set.'}
 Write-Output "PASS: $rejections refusal cases and all three ZIP hashes. Evidence: $testRoot"

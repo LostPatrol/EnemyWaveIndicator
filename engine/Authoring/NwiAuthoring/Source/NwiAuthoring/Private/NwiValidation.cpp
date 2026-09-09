@@ -97,7 +97,7 @@ bool ValidateInWorld(UClass* PulseClass)
     NWI_REQUIRE(Initialize(Actor, nullptr, nullptr, nullptr));
     NWI_REQUIRE(Actor->IsHidden() && !Actor->IsActorTickEnabled());
 
-    auto* Material = LoadObject<UMaterial>(nullptr, TEXT("/Game/NormalWaveIndicator/M_NwiRedPulse.M_NwiRedPulse"));
+    auto* Material = LoadObject<UMaterial>(nullptr, TEXT("/Game/EnemyWaveIndicator/M_NwiRedPulse.M_NwiRedPulse"));
     auto* Scale = LoadObject<UCurveFloat>(nullptr, TEXT("/Game/NwiValidation/CF_TestScale.CF_TestScale"));
     auto* Alpha = LoadObject<UCurveFloat>(nullptr, TEXT("/Game/NwiValidation/CF_TestAlpha.CF_TestAlpha"));
     NWI_REQUIRE(Material && Scale && Alpha);
@@ -316,7 +316,7 @@ bool ValidateAutomatic(UClass* PulseClass, UClass* WidgetClass)
         FSlateApplication::InitializeAsStandaloneApplication(NullRenderer.CreateSlateNullRenderer());
     }
     FTestWorld Test;
-    auto* Class = LoadClass<AActor>(nullptr, TEXT("/Game/NormalWaveIndicator/BP_NwiAuto.BP_NwiAuto_C"));
+    auto* Class = LoadClass<AActor>(nullptr, TEXT("/Game/EnemyWaveIndicator/BP_NwiAuto.BP_NwiAuto_C"));
     NWI_REQUIRE(Test.World && Class);
     auto* Controller = Test.World->SpawnActor<AActor>(Class);
     auto* HubModInterface = LoadClass<UInterface>(nullptr, TEXT("/Game/_ModHub/IHubMod.IHubMod_C"));
@@ -331,7 +331,7 @@ bool ValidateAutomatic(UClass* PulseClass, UClass* WidgetClass)
     NWI_REQUIRE(Controller->IsActorTickEnabled() && Controller->GetIsReplicated());
     ++GFrameCounter; Test.World->Tick(LEVELTICK_All, 0.1f);
     NWI_REQUIRE(!Attempted->GetPropertyValue_InContainer(Controller));
-    auto* Material = LoadObject<UMaterial>(nullptr, TEXT("/Game/NormalWaveIndicator/M_NwiRedPulse.M_NwiRedPulse"));
+    auto* Material = LoadObject<UMaterial>(nullptr, TEXT("/Game/EnemyWaveIndicator/M_NwiRedPulse.M_NwiRedPulse"));
     auto* Scale = LoadObject<UCurveFloat>(nullptr, TEXT("/Game/NwiValidation/CF_TestScale.CF_TestScale"));
     auto* Alpha = LoadObject<UCurveFloat>(nullptr, TEXT("/Game/NwiValidation/CF_TestAlpha.CF_TestAlpha"));
     NWI_REQUIRE(Material && Scale && Alpha);
@@ -390,7 +390,7 @@ bool ValidateAutomatic(UClass* PulseClass, UClass* WidgetClass)
     for (int32 I = 0; I < 8; ++I) NWI_REQUIRE(Pulses[I]->IsHidden() && Huds[I]->GetVisibility() == ESlateVisibility::Collapsed);
     // Exercise the serialized page's actual button delegate, disk round trip and pool update.
     auto* Settings = FindFProperty<FObjectPropertyBase>(Class, TEXT("Settings"))->GetObjectPropertyValue_InContainer(Controller);
-    auto* PageClass = LoadClass<UUserWidget>(nullptr, TEXT("/Game/NormalWaveIndicator/WBP_NwiSettings.WBP_NwiSettings_C"));
+    auto* PageClass = LoadClass<UUserWidget>(nullptr, TEXT("/Game/EnemyWaveIndicator/WBP_NwiSettings.WBP_NwiSettings_C"));
     FScopedLanguage Language;
     NWI_REQUIRE(Language.Set(TEXT("en")));
     auto* Page = NewObject<UUserWidget>(GetTransientPackage(), PageClass);
@@ -574,12 +574,12 @@ struct FTestAutomaticCurves
 
 bool ValidateNwiPresentation()
 {
-    auto* PulseClass = LoadClass<AStaticMeshActor>(nullptr, TEXT("/Game/NormalWaveIndicator/BP_NwiPulse.BP_NwiPulse_C"));
-    auto* WidgetClass = LoadClass<UUserWidget>(nullptr, TEXT("/Game/NormalWaveIndicator/WBP_NwiMarker.WBP_NwiMarker_C"));
-    auto* ResourceClass = LoadClass<AActor>(nullptr, TEXT("/Game/NormalWaveIndicator/BP_NwiResources.BP_NwiResources_C"));
-    auto* VisualClass = LoadClass<AActor>(nullptr, TEXT("/Game/NormalWaveIndicator/BP_NwiVisualTest.BP_NwiVisualTest_C"));
+    auto* PulseClass = LoadClass<AStaticMeshActor>(nullptr, TEXT("/Game/EnemyWaveIndicator/BP_NwiPulse.BP_NwiPulse_C"));
+    auto* WidgetClass = LoadClass<UUserWidget>(nullptr, TEXT("/Game/EnemyWaveIndicator/WBP_NwiMarker.WBP_NwiMarker_C"));
+    auto* ResourceClass = LoadClass<AActor>(nullptr, TEXT("/Game/EnemyWaveIndicator/BP_NwiResources.BP_NwiResources_C"));
+    auto* VisualClass = LoadClass<AActor>(nullptr, TEXT("/Game/EnemyWaveIndicator/BP_NwiVisualTest.BP_NwiVisualTest_C"));
     NWI_REQUIRE(PulseClass && WidgetClass && ResourceClass && VisualClass);
-    auto* AutomaticClass = LoadClass<AActor>(nullptr, TEXT("/Game/NormalWaveIndicator/BP_NwiAuto.BP_NwiAuto_C"));
+    auto* AutomaticClass = LoadClass<AActor>(nullptr, TEXT("/Game/EnemyWaveIndicator/BP_NwiAuto.BP_NwiAuto_C"));
     NWI_REQUIRE(AutomaticClass);
     FTestAutomaticCurves TestCurves(AutomaticClass);
     NWI_REQUIRE(ValidatePlacement(WidgetClass));

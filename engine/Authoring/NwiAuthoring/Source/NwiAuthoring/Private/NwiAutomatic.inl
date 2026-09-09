@@ -1,9 +1,9 @@
 // Generate a replicated controller with reusable visual pairs and local HUD attachment recovery.
 void BuildAutomatic()
 {
-    auto* Parent = LoadClass<AActor>(nullptr, TEXT("/Game/NormalWaveIndicator/BP_NwiResources.BP_NwiResources_C"));
-    auto* PulseClass = LoadClass<AActor>(nullptr, TEXT("/Game/NormalWaveIndicator/BP_NwiPulse.BP_NwiPulse_C"));
-    auto* HudClass = LoadClass<UUserWidget>(nullptr, TEXT("/Game/NormalWaveIndicator/WBP_NwiMarker.WBP_NwiMarker_C"));
+    auto* Parent = LoadClass<AActor>(nullptr, TEXT("/Game/EnemyWaveIndicator/BP_NwiResources.BP_NwiResources_C"));
+    auto* PulseClass = LoadClass<AActor>(nullptr, TEXT("/Game/EnemyWaveIndicator/BP_NwiPulse.BP_NwiPulse_C"));
+    auto* HudClass = LoadClass<UUserWidget>(nullptr, TEXT("/Game/EnemyWaveIndicator/WBP_NwiMarker.WBP_NwiMarker_C"));
     check(Parent && PulseClass && HudClass);
     auto* BP = Blueprint(TEXT("BP_NwiAuto"), false, Parent);
     AddControllerSettings(BP);

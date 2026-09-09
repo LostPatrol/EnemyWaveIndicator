@@ -2,7 +2,7 @@
     "FileVersion": 3,
     "EngineAssociation": "4.27",
     "Category": "DRG Mod Development",
-    "Description": "NormalWaveIndicator presentation authoring project; see README.md for validation status.",
+    "Description": "EnemyWaveIndicator presentation authoring project; see README.md for validation status.",
     "Plugins": [
         { "Name": "PythonScriptPlugin", "Enabled": true },
         { "Name": "EditorScriptingUtilities", "Enabled": true },

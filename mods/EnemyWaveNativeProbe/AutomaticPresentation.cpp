@@ -202,7 +202,7 @@ bool configure(HMODULE runtime, HMODULE game, uint32_t gameThread) noexcept {
 static bool prepareUnchecked() noexcept {
     if (!configured || GetCurrentThreadId() != thread) return false;
     try {
-        constexpr wchar_t path[] = L"/Game/NormalWaveIndicator/BP_NwiAuto.BP_NwiAuto_C:NwiPoll";
+        constexpr wchar_t path[] = L"/Game/EnemyWaveIndicator/BP_NwiAuto.BP_NwiAuto_C:NwiPoll";
         const WideView view{path, std::size(path)-1};
         auto* function = find(&view);
         if (!function) return false;

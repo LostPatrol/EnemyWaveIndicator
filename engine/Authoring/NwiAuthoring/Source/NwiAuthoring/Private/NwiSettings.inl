@@ -110,7 +110,7 @@ void BuildSettings()
     auto* SaveBP = Blueprint(TEXT("SG_NwiSettings"), false, USaveGame::StaticClass()); AddSettings(SaveBP); Compile(SaveBP); Save(SaveBP);
     auto* BP = CastChecked<UWidgetBlueprint>(Blueprint(TEXT("WBP_NwiSettings"), true));
     Variable(BP, TEXT("Settings"), Type(UEdGraphSchema_K2::PC_Object, SaveBP->GeneratedClass));
-    Variable(BP, TEXT("SaveSlot"), Type(UEdGraphSchema_K2::PC_String), TEXT("NormalWaveIndicator_v3"));
+    Variable(BP, TEXT("SaveSlot"), Type(UEdGraphSchema_K2::PC_String), TEXT("EnemyWaveIndicator_v1"));
     check(FBlueprintEditorUtils::ImplementNewInterface(BP, HubInterface(TEXT("IHubPageWidget"))->GetFName()));
     auto* Info = HubResult(BP, TEXT("GetPageInfo"));
     // Mod Hub consumes page metadata during discovery; keep this pure interface output constant.
@@ -234,8 +234,8 @@ void BuildSettings()
 
 void AddControllerSettings(UBlueprint* BP)
 {
-    auto* SaveClass = LoadClass<USaveGame>(nullptr, TEXT("/Game/NormalWaveIndicator/SG_NwiSettings.SG_NwiSettings_C"));
-    auto* PageClass = LoadClass<UUserWidget>(nullptr, TEXT("/Game/NormalWaveIndicator/WBP_NwiSettings.WBP_NwiSettings_C"));
+    auto* SaveClass = LoadClass<USaveGame>(nullptr, TEXT("/Game/EnemyWaveIndicator/SG_NwiSettings.SG_NwiSettings_C"));
+    auto* PageClass = LoadClass<UUserWidget>(nullptr, TEXT("/Game/EnemyWaveIndicator/WBP_NwiSettings.WBP_NwiSettings_C"));
     Variable(BP, TEXT("Settings"), Type(UEdGraphSchema_K2::PC_Object, SaveClass));
     Variable(BP, TEXT("SettingsPage"), Type(UEdGraphSchema_K2::PC_Object, PageClass));
     Variable(BP, TEXT("AppliedSettingsRevision"), Type(UEdGraphSchema_K2::PC_Int));
@@ -251,16 +251,16 @@ void AddControllerSettings(UBlueprint* BP)
 
 void BuildControllerSettings(UBlueprint* BP, UEdGraph* G, UClass* PulseClass, UClass* HudClass)
 {
-    auto* SaveClass = LoadClass<USaveGame>(nullptr, TEXT("/Game/NormalWaveIndicator/SG_NwiSettings.SG_NwiSettings_C"));
-    auto* PageClass = LoadClass<UUserWidget>(nullptr, TEXT("/Game/NormalWaveIndicator/WBP_NwiSettings.WBP_NwiSettings_C"));
+    auto* SaveClass = LoadClass<USaveGame>(nullptr, TEXT("/Game/EnemyWaveIndicator/SG_NwiSettings.SG_NwiSettings_C"));
+    auto* PageClass = LoadClass<UUserWidget>(nullptr, TEXT("/Game/EnemyWaveIndicator/WBP_NwiSettings.WBP_NwiSettings_C"));
     auto* Config = Get(G, TEXT("Settings"));
     // One tiny settings file read during world startup, never in spawn or frame callbacks.
     auto* Begin = Event(G, AActor::StaticClass(), TEXT("ReceiveBeginPlay"));
     auto* Parent = Node<UK2Node_CallParentFunction>(G); Parent->SetFromFunction(AActor::StaticClass()->FindFunctionByName(TEXT("ReceiveBeginPlay"))); Parent->AllocateDefaultPins(); Link(Begin, TEXT("then"), Parent, TEXT("execute"));
     auto* Prepare = Call(G, BP->ParentClass, TEXT("PrepareResources")); Link(Parent, TEXT("then"), Prepare, TEXT("execute"));
-    auto* Exists = Call(G, UGameplayStatics::StaticClass(), TEXT("DoesSaveGameExist")); Value(Exists, TEXT("SlotName"), TEXT("NormalWaveIndicator_v3")); Link(Prepare, TEXT("then"), Exists, TEXT("execute"));
+    auto* Exists = Call(G, UGameplayStatics::StaticClass(), TEXT("DoesSaveGameExist")); Value(Exists, TEXT("SlotName"), TEXT("EnemyWaveIndicator_v1")); Link(Prepare, TEXT("then"), Exists, TEXT("execute"));
     auto* HasFile = Branch(G, Exists, TEXT("ReturnValue")); Link(Exists, TEXT("then"), HasFile, TEXT("execute"));
-    auto* Load = Call(G, UGameplayStatics::StaticClass(), TEXT("LoadGameFromSlot")); Value(Load, TEXT("SlotName"), TEXT("NormalWaveIndicator_v3")); Link(HasFile, TEXT("then"), Load, TEXT("execute"));
+    auto* Load = Call(G, UGameplayStatics::StaticClass(), TEXT("LoadGameFromSlot")); Value(Load, TEXT("SlotName"), TEXT("EnemyWaveIndicator_v1")); Link(HasFile, TEXT("then"), Load, TEXT("execute"));
     auto* LoadedCast = Node<UK2Node_DynamicCast>(G); LoadedCast->TargetType = SaveClass; LoadedCast->AllocateDefaultPins();
     check(GetDefault<UEdGraphSchema_K2>()->TryCreateConnection(Pin(Load, TEXT("ReturnValue")), LoadedCast->GetCastSourcePin())); Link(Load, TEXT("then"), LoadedCast, TEXT("execute"));
     auto* Store = Set(G, TEXT("Settings")); check(GetDefault<UEdGraphSchema_K2>()->TryCreateConnection(LoadedCast->GetCastResultPin(), Pin(Store, TEXT("Settings")))); Link(LoadedCast, TEXT("then"), Store, TEXT("execute"));

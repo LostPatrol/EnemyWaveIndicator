@@ -14,7 +14,7 @@
 !/engine/FSD/Content/Python/
 /engine/FSD/Content/Python/*
 !/engine/FSD/Content/Python/commandlet_entry.py
-/mods/NormalWaveDiagnostic/
+/mods/*Diagnostic/
 /scripts/Install-Diagnostic.ps1
 /scripts/Analyze-Diagnostic.cjs
 /scripts/Inspect-DistressAssets.cjs

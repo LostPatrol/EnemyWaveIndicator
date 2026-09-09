@@ -25,7 +25,7 @@ $audit=Get-Content -LiteralPath $cook.DependencyAudit.Path -Raw | ConvertFrom-Js
 if (!$audit.passed -or $audit.contentOnly -or $audit.nativeAbi -ne 589824 -or $audit.assets -ne 9) { throw 'Invalid dependency audit.' }
 $output=Join-Path $root ("agent\codex\EnemyWaveIndicator-$version-"+(Get-Date -Format 'yyyyMMdd-HHmmss-fff'))
 New-Item -ItemType Directory -Path $output | Out-Null
-$pak=Join-Path $output 'NormalWaveIndicator_P.pak'
+$pak=Join-Path $output 'EnemyWaveIndicator_P.pak'
 Copy-Item -LiteralPath $dll -Destination $output
 Copy-Item -LiteralPath $cook.Pak.Path -Destination $pak
 # Include redistributed MinHook's license, even though the loader only consumes the two binary entries.
@@ -46,7 +46,7 @@ $licensePath=Join-Path $output 'LICENSES.txt'; Set-Content -LiteralPath $license
     Requires=@('MintCat with UE4SSL.JavaScript stable 0.31.0 audited runtime','Mod Hub','matching 0.9.1 Pak on participating clients')
     GameSHA256='9B005BB6E1072F3CD98FCFAA75698316DC47B808D83A99DDF96DE529D00BAC13'
     RuntimeSHA256='D1AC7156B8C8C16E46CE5CE06667457274816358329C5641CE1D2F80B53B4EB7'
-    Files=@{'main.dll'=$native.SHA256;'NormalWaveIndicator_P.pak'=(Get-FileHash $pak).Hash;'LICENSES.txt'=(Get-FileHash $licensePath).Hash}
+    Files=@{'main.dll'=$native.SHA256;'EnemyWaveIndicator_P.pak'=(Get-FileHash $pak).Hash;'LICENSES.txt'=(Get-FileHash $licensePath).Hash}
     Verification=$cook.Verification; Cook=$PresentationCook; NativeBuild=$BuildDirectory
 } | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $output 'manifest.json') -Encoding utf8
 $stagedArchive=$output+'.zip'

@@ -150,7 +150,7 @@ UEdGraph* Graph(UBlueprint* BP)
 }
 UBlueprint* Blueprint(const TCHAR* Name, bool Widget, UClass* ActorParent = AStaticMeshActor::StaticClass())
 {
-    const FString PackageName = FString(TEXT("/Game/NormalWaveIndicator/")) + Name;
+    const FString PackageName = FString(TEXT("/Game/EnemyWaveIndicator/")) + Name;
     // A fresh process regenerates only our own assets. Existing on-disk files are replaced on save.
     auto* Package = CreatePackage(*PackageName);
     return FKismetEditorUtilities::CreateBlueprint(Widget ? UUserWidget::StaticClass() : ActorParent,
@@ -230,7 +230,7 @@ void BuildHud()
 // Original cooked material has only Alpha, no tint parameter. Keep original curves with our own red surface.
 void BuildRedMaterial()
 {
-    auto* Package = CreatePackage(TEXT("/Game/NormalWaveIndicator/M_NwiRedPulse"));
+    auto* Package = CreatePackage(TEXT("/Game/EnemyWaveIndicator/M_NwiRedPulse"));
     auto* Material = NewObject<UMaterial>(Package, TEXT("M_NwiRedPulse"), RF_Public | RF_Standalone);
     auto* Tint = NewObject<UMaterialExpressionVectorParameter>(Material);
     Tint->ParameterName = TEXT("Tint"); Tint->DefaultValue = FLinearColor(3.0f, 0.01f, 0.005f, 1.0f);
@@ -366,7 +366,7 @@ void BuildResources()
     auto* BP = Blueprint(TEXT("BP_NwiResources"), false, AActor::StaticClass());
     const TCHAR* Names[] = { TEXT("Material"), TEXT("Scale"), TEXT("Alpha") };
     const TCHAR* Paths[] = {
-        TEXT("/Game/NormalWaveIndicator/M_NwiRedPulse.M_NwiRedPulse"),
+        TEXT("/Game/EnemyWaveIndicator/M_NwiRedPulse.M_NwiRedPulse"),
         TEXT("/Game/GameElements/Objectives/Salvage/BP_MiniMule_Salvage.BP_MiniMule_Salvage_C:CurveFloat_0"),
         TEXT("/Game/GameElements/Objectives/Salvage/BP_MiniMule_Salvage.BP_MiniMule_Salvage_C:CurveFloat_1") };
     UClass* Classes[] = { UMaterialInterface::StaticClass(), UCurveFloat::StaticClass(), UCurveFloat::StaticClass() };
@@ -442,9 +442,9 @@ UK2Node_CallFunction* Valid(UEdGraph* G, UEdGraphNode* Object, const TCHAR* Outp
 // F5 only: one cached pulse/widget pair, no manager Tick, no gameplay Actor and no natural-wave claim.
 void BuildVisualTest()
 {
-    auto* Parent = LoadClass<AActor>(nullptr, TEXT("/Game/NormalWaveIndicator/BP_NwiResources.BP_NwiResources_C"));
-    auto* PulseClass = LoadClass<AActor>(nullptr, TEXT("/Game/NormalWaveIndicator/BP_NwiPulse.BP_NwiPulse_C"));
-    auto* HudClass = LoadClass<UUserWidget>(nullptr, TEXT("/Game/NormalWaveIndicator/WBP_NwiMarker.WBP_NwiMarker_C"));
+    auto* Parent = LoadClass<AActor>(nullptr, TEXT("/Game/EnemyWaveIndicator/BP_NwiResources.BP_NwiResources_C"));
+    auto* PulseClass = LoadClass<AActor>(nullptr, TEXT("/Game/EnemyWaveIndicator/BP_NwiPulse.BP_NwiPulse_C"));
+    auto* HudClass = LoadClass<UUserWidget>(nullptr, TEXT("/Game/EnemyWaveIndicator/WBP_NwiMarker.WBP_NwiMarker_C"));
     check(Parent && PulseClass && HudClass);
     auto* BP = Blueprint(TEXT("BP_NwiVisualTest"), false, Parent);
     Variable(BP, TEXT("Pulse"), Type(UEdGraphSchema_K2::PC_Object, PulseClass));

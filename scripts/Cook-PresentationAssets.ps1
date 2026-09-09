@@ -15,13 +15,13 @@ $evidence = Join-Path $projectRoot ('agent\codex\presentation-cook-' + (Get-Date
 New-Item -ItemType Directory -Path $evidence | Out-Null
 $editor = Join-Path $EngineRoot 'Engine\Binaries\Win64\UE4Editor-Cmd.exe'
 $project = Join-Path $projectRoot 'engine\FSD\FSD.uproject'
-$content = Join-Path $projectRoot 'engine\FSD\Content\NormalWaveIndicator'
+$content = Join-Path $projectRoot 'engine\FSD\Content\EnemyWaveIndicator'
 $output = Join-Path $evidence 'Cooked'
 & $editor $project -run=Cook -TargetPlatform=WindowsNoEditor "-CookDir=$content" "-OutputDir=$output" -NoDefaultMaps -NoGameAlwaysCook -unversioned -unattended -nullrhi -nosplash -nosound -nocrashreports "-abslog=$evidence\cook.log" *> (Join-Path $evidence 'cook-console.txt')
 $cookCode = $LASTEXITCODE
 $cookLog = Get-Content -LiteralPath (Join-Path $evidence 'cook.log') -Raw
 if ($cookCode -ne 0 -or $cookLog -match 'Log\w+: Error:') { throw "Cook failed. See $evidence" }
-$cookedContent = Join-Path $output 'FSD\Content\NormalWaveIndicator'
+$cookedContent = Join-Path $output 'FSD\Content\EnemyWaveIndicator'
 if (!(Test-Path -LiteralPath $cookedContent)) { throw "Expected cooked output not found: $cookedContent" }
 # A standalone mod must not depend on a replacement FSD shared shader library.
 if (Get-ChildItem -LiteralPath (Join-Path $output 'FSD\Content') -Filter 'ShaderArchive-FSD-*.ushaderbytecode' -File) {
@@ -41,10 +41,10 @@ if ($LASTEXITCODE -ne 0) { throw 'Cooked dependency audit failed.' }
 $dependencyAudit = Get-Content -LiteralPath $dependencyLog -Raw | ConvertFrom-Json
 if (!$dependencyAudit.passed -or $dependencyAudit.assets -ne 9) { throw 'Incomplete dependency audit.' }
 $response = Join-Path $evidence 'pak-response.txt'
-$lines = @($files | ForEach-Object { '"' + $_.FullName + '" "../../../FSD/Content/NormalWaveIndicator/' + $_.Name + '"' })
+$lines = @($files | ForEach-Object { '"' + $_.FullName + '" "../../../FSD/Content/EnemyWaveIndicator/' + $_.Name + '"' })
 $lines | Set-Content -LiteralPath $response -Encoding utf8
 $unrealPak = Join-Path $EngineRoot 'Engine\Binaries\Win64\UnrealPak.exe'
-$pak = Join-Path $evidence 'NormalWavePresentation-assets-only.pak'
+$pak = Join-Path $evidence 'EnemyWavePresentation-assets-only.pak'
 & $unrealPak $pak "-Create=$response" -compress *> (Join-Path $evidence 'pak-create.log')
 if ($LASTEXITCODE -ne 0) { throw "Pak creation failed. See $evidence" }
 # UE4.27 -Test opens the index only; -Verify also checks every stored entry hash.
