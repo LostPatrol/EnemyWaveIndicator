@@ -20,13 +20,13 @@ Enemy Wave Indicator 会用发光球体、可自定义文字和距离信息，�
 - 所有玩家安装匹配版本内容时，可由房主向客机同步标记。
 - 本 Mod 只观察刷怪，不会改变敌人、伤害、奖励或任务进度。
 
-0.9.2 默认开启全部虫潮播报，只有**深掘钻梯**、**执勤护送：钻进**、**核心岩事件**和**核心侵扰警告**默认关闭；警示文字默认以黄—红两色闪烁，球体 RGB 通道使用 0–1 的标准化范围。在 Mod Hub 中修改任意选项后，请点击**应用并保存**。全部类型见[虫潮类型清单](docs/WAVE-TYPES.md)。
+0.9.3 默认开启全部虫潮播报，只有**深掘钻梯**、**执勤护送：钻进**、**核心岩事件**和**核心侵扰警告**默认关闭；警示文字默认以黄—红两色闪烁，球体 RGB 通道使用 0–1 的标准化范围。在 Mod Hub 中修改任意选项后，请点击**应用并保存**。全部类型见[虫潮类型清单](docs/WAVE-TYPES.md)。
 
 ![自然潮标记](docs/media/normal_wave_1.png)
 
 ## 安装方法
 
-0.9.2 发布后，请从 [GitHub Releases](https://github.com/LostPatrol/EnemyWaveIndicator/releases) 下载对应版本。压缩包包含 `main.dll`、`EnemyWaveIndicator_P.pak` 和再分发依赖的许可证。
+0.9.3 发布后，请从 [GitHub Releases](https://github.com/LostPatrol/EnemyWaveIndicator/releases) 下载对应版本。压缩包包含 `main.dll`、`EnemyWaveIndicator_P.pak` 和再分发依赖的许可证。
 
 ### 方式一：使用 MintCat（推荐）
 
@@ -62,7 +62,7 @@ DLL 和 Pak 必须来自同一个版本。手动更新时需要同时替换这�
 
 ## 常见问题
 
-- **Mod Hub 中没有出现本 Mod：**确认 Mod Hub 已启用，并确认空间站已经完成加载。当前 0.9.2 包没有固定启动延时，且 Mod Hub 注册接口使用与 0.9.0 已验证版本一致的稳定静态元数据。若压缩包的 SHA-256 与发布说明不同，请关闭游戏后在 MintCat 中重新导入。
+- **Mod Hub 中没有出现本 Mod：**确认 Mod Hub 已启用，并确认空间站已经完成加载。当前 0.9.3 包没有固定启动延时，且 Mod Hub 注册接口使用与 0.9.0 已验证版本一致的稳定静态元数据。若压缩包的 SHA-256 与发布说明不同，请关闭游戏后在 MintCat 中重新导入。
 - **四种默认关闭的事件没有显示：**请在 Mod Hub 中开启对应类型，再点击**应用并保存**。
 - **完全没有标记：**确认 `main.dll` 和 `EnemyWaveIndicator_P.pak` 来自同一版本。房主需要安装 DLL，客机需要匹配的 Pak 内容才能显示自定义标记。
 - **MintCat 提示重复或松散 Pak：**先确认 MintCat 已管理本 Mod，再删除手动安装的 `EnemyWaveIndicator_P.pak`，然后重新应用更改。

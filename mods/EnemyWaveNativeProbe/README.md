@@ -1,5 +1,5 @@
 <!-- Native observation module architecture, safety invariants, and validation boundaries. -->
-# Native component — 0.9.2 test candidate
+# Native component — 0.9.3 test candidate
 
 GameCapture.cpp observes ten audited native sites. Natural waves still require the six-return scheduler/source chain; scripted waves use the exact initiating controller or event class from the shared NwiWaveTypes.h catalog. Five library entrypoints scope source identity, and the shared batch helper supplies the actual selected center. Originals are forwarded once with unchanged arguments. SpawnAttribution.h retains source type/request identity, center and timestamps through queue swap removal. Unknown sources never inherit active natural ownership. See docs/WAVE-TYPES.md for all 39 IDs and the audited non-wave OMEN limitation.
 

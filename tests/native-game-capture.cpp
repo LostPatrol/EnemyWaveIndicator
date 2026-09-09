@@ -234,6 +234,13 @@ int main() {
     REQUIRE(regions.items[0].count==originalCount && regions.items[0].expires==originalExpiry);
     small.count=-1;REQUIRE(!eligibleEnemy(pawn,regular,small,empty));
     puts("PASS: registered regular required; small/critter wins mixed membership; 100 excluded notifications cannot grow or renew markers.");
+    // A new controller instance is a new mission epoch even when Unreal reuses UWorld's address.
+    capture::setWorld(world);
+    REQUIRE(capture::spawnManager() == nullptr);
+    capture::poll(20000); scheduleNormal(); consume();
+    emitted = 0; while (capture::pop(event)) ++emitted;
+    REQUIRE(emitted == 2 && !capture::stats().fault);
+    puts("PASS: same-address UWorld reuse resets the old manager ledger and accepts the next mission.");
     capture::setWorld(nullptr); capture::setWorld(world); // Retire a healthy epoch, not one already disabled by a fault.
     for (uint32_t type=1;type<WaveTypeCount;++type) {
         const auto priorCalls=sourceCalls; const auto priorCenters=centerCalls;

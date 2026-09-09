@@ -9,7 +9,7 @@ namespace {
 int worlds[12]{}, classToken = 0, actorToken = 0;
 void* world = nullptr;
 bool cached = false, loadFails = false, spawnFails = false, prepareFails = false, refreshFails = false;
-bool worldIsReady = true, badArguments = false;
+bool worldIsReady = true, controllerExists = false, badArguments = false;
 unsigned finds = 0, loads = 0, spawns = 0, preparations = 0, refreshCalls = 0;
 int searchFunction = 0, refreshFunction = 0;
 unsigned hubFinds = 0, hubProcesses = 0;
@@ -58,8 +58,11 @@ nwi::WorldResult worldOf(void* viewport) {
 void* spawn(void* w, void* cls, const nwi::Position3* p) {
     ++spawns;
     if (w != world || cls != &classToken || !preparations || !p || p->x || p->y || p->z) badArguments = true;
-    return spawnFails ? nullptr : &actorToken;
+    if (spawnFails) return nullptr;
+    controllerExists = true;
+    return &actorToken;
 }
+bool controllerReady(void* w) { if (w != world) badArguments = true; return controllerExists; }
 bool refresh(void* w) { ++refreshCalls; if (w != world) badArguments = true; return !refreshFails; }
 void* findHubFunction(const nwi::WideView* value) {
     ++hubFinds;
@@ -76,9 +79,9 @@ bool processHub(void* hub, void* function, void* parameters) {
 }
 void setup(nwi::PresentationBootstrap& p) {
     world = &worlds[0]; cached = loadFails = spawnFails = prepareFails = refreshFails = badArguments = false;
-    worldIsReady = true;
+    worldIsReady = true; controllerExists = false;
     finds = loads = spawns = preparations = refreshCalls = 0;
-    p.configure({find, load, valid, spawn, currentWorld, worldKind, ready, prepare, refresh});
+    p.configure({find, load, valid, spawn, currentWorld, worldKind, ready, controllerReady, prepare, refresh});
 }
 #define REQUIRE(x) do { if (!(x)) { printf("FAIL line %d: %s\n", __LINE__, #x); return 1; } } while (0)
 }
@@ -136,9 +139,9 @@ int main() {
         REQUIRE(p.status == 6 && !spawns && !loads && p.excluded == 1 && !p.attempted);
         world = &worlds[0]; p.tick();
         REQUIRE(spawns == 1 && p.status == 3);
-        world = &worlds[11]; p.tick();
+        world = &worlds[11]; controllerExists = false; p.tick();
         world = &worlds[0]; p.tick();
-        REQUIRE(spawns == 1 && p.status == 3 && p.excluded == 2);
+        REQUIRE(spawns == 2 && p.status == 3 && p.excluded == 2);
     }
     {
         // A persistent viewport changes World during travel; cached registry lookup is not per-frame scanning.
@@ -170,10 +173,11 @@ int main() {
         // Class pointers are reacquired, not retained across a world change/GC.
         world = &worlds[1]; cached = false; p.tick();
         REQUIRE(spawns == 2 && loads == 2 && p.spawned == 2);
-        for (int i = 2; i < 12; ++i) {
-            world = &worlds[i]; p.tick();
+        for (int i = 2; i < 11; ++i) {
+            world = &worlds[i]; controllerExists = false; p.tick();
         }
-        REQUIRE(p.status == 5 && p.attempted == 8 && spawns == 8 && !badArguments);
+        world = &worlds[0]; controllerExists = false; p.tick(); // Reuse a historical address after more than eight worlds.
+        REQUIRE(p.status == 3 && p.attempted == 12 && spawns == 12 && !badArguments);
     }
     for (int failure = 0; failure < 2; ++failure) {
         nwi::PresentationBootstrap p; setup(p); loadFails = failure == 0; prepareFails = failure == 1;
@@ -193,5 +197,30 @@ int main() {
         world = &worlds[0]; worldIsReady = false; p.tick(); REQUIRE(spawns == 0);
         worldIsReady = true; p.tick(); REQUIRE(spawns == 1 && !badArguments);
     }
-    puts("PASS: readiness-driven startup, bounded preparation/Mod Hub retries, null travel world, bridge fault stop, exact active-world bootstrap, reuse and creation limits.");
+    {
+        // A second mission may reuse the exact UWorld address; missing owned state proves a new epoch.
+        nwi::PresentationBootstrap p; setup(p); p.tick();
+        REQUIRE(spawns == 1 && controllerExists);
+        controllerExists = false; p.tick();
+        REQUIRE(spawns == 2 && p.attempted == 2 && p.status == 3 && !badArguments);
+    }
+    {
+        // A sampled null travel gap also restarts the same pointer and keeps startup pending.
+        nwi::PresentationBootstrap p; setup(p); p.tick();
+        controllerExists = false; world = nullptr; p.tick(); REQUIRE(p.status == 1);
+        world = &worlds[0]; p.tick();
+        REQUIRE(spawns == 2 && p.status == 3 && !badArguments);
+    }
+    {
+        // Repeated controller loss in one unchanged World remains strictly bounded.
+        nwi::PresentationBootstrap p; setup(p); p.tick();
+        for (unsigned i = 1; i < nwi::PresentationBootstrap::MaxRecoveryAttempts; ++i) {
+            controllerExists = false; p.tick();
+        }
+        controllerExists = false; p.tick();
+        REQUIRE(p.status == 4 && spawns == nwi::PresentationBootstrap::MaxRecoveryAttempts);
+        for (int i = 0; i < 100; ++i) p.tick();
+        REQUIRE(spawns == nwi::PresentationBootstrap::MaxRecoveryAttempts && !badArguments);
+    }
+    puts("PASS: readiness-driven startup, bounded per-world retries, null travel, same-address mission reuse, controller recovery, bridge fault stop and unlimited world lifecycles.");
 }

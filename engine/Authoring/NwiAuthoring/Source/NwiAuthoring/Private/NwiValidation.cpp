@@ -420,7 +420,7 @@ bool ValidateAutomatic(UClass* PulseClass, UClass* WidgetClass)
     auto* TimeInput = Cast<USpinBox>(Page->WidgetTree->FindWidget(TEXT("InputDuration")));
     auto* Button = Cast<UButton>(Page->WidgetTree->FindWidget(TEXT("ApplyButton")));
     NWI_REQUIRE(LabelInput && RadiusInput && TimeInput && Button);
-    NWI_REQUIRE(Cast<UTextBlock>(Page->WidgetTree->FindWidget(TEXT("Title")))->GetText().ToString() == TEXT("Enemy Wave Indicator  |  0.9.2"));
+    NWI_REQUIRE(Cast<UTextBlock>(Page->WidgetTree->FindWidget(TEXT("Title")))->GetText().ToString() == TEXT("Enemy Wave Indicator  |  0.9.3"));
     NWI_REQUIRE(Cast<UTextBlock>(Page->WidgetTree->FindWidget(TEXT("WaveName2")))->GetText().ToString() == TEXT("Egg hunt ambush"));
     auto* SettingsPanel = Cast<UVerticalBox>(Page->WidgetTree->FindWidget(TEXT("SettingsPanel")));
     auto* WaveGrid = Cast<UGridPanel>(Page->WidgetTree->FindWidget(TEXT("WaveGrid")));
@@ -450,7 +450,7 @@ bool ValidateAutomatic(UClass* PulseClass, UClass* WidgetClass)
     NWI_REQUIRE(ChinesePage && ChinesePage->Initialize());
     FindFProperty<FObjectPropertyBase>(PageClass, TEXT("Settings"))->SetObjectPropertyValue_InContainer(ChinesePage, Settings);
     ChinesePage->ProcessEvent(PageClass->FindFunctionByName(TEXT("Construct")), nullptr);
-    NWI_REQUIRE(Cast<UTextBlock>(ChinesePage->WidgetTree->FindWidget(TEXT("Title")))->GetText().ToString() == TEXT("敌潮指示器  |  0.9.2"));
+    NWI_REQUIRE(Cast<UTextBlock>(ChinesePage->WidgetTree->FindWidget(TEXT("Title")))->GetText().ToString() == TEXT("敌潮指示器  |  0.9.3"));
     NWI_REQUIRE(Cast<UTextBlock>(ChinesePage->WidgetTree->FindWidget(TEXT("WaveSection")))->GetText().ToString() == TEXT("虫潮播报"));
     NWI_REQUIRE(Cast<UTextBlock>(ChinesePage->WidgetTree->FindWidget(TEXT("WaveName0")))->GetText().ToString() == TEXT("自然潮"));
     NWI_REQUIRE(Cast<UTextBlock>(ChinesePage->WidgetTree->FindWidget(TEXT("WaveName2")))->GetText().ToString() == TEXT("虫蛋伏击"));

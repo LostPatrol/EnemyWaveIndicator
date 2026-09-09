@@ -269,7 +269,9 @@ bool install(const Binding& input) noexcept {
     installed = true; enabled.store(true); counters.hookStatus = 1; return true;
 }
 void setWorld(void* value) noexcept {
-    if (!onThread() || world == value) return;
+    if (!onThread()) return;
+    // Each BP_NwiAuto binding is a new lifecycle epoch. Unreal may reuse both the UWorld and
+    // spawn-manager addresses, so pointer equality must not preserve the previous mission ledger.
     world = value; manager = nullptr; scopeWave = 0; scopeWorld = nullptr; pending = {};
     ledger.stop(); counters.fault = 0;
 }

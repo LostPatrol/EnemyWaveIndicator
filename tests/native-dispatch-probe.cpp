@@ -120,9 +120,11 @@ int main() {
         p.pump(); REQUIRE(p.stats.completed == 61);
     }
     {
+        // Lifecycle recovery must continue beyond the former 600-request diagnostic cap.
         nwi::DispatchProbe p; reset(p); synchronous = true;
         for (unsigned i = 0; i < 2000; ++i) { now = i * 5000ULL; p.pump(); }
-        REQUIRE(calls == 600 && p.stats.completed == 600 && !p.pending());
+        p.pump(); // Harvest the final synchronous completion without reaching the next interval.
+        REQUIRE(calls == 2000 && p.stats.completed == 2000 && !p.pending());
     }
     {
         nwi::DispatchProbe p; reset(p); sample.identityReadOk = false; p.pump(); drain(); p.pump();
@@ -173,6 +175,6 @@ int main() {
         REQUIRE(p.stats.completed == 299 && calls == 300);
         p.start(); p.pump(); REQUIRE(p.stats.stale == 1); drain(); p.pump();
     }
-    puts("PASS: engine scalar layout, 22-byte signature mutations, failed reads, queue bound, throttle, 600 cap, timeout, late callback, restart, rejection, thread mismatch, initialization, concurrent completion.");
+    puts("PASS: engine scalar layout, 22-byte signature mutations, failed reads, queue bound, permanent slow lifecycle polling, timeout, late callback, restart, rejection, thread mismatch, initialization, concurrent completion.");
     return 0;
 }

@@ -37,10 +37,9 @@ class DispatchProbe {
 public:
     static constexpr uint64_t IntervalMs = 1000; // Never turn this diagnostic into a frame loop.
     static constexpr uint64_t ReadinessIntervalMs = 250; // Temporary condition polling; no minimum startup delay.
-    static constexpr uint64_t SlowIntervalMs = 5000; // Extend coverage past ten minutes at lower cost.
+    static constexpr uint64_t SlowIntervalMs = 5000; // Permanent low-cost map-lifecycle cadence after startup.
     static constexpr uint64_t FastRequests = 60;
     static constexpr uint64_t TimeoutMs = 15000;
-    static constexpr uint64_t MaxRequests = 600; // Post-readiness diagnostic cap; readiness polling itself does not expire.
     struct Stats {
         uint64_t queued = 0, completed = 0, rejected = 0, timedOut = 0, stale = 0;
         uint64_t gameThread = 0, otherThread = 0, uninitialized = 0, latencyTotal = 0, latencyMax = 0;
@@ -127,7 +126,9 @@ public:
             return; // Never replace a context that the host might still call.
         }
         const bool waitingForReadiness = bootstrapPending();
-        if (stats.disabled || (!waitingForReadiness && stats.queued >= MaxRequests) || now < nextAt_) return;
+        // This callback also owns map-lifecycle recovery, so the five-second cadence must outlive
+        // the original diagnostic window and continue until uninstall or a verified hard fault.
+        if (stats.disabled || now < nextAt_) return;
         queuedAt_ = now;
         requestGeneration_ = generation_.load();
         // While startup conditions are pending, sample promptly; after 60 requests fall back to 1 Hz.

@@ -45,7 +45,7 @@ bool localAddress(void* actor, void* pointer, size_t bytes) noexcept {
 }
 bool bind(void* actor) {
     auto* abi = static_cast<int32_t*>(value(actor, L"NativeAbi"));
-    if (!localAddress(actor, abi, 4) || *abi != 0x90200) return false;
+    if (!localAddress(actor, abi, 4) || *abi != 0x90300) return false;
     worldTime = static_cast<float*>(value(actor, L"NativeTime"));
     for (uint32_t i = 0; i < WaveTypeCount; ++i) {
         wchar_t field[48]; if (i) swprintf_s(field, L"NativeEnabled%u", i); else wcscpy_s(field, L"NativeEnabled");

@@ -62,7 +62,7 @@ constexpr int32 BodyFontSize = 13;
 constexpr int32 PreviewFontSize = 18;
 constexpr int32 ButtonFontSize = 16;
 FString SettingName(int32 I) { return I < 16 ? FString(SettingNames[I]) : (I % 2 == 0 ? FString::Printf(TEXT("EnabledType%d"), (I-16)/2+1) : FString::Printf(TEXT("LabelType%d"), (I-16)/2+1)); }
-// 0.9.2 reports every catalogued source except the two drilling phases and both Core events.
+// 0.9.3 reports every catalogued source except the two drilling phases and both Core events.
 bool DefaultWaveEnabled(int32 Type) { return Type != 1 && Type != 6 && Type != 32 && Type != 34; }
 FString SettingDefault(int32 I) { return I < 16 ? FString(SettingDefaults[I]) : I % 2 == 0 ? FString(DefaultWaveEnabled((I-16)/2+1) ? TEXT("true") : TEXT("false")) : FString(TEXT("[!] ")) + nwi::WaveTypes[(I-16)/2+1].title; }
 bool IsTextSetting(int32 I) { return I == 0 || (I >= 16 && I % 2 == 1); }
@@ -151,7 +151,7 @@ void BuildSettings()
         auto* Slot = Grid->AddChildToGrid(Widget, Row, Column); Slot->SetPadding(FMargin(4.f, 2.f));
         Slot->SetVerticalAlignment(VAlign_Center); Slot->SetHorizontalAlignment(Fill ? HAlign_Fill : HAlign_Left);
     };
-    AddText(TEXT("Title"), TEXT("Enemy Wave Indicator  |  0.9.2"), nullptr, PageTitleFontSize);
+    AddText(TEXT("Title"), TEXT("Enemy Wave Indicator  |  0.9.3"), nullptr, PageTitleFontSize);
     AddText(TEXT("WaveSection"), TEXT("Wave broadcasts"), nullptr, SectionTitleFontSize);
     auto* WaveGrid = BP->WidgetTree->ConstructWidget<UGridPanel>(UGridPanel::StaticClass(), TEXT("WaveGrid")); WaveGrid->bIsVariable = true; Root->AddChildToVerticalBox(WaveGrid);
     WaveGrid->SetColumnFill(2, 1.f); WaveGrid->SetColumnFill(5, 1.f);
@@ -192,7 +192,7 @@ void BuildSettings()
     auto Localize = [&](const TCHAR* Widget, const FString& English, const FString& ZhCn) {
         auto* SetText = SetLocalizedWidgetText(G, Chinese, Widget, English, ZhCn); Link(Exec, TEXT("then"), SetText, TEXT("execute")); Exec = SetText;
     };
-    Localize(TEXT("Title"), TEXT("Enemy Wave Indicator  |  0.9.2"), TEXT("敌潮指示器  |  0.9.2"));
+    Localize(TEXT("Title"), TEXT("Enemy Wave Indicator  |  0.9.3"), TEXT("敌潮指示器  |  0.9.3"));
     Localize(TEXT("WaveSection"), TEXT("Wave broadcasts"), TEXT("虫潮播报"));
     for (int32 Wave = 0; Wave < nwi::WaveTypeCount; ++Wave) Localize(*FString::Printf(TEXT("WaveName%d"), Wave), nwi::WaveTypes[Wave].title, WaveTitlesZhCn[Wave]);
     Localize(TEXT("TextSection"), TEXT("Warning text"), TEXT("播报警示文本"));
@@ -257,7 +257,7 @@ void AddControllerSettings(UBlueprint* BP)
     auto* Info = HubResult(BP, TEXT("GetModInfo"));
     // Match the last working registration contract: no runtime calls inside GetModInfo.
     const TCHAR* Names[] = {TEXT("ModName"), TEXT("ModAuthor"), TEXT("ModVersion")};
-    const TCHAR* Values[] = {TEXT("Enemy Wave Indicator"), TEXT("LostPatrol"), TEXT("0.9.2 test")};
+    const TCHAR* Values[] = {TEXT("Enemy Wave Indicator"), TEXT("LostPatrol"), TEXT("0.9.3 test")};
     for (int32 I = 0; I < 3; ++I)
         GetDefault<UEdGraphSchema_K2>()->TrySetDefaultText(*Pin(Info, Names[I]), FText::FromString(Values[I]));
 }

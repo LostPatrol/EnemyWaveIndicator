@@ -4,7 +4,7 @@ param([Parameter(Mandatory)][string]$BuildDirectory, [Parameter(Mandatory)][stri
 $ErrorActionPreference='Stop'
 $root=Split-Path $PSScriptRoot -Parent
 # Public release identity; legacy names below are runtime compatibility identifiers only.
-$version='0.9.2'
+$version='0.9.3'
 $archiveName="EnemyWaveIndicator-$version.zip"
 $native=Get-Content -LiteralPath (Join-Path $BuildDirectory 'verification.json') -Raw | ConvertFrom-Json
 $cook=Get-Content -LiteralPath (Join-Path $PresentationCook 'verification.json') -Raw | ConvertFrom-Json
@@ -22,7 +22,7 @@ $expected=@('BP_NwiAuto','BP_NwiResources','BP_NwiPulse','WBP_NwiMarker','SG_Nwi
 $actual=@($cook.Files | ForEach-Object { Split-Path $_.Path -Leaf })
 if (@(Compare-Object ($expected | Sort-Object) ($actual | Sort-Object)).Count) { throw 'Unexpected package entries.' }
 $audit=Get-Content -LiteralPath $cook.DependencyAudit.Path -Raw | ConvertFrom-Json
-if (!$audit.passed -or $audit.contentOnly -or $audit.nativeAbi -ne 590336 -or $audit.assets -ne 9) { throw 'Invalid dependency audit.' }
+if (!$audit.passed -or $audit.contentOnly -or $audit.nativeAbi -ne 590592 -or $audit.assets -ne 9) { throw 'Invalid dependency audit.' }
 $output=Join-Path $root ("agent\codex\EnemyWaveIndicator-$version-"+(Get-Date -Format 'yyyyMMdd-HHmmss-fff'))
 New-Item -ItemType Directory -Path $output | Out-Null
 $pak=Join-Path $output 'EnemyWaveIndicator_P.pak'
@@ -43,7 +43,7 @@ $licensePath=Join-Path $output 'LICENSES.txt'; Set-Content -LiteralPath $license
     SupportedSources=$sourceNames; PerTypeEnableAndText=$true; UnsupportedRequestedFeatures=@('independent non-wave-controller boss/direct summons','multi-second exact prediction')
     Localization=@{Languages=@('en','zh-CN');Automatic=$true;MarkerDefaults='English in every language; user editable'}
     ClientRequiresPak=$true; HostRequiresDll=$true; MaximumRegions=8
-    Requires=@('MintCat with UE4SSL.JavaScript stable 0.31.0 audited runtime','Mod Hub','matching 0.9.2 Pak on participating clients')
+    Requires=@('MintCat with UE4SSL.JavaScript stable 0.31.0 audited runtime','Mod Hub','matching 0.9.3 Pak on participating clients')
     GameSHA256='9B005BB6E1072F3CD98FCFAA75698316DC47B808D83A99DDF96DE529D00BAC13'
     RuntimeSHA256='D1AC7156B8C8C16E46CE5CE06667457274816358329C5641CE1D2F80B53B4EB7'
     Files=@{'main.dll'=$native.SHA256;'EnemyWaveIndicator_P.pak'=(Get-FileHash $pak).Hash;'LICENSES.txt'=(Get-FileHash $licensePath).Hash}

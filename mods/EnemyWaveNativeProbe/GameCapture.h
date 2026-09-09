@@ -23,7 +23,7 @@ struct Stats {
     uint32_t fault = 0, hookStatus = 0;
 };
 bool install(const Binding&) noexcept;
-void setWorld(void* world) noexcept; // Called by our host-only renderer, on the verified game thread.
+void setWorld(void* world) noexcept; // Begin a fresh controller/world epoch on the verified game thread.
 void stop() noexcept;
 void poll(uint64_t frame) noexcept;
 bool pop(SpawnEvent&) noexcept;

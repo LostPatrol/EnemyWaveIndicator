@@ -100,6 +100,20 @@ bool guardedModHubReady(void* world) {
 bool modHubReady(void* world) noexcept {
     try { return guardedModHubReady(world); } catch (...) { return false; }
 }
+// Reacquire the owned class each callback; actor presence distinguishes a reused UWorld address.
+bool controllerReadyUnchecked(void* world) {
+    constexpr wchar_t path[] = L"/Game/EnemyWaveIndicator/BP_NwiAuto.BP_NwiAuto_C";
+    const nwi::WideView name{path, std::size(path) - 1};
+    void* cls = staticFind(&name);
+    return validObject(cls) && hasActorOfClass(world, cls);
+}
+bool guardedControllerReady(void* world) {
+    __try { return controllerReadyUnchecked(world); }
+    __except (GetExceptionCode() == 0xE06D7363 ? EXCEPTION_CONTINUE_SEARCH : EXCEPTION_EXECUTE_HANDLER) { return false; }
+}
+bool controllerReady(void* world) noexcept {
+    try { return guardedControllerReady(world); } catch (...) { return false; }
+}
 
 // Only DispatchProbe's per-callback engine identity gate can invoke this action.
 void showPresentation(nwi::ThreadSample& sample) noexcept {
@@ -170,7 +184,7 @@ void configureDispatch() noexcept {
         safeProcessEvent = process; getParmsSize = parms; hasActorOfClass = hasActor;
         activeWorld.configure({findViewport, valid, &readViewportWorld});
         presentation.configure({find, load, valid, spawn, &currentWorld, &worldKind,
-            &modHubReady, &nwi::automatic::prepareClass, &refreshModHub});
+            &modHubReady, &controllerReady, &nwi::automatic::prepareClass, &refreshModHub});
     }
     dispatchProbe.configure({dispatch, &sampleThread, &sampleClock, &showPresentation});
 }
@@ -191,7 +205,7 @@ void record(const char* event) noexcept {
     const auto& probe = dispatchProbe.stats;
     char line[4096];
     const int size = sprintf_s(line,
-        "{\"probe\":\"0.9.2\",\"event\":\"%s\",\"utc\":\"%04u-%02u-%02uT%02u:%02u:%02u.%03uZ\","
+        "{\"probe\":\"0.9.3\",\"event\":\"%s\",\"utc\":\"%04u-%02u-%02uT%02u:%02u:%02u.%03uZ\","
         "\"pid\":%lu,\"tid\":%lu,\"elapsed_ms\":%llu,\"updates\":%llu,\"thread_changes\":%llu,"
         "\"gap_min_ms\":%.6f,\"gap_max_ms\":%.6f,\"gap_mean_ms\":%.6f,"
         "\"dispatch_enabled\":%s,\"dispatch_pending\":%s,\"dispatch_disabled\":%s,"
