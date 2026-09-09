@@ -54,9 +54,9 @@ DLL 和 Pak 必须来自同一个版本。手动更新时需要同时替换这�
 
 ## 游戏截图
 
-| 寻蛋任务伏击 | 矿骡修复防守 |
+| 寻蛋任务伏击 | Mod Hub 设置 |
 |---|---|
-| ![寻蛋任务伏击标记](docs/media/egg_ambush.png) | ![矿骡修复防守标记](docs/media/salvage_defense_1.png) |
+| ![寻蛋任务伏击标记](docs/media/egg_ambush.png) | ![敌潮指示器 Mod Hub 设置](docs/media/modhub-new-1.png) |
 
 ![古脂矿体标记](docs/media/excavation_1.png)
 
