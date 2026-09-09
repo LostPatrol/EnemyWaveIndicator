@@ -1,0 +1,79 @@
+{
+  "description": "Stock event Blueprint source audit for Enemy Wave Indicator",
+  "gameSteamBuild": 24903151,
+  "firstArgumentOpcode": {
+    "value": "0x17",
+    "meaning": "EX_Self WorldContextObject"
+  },
+  "sources": [
+    {
+      "typeId": 36,
+      "key": "BP_ExplosiveBarrelsEvent",
+      "event": "Tritilyte Deposit",
+      "classPath": "/Game/GameElements/GameEvents/ExplosiveBarrelsEvent/BP_ExplosiveBarrelsEvent.BP_ExplosiveBarrelsEvent_C",
+      "parent": "/Script/FSD.ExplosiveBarrelEvent",
+      "calls": [
+        {
+          "function": "ExecuteUbergraph_BP_ExplosiveBarrelsEvent",
+          "callee": "SpawnEnemiesFromPool",
+          "count": 2,
+          "firstArgumentOpcode": "0x17"
+        }
+      ]
+    },
+    {
+      "typeId": 37,
+      "key": "BP_RockEnemiesEvent",
+      "event": "Ebonite Mutation",
+      "classPath": "/Game/GameElements/GameEvents/RockEnemies/BP_RockEnemiesEvent.BP_RockEnemiesEvent_C",
+      "parent": "/Script/FSD.RockEnemiesEvent",
+      "calls": [
+        {
+          "function": "ExecuteUbergraph_BP_RockEnemiesEvent",
+          "callee": "SpawnEnemiesFromPool",
+          "count": 1,
+          "firstArgumentOpcode": "0x17"
+        }
+      ]
+    },
+    {
+      "typeId": 38,
+      "key": "BP_AmberEvent",
+      "event": "Kursite Infection",
+      "classPath": "/Game/GameElements/GameEvents/AmberEvent/BP_AmberEvent.BP_AmberEvent_C",
+      "parent": "/Script/FSD.AmberEvent",
+      "calls": [
+        {
+          "function": "ExecuteUbergraph_BP_AmberEvent",
+          "callee": "SpawnEnemiesFromPool",
+          "count": 1,
+          "firstArgumentOpcode": "0x17"
+        }
+      ]
+    }
+  ],
+  "aliases": [
+    {
+      "typeId": 32,
+      "setting": "Core Stone event",
+      "classPath": "/Game/GameElements/GameEvents/CoreRift/BP_RiftCrystal.BP_RiftCrystal_C",
+      "parent": "/Script/FSD.RiftCrystal",
+      "calls": [
+        {
+          "function": "ExecuteUbergraph_BP_RiftCrystal",
+          "callee": "SpawnEnemyGroupDescriptor",
+          "count": 1,
+          "firstArgumentOpcode": "0x17"
+        }
+      ]
+    }
+  ],
+  "nonWaveEvents": [
+    {
+      "event": "OMEN Modular Exterminator",
+      "classPath": "/Game/GameElements/GameEvents/GuntowerEvent/BP_GuntowerEvent.BP_GuntowerEvent_C",
+      "parent": "/Script/FSD.GuntowerEvent",
+      "reason": "The stock event Blueprint has no SpawningBlueprintLibrary call and no EnemyWaveManager.TriggerWave call; it spawns stationary tower modules, not a creature wave."
+    }
+  ]
+}

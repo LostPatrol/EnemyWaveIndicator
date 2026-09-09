@@ -20,6 +20,7 @@
 #include "Components/EditableTextBox.h"
 #include "Components/Button.h"
 #include "Components/Image.h"
+#include "Components/GridSlot.h"
 #include "Engine/LocalPlayer.h"
 #include "Engine/GameInstance.h"
 #include "Engine/GameViewportClient.h"
@@ -419,13 +420,16 @@ bool ValidateAutomatic(UClass* PulseClass, UClass* WidgetClass)
     auto* TimeInput = Cast<USpinBox>(Page->WidgetTree->FindWidget(TEXT("InputDuration")));
     auto* Button = Cast<UButton>(Page->WidgetTree->FindWidget(TEXT("ApplyButton")));
     NWI_REQUIRE(LabelInput && RadiusInput && TimeInput && Button);
-    NWI_REQUIRE(Cast<UTextBlock>(Page->WidgetTree->FindWidget(TEXT("Title")))->GetText().ToString() == TEXT("Enemy Wave Indicator  |  0.9.1"));
+    NWI_REQUIRE(Cast<UTextBlock>(Page->WidgetTree->FindWidget(TEXT("Title")))->GetText().ToString() == TEXT("Enemy Wave Indicator  |  0.9.2"));
     NWI_REQUIRE(Cast<UTextBlock>(Page->WidgetTree->FindWidget(TEXT("WaveName2")))->GetText().ToString() == TEXT("Egg hunt ambush"));
     auto* SettingsPanel = Cast<UVerticalBox>(Page->WidgetTree->FindWidget(TEXT("SettingsPanel")));
     auto* WaveGrid = Cast<UGridPanel>(Page->WidgetTree->FindWidget(TEXT("WaveGrid")));
     auto* TextGrid = Cast<UGridPanel>(Page->WidgetTree->FindWidget(TEXT("TextGrid")));
     auto* SphereGrid = Cast<UGridPanel>(Page->WidgetTree->FindWidget(TEXT("SphereGrid")));
     NWI_REQUIRE(SettingsPanel && WaveGrid && TextGrid && SphereGrid);
+    auto* LastWaveName = Page->WidgetTree->FindWidget(TEXT("WaveName38"));
+    auto* LastWaveSlot = LastWaveName ? Cast<UGridSlot>(LastWaveName->Slot) : nullptr;
+    NWI_REQUIRE(LastWaveSlot && LastWaveSlot->Column == 4);
     auto* PageTitle = Cast<UTextBlock>(Page->WidgetTree->FindWidget(TEXT("Title")));
     auto* SectionTitle = Cast<UTextBlock>(Page->WidgetTree->FindWidget(TEXT("WaveSection")));
     auto* WaveBody = Cast<UTextBlock>(Page->WidgetTree->FindWidget(TEXT("WaveName2")));
@@ -446,7 +450,7 @@ bool ValidateAutomatic(UClass* PulseClass, UClass* WidgetClass)
     NWI_REQUIRE(ChinesePage && ChinesePage->Initialize());
     FindFProperty<FObjectPropertyBase>(PageClass, TEXT("Settings"))->SetObjectPropertyValue_InContainer(ChinesePage, Settings);
     ChinesePage->ProcessEvent(PageClass->FindFunctionByName(TEXT("Construct")), nullptr);
-    NWI_REQUIRE(Cast<UTextBlock>(ChinesePage->WidgetTree->FindWidget(TEXT("Title")))->GetText().ToString() == TEXT("敌潮指示器  |  0.9.1"));
+    NWI_REQUIRE(Cast<UTextBlock>(ChinesePage->WidgetTree->FindWidget(TEXT("Title")))->GetText().ToString() == TEXT("敌潮指示器  |  0.9.2"));
     NWI_REQUIRE(Cast<UTextBlock>(ChinesePage->WidgetTree->FindWidget(TEXT("WaveSection")))->GetText().ToString() == TEXT("虫潮播报"));
     NWI_REQUIRE(Cast<UTextBlock>(ChinesePage->WidgetTree->FindWidget(TEXT("WaveName0")))->GetText().ToString() == TEXT("自然潮"));
     NWI_REQUIRE(Cast<UTextBlock>(ChinesePage->WidgetTree->FindWidget(TEXT("WaveName2")))->GetText().ToString() == TEXT("虫蛋伏击"));
@@ -454,6 +458,9 @@ bool ValidateAutomatic(UClass* PulseClass, UClass* WidgetClass)
     NWI_REQUIRE(Cast<UTextBlock>(ChinesePage->WidgetTree->FindWidget(TEXT("WaveName26")))->GetText().ToString() == TEXT("搜救行动：据点防守"));
     NWI_REQUIRE(Cast<UTextBlock>(ChinesePage->WidgetTree->FindWidget(TEXT("WaveName27")))->GetText().ToString() == TEXT("搜救行动：撤离"));
     NWI_REQUIRE(Cast<UTextBlock>(ChinesePage->WidgetTree->FindWidget(TEXT("WaveName29")))->GetText().ToString() == TEXT("无畏异虫潮"));
+    NWI_REQUIRE(Cast<UTextBlock>(ChinesePage->WidgetTree->FindWidget(TEXT("WaveName36")))->GetText().ToString() == TEXT("三提石矿藏"));
+    NWI_REQUIRE(Cast<UTextBlock>(ChinesePage->WidgetTree->FindWidget(TEXT("WaveName37")))->GetText().ToString() == TEXT("矿化爆发"));
+    NWI_REQUIRE(Cast<UTextBlock>(ChinesePage->WidgetTree->FindWidget(TEXT("WaveName38")))->GetText().ToString() == TEXT("氪石感染"));
     NWI_REQUIRE(Cast<UTextBlock>(ChinesePage->WidgetTree->FindWidget(TEXT("TextSection")))->GetText().ToString() == TEXT("播报警示文本"));
     NWI_REQUIRE(Cast<UTextBlock>(ChinesePage->WidgetTree->FindWidget(TEXT("SphereSection")))->GetText().ToString() == TEXT("警示球体"));
     NWI_REQUIRE(Cast<UTextBlock>(ChinesePage->WidgetTree->FindWidget(TEXT("PreviewCaption")))->GetText().ToString() == TEXT("实时文字预览"));
@@ -548,7 +555,14 @@ bool ValidateAutomatic(UClass* PulseClass, UClass* WidgetClass)
         NWI_REQUIRE(FindFProperty<FIntProperty>(Class,*FString::Printf(TEXT("NativeEnabled%u"),I))->GetPropertyValue_InContainer(Controller)==int32(I%2));
     }
     UE_LOG(LogTemp,Display,TEXT("NWI_TEST Mod Hub interface discovery, stable metadata, explicit 21/19/13 heading-body typography, compact English/zh-CN page contents and unchanged English marker defaults passed"));
-    UE_LOG(LogTemp,Display,TEXT("NWI_TEST 36 wave types: all default on except IDs 1/6/32/34, yellow-red text defaults, independent persistence and replicated source selection passed"));
+    UE_LOG(LogTemp,Display,TEXT("NWI_TEST 39 wave types: all default on except IDs 1/6/32/34, yellow-red text defaults, independent persistence and replicated source selection passed"));
+    // The catalog loop ends on disabled even ID 38; restore an enabled source before testing viewport recovery.
+    FindFProperty<FIntProperty>(Class,TEXT("RegionType0"))->SetPropertyValue_InContainer(Controller,37);
+    FindFProperty<FIntProperty>(Class,TEXT("RegionSerial0"))->SetPropertyValue_InContainer(Controller,2000);
+    FindFProperty<FIntProperty>(Class,TEXT("RegionVisible0"))->SetPropertyValue_InContainer(Controller,1);
+    FindFProperty<FFloatProperty>(Class,TEXT("RegionExpires0"))->SetPropertyValue_InContainer(Controller,Test.World->GetTimeSeconds()+8.f);
+    Controller->ProcessEvent(Service,nullptr);
+    NWI_REQUIRE(Huds[0]->GetVisibility()==ESlateVisibility::HitTestInvisible && !Pulses[0]->IsHidden());
     // Real Slate attachment matters: visibility alone cannot recover a viewport cleared after Init.
     auto* Viewport = NewObject<UGameViewportClient>(GEngine);
     auto Overlay = SNew(SOverlay);

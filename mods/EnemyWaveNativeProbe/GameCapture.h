@@ -12,7 +12,7 @@ struct Binding {
     std::array<uintptr_t, 6> sourceChain{}; // Includes the natural scheduler, not only its shared spawning helper.
     uint32_t threadId = 0;
     Target pool, location, group, spread, spreadCallback, center;
-    // Exact initiating object's class, evaluated synchronously before queuing; -1 is unrecognized.
+    // Exact initiating controller/event class, evaluated synchronously before queuing; -1 is unrecognized.
     int32_t (*classifySource)(void* context, void* world) = nullptr;
 };
 struct Stats {

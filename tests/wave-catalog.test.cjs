@@ -2,14 +2,18 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const root=path.join(__dirname,'..');
 const audit=JSON.parse(fs.readFileSync(path.join(root,'docs/wave-controller-audit.json'),'utf8'));
+const eventAudit=JSON.parse(fs.readFileSync(path.join(root,'docs/event-wave-audit.json'),'utf8'));
 const header=fs.readFileSync(path.join(root,'engine/Authoring/NwiAuthoring/Source/NwiAuthoring/Public/NwiWaveTypes.h'),'utf8');
 const settings=fs.readFileSync(path.join(root,'engine/Authoring/NwiAuthoring/Source/NwiAuthoring/Private/NwiSettings.inl'),'utf8');
 const waveDocs=fs.readFileSync(path.join(root,'docs/WAVE-TYPES.md'),'utf8');
 const catalog=[...header.matchAll(/\{L"([^"]+)", L"([^"]+)", L"([^"]*)"\}/g)].map(m=>({key:m[1],title:m[2],path:m[3]}));
 test('all concrete audited controller classes have one stable native/UI source entry',()=>{
- assert.equal(catalog[0].key,'Natural');assert.equal(catalog.length,36);
+ assert.equal(catalog[0].key,'Natural');assert.equal(catalog.length,39);
  const concrete=audit.controllers.filter(x=>!x.classPath.endsWith('/EWC_Base.EWC_Base_C'));
- assert.deepEqual(catalog.slice(1).map(x=>x.path).sort(),concrete.map(x=>x.classPath).sort());
+ const eventStart=1+concrete.length;
+ assert.deepEqual(catalog.slice(1,eventStart).map(x=>x.path).sort(),concrete.map(x=>x.classPath).sort());
+ assert.deepEqual(catalog.slice(eventStart).map(x=>x.path),eventAudit.sources.map(x=>x.classPath));
+ assert.deepEqual(catalog.slice(eventStart).map(x=>x.key),eventAudit.sources.map(x=>x.key));
  assert.equal(new Set(catalog.map(x=>x.path)).size,catalog.length);
 });
 test('Simplified Chinese UI wave names exactly follow WAVE-TYPES while marker defaults stay English',()=>{
@@ -23,10 +27,21 @@ test('Simplified Chinese UI wave names exactly follow WAVE-TYPES while marker de
 test('each concrete type reaches a covered spawn function with the actual initiating self',()=>{
  const covered=new Set(['SpawnEnemiesFromPool','SpawnEnemyGroupDescriptorSpreadOut','SpawnEnemyGroupDescriptor','SpawnEnemyGroupDescriptorWithCallbackSpreadOut','SpawnEnemiesAtLocation','SpawnEnemiesAtLocationWithCallback']);
  const byPath=new Map(audit.controllers.map(x=>[x.classPath,x]));
- for(const row of catalog.slice(1)){
+ const concreteCount=audit.controllers.filter(x=>!x.classPath.endsWith('/EWC_Base.EWC_Base_C')).length;
+ for(const row of catalog.slice(1,1+concreteCount)){
   let node=byPath.get(row.path);const seen=new Set();let calls=[];
   while(node){assert(!seen.has(node.classPath));seen.add(node.classPath);calls.push(...node.calls);node=byPath.get(node.parent);}
   assert(calls.length>0,row.key+' has no audited spawning path');
   for(const call of calls){assert(covered.has(call.callee.split('.').pop()),call.callee);assert(call.args.startsWith('17'),row.key+' lost EX_Self provenance');}
+ }
+ for(const row of eventAudit.sources){
+  assert(row.calls.length>0,row.key+' has no audited spawning path');
+  for(const call of row.calls){assert(covered.has(call.callee),call.callee);assert.equal(call.firstArgumentOpcode,'0x17',row.key+' lost EX_Self provenance');}
+ }
+ for(const alias of eventAudit.aliases){
+  assert(alias.typeId>0&&alias.typeId<catalog.length,'event alias has an invalid target type');
+  assert(alias.calls.length>0,'event alias has no audited spawning path');
+  for(const call of alias.calls){assert(covered.has(call.callee),call.callee);assert.equal(call.firstArgumentOpcode,'0x17','event alias lost EX_Self provenance');}
+  assert.match(header,new RegExp('\\{'+alias.typeId+', L"'+alias.classPath.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'"\\}'));
  }
 });

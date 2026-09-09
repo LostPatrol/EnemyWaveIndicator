@@ -1,7 +1,7 @@
 // Versioned native handoff; the DLL alone supplies proven natural-wave records.
 void DeclareCapture(UBlueprint* BP)
 {
-    Variable(BP, TEXT("NativeAbi"), Type(UEdGraphSchema_K2::PC_Int), TEXT("589824"));
+    Variable(BP, TEXT("NativeAbi"), Type(UEdGraphSchema_K2::PC_Int), TEXT("590336"));
     Variable(BP, TEXT("NativeCookie"), Type(UEdGraphSchema_K2::PC_Int));
     Variable(BP, TEXT("NativeTime"), Type(UEdGraphSchema_K2::PC_Float));
     Variable(BP, TEXT("NativeEnabled"), Type(UEdGraphSchema_K2::PC_Int), TEXT("1"));

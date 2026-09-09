@@ -39,9 +39,17 @@ static constexpr WaveType WaveTypes[] = {
     {L"EWC_CoreRift", L"Core stone event", L"/Game/GameElements/GameEvents/CoreRift/EWC_CoreRift.EWC_CoreRift_C"},
     {L"EWC_BombEvent", L"Rival communications event", L"/Game/GameElements/GameEvents/RivalBombEvent/EWC_BombEvent.EWC_BombEvent_C"},
     {L"EWC_CoreCorruption", L"Core corruption warning", L"/Game/GameElements/Missions/Warnings/CoreCorruption/EWC_CoreCorruption.EWC_CoreCorruption_C"},
-    {L"EWC_HackBuilding", L"Hacking defense", L"/Game/GameElements/Objectives/HackBuilding/EWC_HackBuilding.EWC_HackBuilding_C"}
+    {L"EWC_HackBuilding", L"Hacking defense", L"/Game/GameElements/Objectives/HackBuilding/EWC_HackBuilding.EWC_HackBuilding_C"},
+    {L"BP_ExplosiveBarrelsEvent", L"Tritilyte Deposit", L"/Game/GameElements/GameEvents/ExplosiveBarrelsEvent/BP_ExplosiveBarrelsEvent.BP_ExplosiveBarrelsEvent_C"},
+    {L"BP_RockEnemiesEvent", L"Ebonite Mutation", L"/Game/GameElements/GameEvents/RockEnemies/BP_RockEnemiesEvent.BP_RockEnemiesEvent_C"},
+    {L"BP_AmberEvent", L"Kursite Infection", L"/Game/GameElements/GameEvents/AmberEvent/BP_AmberEvent.BP_AmberEvent_C"}
 };
 static constexpr uint32_t WaveTypeCount = sizeof(WaveTypes) / sizeof(WaveTypes[0]);
+// Some event-owned spawns share an existing user-facing setting instead of adding a duplicate control.
+struct WaveSourceAlias { uint32_t type; const wchar_t* classPath; };
+static constexpr WaveSourceAlias WaveSourceAliases[] = {
+    {32, L"/Game/GameElements/GameEvents/CoreRift/BP_RiftCrystal.BP_RiftCrystal_C"}
+};
 // High byte identifies source type; remaining bits distinguish concurrent requests without time heuristics.
 inline uint32_t waveType(uint64_t wave) noexcept { return static_cast<uint32_t>(wave >> 56); }
 inline uint64_t waveIdentity(uint64_t serial, uint32_t type) noexcept { return (serial & 0x00ffffffffffffffULL) | (uint64_t(type) << 56); }

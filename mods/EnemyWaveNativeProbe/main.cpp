@@ -191,7 +191,7 @@ void record(const char* event) noexcept {
     const auto& probe = dispatchProbe.stats;
     char line[4096];
     const int size = sprintf_s(line,
-        "{\"probe\":\"0.9.1\",\"event\":\"%s\",\"utc\":\"%04u-%02u-%02uT%02u:%02u:%02u.%03uZ\","
+        "{\"probe\":\"0.9.2\",\"event\":\"%s\",\"utc\":\"%04u-%02u-%02uT%02u:%02u:%02u.%03uZ\","
         "\"pid\":%lu,\"tid\":%lu,\"elapsed_ms\":%llu,\"updates\":%llu,\"thread_changes\":%llu,"
         "\"gap_min_ms\":%.6f,\"gap_max_ms\":%.6f,\"gap_mean_ms\":%.6f,"
         "\"dispatch_enabled\":%s,\"dispatch_pending\":%s,\"dispatch_disabled\":%s,"

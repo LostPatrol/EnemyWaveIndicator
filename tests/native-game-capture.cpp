@@ -253,7 +253,7 @@ int main() {
     for(uint32_t type=1;type<=4;++type) REQUIRE(perType[type]==4);
     for(const auto& region:regions.items) REQUIRE(region.visible && region.count==2);
     REQUIRE(!badArguments && !capture::stats().fault);
-    puts("PASS: all 35 stock scripted types; ten real hooks; interleaved queued sources, unknown-descriptor isolation, exact multi-centers and callback/float/bool/pointer ABI.");
+    puts("PASS: all 38 stock scripted types; ten real hooks; interleaved queued sources, unknown-descriptor isolation, exact multi-centers and callback/float/bool/pointer ABI.");
     scheduleNormal(); consume(); while (capture::pop(event)) {}
     REQUIRE(!capture::stats().fault);
     const auto wavesBeforeStop = capture::stats().waves, normalBeforeStop = normalCalls;

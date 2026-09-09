@@ -1,14 +1,14 @@
-<!-- Bilingual player reference for every wave type available in Enemy Wave Indicator 0.9.1. -->
+<!-- Bilingual player reference for every wave type available in Enemy Wave Indicator 0.9.2. -->
 
 # Wave Types / 虫潮类型
 
-Enemy Wave Indicator 0.9.1 provides separate switches and labels for one natural-wave source and 35 stock scripted wave controllers. Every type is enabled by default except IDs **1, 6, 32, and 34**. After changing a setting in Mod Hub, select **Apply and save**. The settings UI follows the game language in English or Simplified Chinese, while editable marker defaults remain English.
+Enemy Wave Indicator 0.9.2 provides separate switches and labels for one natural-wave source and 38 stock scripted wave types: 35 wave controllers plus three direct machine-event sources. Every type is enabled by default except IDs **1, 6, 32, and 34**. After changing a setting in Mod Hub, select **Apply and save**. The settings UI follows the game language in English or Simplified Chinese, while editable marker defaults remain English.
 
-Enemy Wave Indicator 0.9.1 为自然潮和 35 种游戏自带的脚本虫潮控制器提供独立开关与提示文字。除 ID **1、6、32、34** 外，其余类型默认全部开启；在 Mod Hub 中修改设置后，请点击**应用并保存**。设置界面会随游戏语言显示英文或简体中文，但可编辑的标记默认内容始终保留英文。
+Enemy Wave Indicator 0.9.2 为自然潮和 38 种游戏自带的脚本虫潮类型提供独立开关与提示文字，其中包括 35 种虫潮控制器和 3 种直接刷怪的机械事件。除 ID **1、6、32、34** 外，其余类型默认全部开启；在 Mod Hub 中修改设置后，请点击**应用并保存**。设置界面会随游戏语言显示英文或简体中文，但可编辑的标记默认内容始终保留英文。
 
 ## Main settings / 主要设置
 
-| ID | Setting / 设置项 | Game controller / 游戏控制器 | Notes / 备注 |
+| ID | Setting / 设置项 | Game source / 游戏来源 | Notes / 备注 |
 |---:|---|---|---|
 | 0 | Natural wave<br>自然潮 | `Natural` | Regular unannounced enemy pressure generated during a mission.<br>任务过程中自然生成、不被任务中心播报的虫潮。 |
 | 1 | Drillevator<br>深掘钻梯 | `EWC_DeepScan_Drillevator` | Waves attacking the team during the Drillevator descent in Deep Scan.<br>深层采掘任务中，深掘钻梯向下钻进时出现的虫潮。 |
@@ -43,17 +43,20 @@ Enemy Wave Indicator 0.9.1 为自然潮和 35 种游戏自带的脚本虫潮控�
 | 33 | Rival communications event<br>强敌科技通讯事件 | `EWC_BombEvent` | Enemy waves during the Rival Communications Router event.<br>关闭强敌科技通讯天线事件期间出现的虫潮。 |
 | 34 | Core Corruption warning<br>核心侵扰警告 | `EWC_CoreCorruption` | Corespawn pressure produced by the Core Corruption mission warning.<br>带有核心侵扰警告的任务中，由强化核心岩持续产生的吗喽虫潮。 |
 | 35 | Hacking defense<br>骇入防守 | `EWC_HackBuilding` | Waves attacking Hack-C during hacking objectives such as a Data Deposit.<br>强敌科技数据存储站等骇入目标中，保护骇入仓时出现的防守虫潮。 |
+| 36 | Tritilyte Deposit<br>三提石矿藏 | `BP_ExplosiveBarrelsEvent` | Enemy waves spawned directly by the Tritilyte Deposit machine event.<br>三提石矿藏机械事件直接生成的敌潮。 |
+| 37 | Ebonite Mutation<br>矿化爆发 | `BP_RockEnemiesEvent` | Ebonite enemy waves spawned directly by the Ebonite Mutation machine event.<br>矿化爆发机械事件直接生成的矿化异虫潮。 |
+| 38 | Kursite Infection<br>氪石感染 | `BP_AmberEvent` | Infected enemy waves spawned directly by the Kursite Infection machine event.<br>氪石感染机械事件直接生成的感染异虫潮。 |
 
 ## Less useful settings / 较少使用的设置
 
 These controllers are supported, but they are limited to tutorial or seasonal content and are rarely useful during normal play.<br>这些控制器仍受支持，但仅用于教程或季节活动，在常规游玩中很少用到。
 
-| ID | Setting / 设置项 | Game controller / 游戏控制器 | Notes / 备注 |
+| ID | Setting / 设置项 | Game source / 游戏来源 | Notes / 备注 |
 |---:|---|---|---|
 | 5 | Tutorial extraction<br>教程撤离 | `EWC_EndMission_Tutorial` | The extraction wave used by the introductory tutorial mission.<br>新手教程撤离阶段使用的虫潮。 |
 | 13 | Oktoberfest beer ambush<br>啤酒节伏击 | `EWC_OktoberFest_BeerAmbush` | A beer-related ambush used by the seasonal Oktoberfest event.<br>啤酒节季节活动中与啤酒目标相关的伏击潮。 |
 | 31 | Tutorial grunts<br>教程战士潮 | `EWC_TutorialGrunts` | Controlled Glyphid Grunt waves used by the introductory tutorial.<br>新手教程中用于战斗教学的异虫战士潮。 |
 
-[wave-controller-audit.json](wave-controller-audit.json) contains the machine-readable stock-controller audit behind this list / 该文件包含本清单对应的游戏控制器审计数据。
+[wave-controller-audit.json](wave-controller-audit.json) and [event-wave-audit.json](event-wave-audit.json) contain the machine-readable stock-source audits behind this list / 这两个文件包含本清单对应的游戏控制器与事件来源审计数据。
 
-Machine events such as Tritilyte Deposit, Kursite Infection, and Ebonite Mutation are not missing controller entries: their event Blueprints call the spawning library directly instead of creating an `EnemyWaveController`, so they are outside this controller-based catalog.<br>三提石矿藏、氪石感染和矿化爆发等机械事件并不是漏列了某个控制器：它们的事件蓝图会直接调用刷怪接口，并不会创建 `EnemyWaveController`，因此不属于这份基于控制器的清单。
+The Core Stone setting also covers the direct reinforcement call owned by `BP_RiftCrystal`, in addition to `EWC_CoreRift`. The stock OMEN Modular Exterminator Blueprint has no creature-wave spawn call: it creates stationary tower modules, so there is no separate OMEN wave setting to expose.<br>“核心岩事件”设置除 `EWC_CoreRift` 外，也会覆盖 `BP_RiftCrystal` 直接发起的增援刷怪。游戏自带的模块化除虫器蓝图不会触发生物虫潮，只会生成固定炮塔模块，因此没有可单独配置的“除虫器虫潮”。

@@ -45,7 +45,7 @@ bool localAddress(void* actor, void* pointer, size_t bytes) noexcept {
 }
 bool bind(void* actor) {
     auto* abi = static_cast<int32_t*>(value(actor, L"NativeAbi"));
-    if (!localAddress(actor, abi, 4) || *abi != 0x90000) return false;
+    if (!localAddress(actor, abi, 4) || *abi != 0x90200) return false;
     worldTime = static_cast<float*>(value(actor, L"NativeTime"));
     for (uint32_t i = 0; i < WaveTypeCount; ++i) {
         wchar_t field[48]; if (i) swprintf_s(field, L"NativeEnabled%u", i); else wcscpy_s(field, L"NativeEnabled");
@@ -152,8 +152,8 @@ capture::Target target(uintptr_t base, uintptr_t rva, const char* hex) {
     }
     return result;
 }
-// Match the initiating controller's exact class path, never an enemy name or an active-wave list.
-// Stock scripted callers pass EX_Self as WorldContextObject (recorded in the asset audit).
+// Match the initiating controller/event's exact class path, never an enemy name or an active-wave list.
+// Stock scripted callers pass EX_Self as WorldContextObject (recorded in the source audits).
 int32_t sourceClassUnchecked(void* context, void* world) {
     if (!context || actorWorld(context) != world) return -1;
     auto* cls = *reinterpret_cast<void**>(static_cast<unsigned char*>(context) + 0x10);
@@ -161,6 +161,7 @@ int32_t sourceClassUnchecked(void* context, void* world) {
     if (!length || length >= std::size(text)) return -1;
     const auto* path = wcschr(text, L' '); if (!path) return -1;
     for (uint32_t i = 1; i < WaveTypeCount; ++i) if (!wcscmp(path + 1, WaveTypes[i].classPath)) return static_cast<int32_t>(i);
+    for (const auto& alias : WaveSourceAliases) if (alias.type < WaveTypeCount && !wcscmp(path + 1, alias.classPath)) return static_cast<int32_t>(alias.type);
     return -1;
 }
 int32_t sourceClass(void* context, void* world) noexcept {
