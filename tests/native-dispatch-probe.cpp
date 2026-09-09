@@ -12,7 +12,10 @@ bool synchronous = false, reject = false;
 nwi::ThreadSample sample{42, true, true};
 unsigned calls = 0;
 unsigned actions = 0;
-void action(nwi::ThreadSample& value) { ++actions; value.bootstrapStatus = 3; value.visualActors = 1; }
+void action(nwi::ThreadSample& value) {
+    ++actions; value.bootstrapStatus = 3; value.visualActors = 1;
+    value.hubRefreshAttempts = 2; value.hubRefreshes = 1; value.hubRefreshFailures = 1;
+}
 bool enqueue(nwi::Callback callback, void* context) {
     ++calls;
     if (reject) return false;
@@ -35,7 +38,7 @@ int main() {
         // An off-thread delivery executes no gameplay action and retains the previous snapshot.
         nwi::DispatchProbe p; reset(p); actions = 0;
         p.configure({enqueue, readThread, clockNow, action}); p.pump(); drain(); p.pump();
-        REQUIRE(actions == 1 && p.stats.visualActors == 1);
+        REQUIRE(actions == 1 && p.stats.visualActors == 1 && p.stats.hubRefreshes == 1 && p.stats.hubRefreshFailures == 1);
         sample.gameThread = false; now = 1000; p.pump(); drain(); p.pump();
         REQUIRE(actions == 1 && p.stats.otherThread == 1 && p.stats.visualActors == 1 && !p.stats.disabled);
         sample.gameThread = true; now = 2000; p.pump(); drain(); p.pump();

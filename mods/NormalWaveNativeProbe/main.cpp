@@ -26,6 +26,14 @@ using ObjectWorld = void* (*)(void*);
 ObjectWorld objectWorld = nullptr;
 using ObjectName = size_t (*)(void*, wchar_t*, size_t);
 ObjectName objectName = nullptr;
+using FindFirst = void* (*)(const wchar_t*);
+using SafeProcessEvent = bool (*)(void*, void*, void*);
+using GetParmsSize = uint16_t* (*)(void*);
+decltype(nwi::PresentationApi::find) staticFind = nullptr;
+decltype(nwi::PresentationApi::valid) validObject = nullptr;
+FindFirst findFirst = nullptr;
+SafeProcessEvent safeProcessEvent = nullptr;
+GetParmsSize getParmsSize = nullptr;
 bool apiChecked = false;
 
 // Use named exports only, with the audited image's RVA as an additional compatibility guard.
@@ -63,6 +71,27 @@ nwi::WorldKind worldKind(void* world) noexcept {
     return nwi::classifyWorldName(name, length);
 }
 
+// A loose local Pak can create our controller after Mod Hub's one-shot BeginPlay scan.
+// Re-running its public Blueprint search registers every still-missing IHubMod actor idempotently.
+bool refreshModHubUnchecked(void* world) {
+    void* hub = findFirst(L"Mod_ModHub_C");
+    if (!validObject(hub) || objectWorld(hub) != world) return false;
+    constexpr wchar_t path[] = L"/Game/ModHub/Mod_ModHub.Mod_ModHub_C:SearchForMods";
+    const nwi::WideView name{path, std::size(path) - 1};
+    void* function = staticFind(&name);
+    if (!validObject(function)) return false;
+    uint16_t* size = getParmsSize(function);
+    if (!size || *size != 0) return false;
+    return safeProcessEvent(hub, function, nullptr);
+}
+bool guardedRefreshModHub(void* world) {
+    __try { return refreshModHubUnchecked(world); }
+    __except (GetExceptionCode() == 0xE06D7363 ? EXCEPTION_CONTINUE_SEARCH : EXCEPTION_EXECUTE_HANDLER) { return false; }
+}
+bool refreshModHub(void* world) noexcept {
+    try { return guardedRefreshModHub(world); } catch (...) { return false; }
+}
+
 // Only DispatchProbe's per-callback engine identity gate can invoke this action.
 void showPresentation(nwi::ThreadSample& sample) noexcept {
     static bool automaticAttempted = false;
@@ -75,6 +104,9 @@ void showPresentation(nwi::ThreadSample& sample) noexcept {
     sample.bootstrapStatus = presentation.status;
     sample.visualActors = presentation.spawned;
     sample.classLoads = presentation.loads;
+    sample.hubRefreshAttempts = presentation.refreshAttempts;
+    sample.hubRefreshes = presentation.refreshes;
+    sample.hubRefreshFailures = presentation.refreshFailures;
     sample.viewportFinds = activeWorld.finds; sample.worldReads = activeWorld.reads;
     sample.worldChanges = activeWorld.changes; sample.worldFaults = activeWorld.faults;
     sample.activeWorld = activeWorld.lastWorld;
@@ -118,9 +150,15 @@ void configureDispatch() noexcept {
         "?SafeFindFirstOf@Seh@RC@@YAPEAVUObject@Unreal@2@PEB_W@Z", 0x78efa0);
     objectWorld = resolve<ObjectWorld>(runtime, "?GetWorld@UObject@Unreal@RC@@QEBAPEAVUWorld@23@XZ", 0x20cbd0);
     objectName = resolve<ObjectName>(runtime, "ue4ssl_host_object_full_name_v1", 0x76a090);
-    if (find && load && valid && spawn && findViewport && objectWorld && objectName) {
+    auto process = resolve<SafeProcessEvent>(runtime,
+        "?SafeProcessEvent@Seh@RC@@YA_NPEAVUObject@Unreal@2@PEAVUFunction@42@PEAX@Z", 0x78efd0);
+    auto parms = resolve<GetParmsSize>(runtime, "?GetParmsSize@UFunction@Unreal@RC@@QEAAAEAGXZ", 0x1f7ee0);
+    if (find && load && valid && spawn && findViewport && objectWorld && objectName && process && parms) {
+        staticFind = find; validObject = valid; findFirst = findViewport;
+        safeProcessEvent = process; getParmsSize = parms;
         activeWorld.configure({findViewport, valid, &readViewportWorld});
-        presentation.configure({find, load, valid, spawn, &currentWorld, &worldKind, &nwi::automatic::prepareClass}, GetTickCount64());
+        presentation.configure({find, load, valid, spawn, &currentWorld, &worldKind,
+            &nwi::automatic::prepareClass, &refreshModHub}, GetTickCount64());
     }
     dispatchProbe.configure({dispatch, &sampleThread, &sampleClock, &showPresentation});
 }
@@ -152,6 +190,7 @@ void record(const char* event) noexcept {
         "\"identity_source\":\"engine_globals\",\"engine_identity_available\":%s,\"engine_thread_id\":%u,"
         "\"runtime_initialized_samples\":%llu,\"identity_read_failures\":%llu,"
         "\"bootstrap_status\":%u,\"visual_test_actors\":%u,\"visual_class_loads\":%u,"
+        "\"hub_refresh_attempts\":%u,\"hub_refreshes\":%u,\"hub_refresh_failures\":%u,"
         "\"world_source\":\"game_viewport\",\"viewport_finds\":%u,\"world_reads\":%u,"
         "\"world_changes\":%u,\"world_faults\":%u,\"last_valid_world\":%llu,"
         "\"world_kind\":%u,\"excluded_worlds\":%u,"
@@ -172,6 +211,7 @@ void record(const char* event) noexcept {
         probe.latencyMax, probe.completed ? static_cast<double>(probe.latencyTotal) / probe.completed : 0.0,
         engineIdentity.available() ? "true" : "false", probe.expectedTid, probe.runtimeInitialized, probe.identityReadFailures,
         probe.bootstrapStatus, probe.visualActors, probe.classLoads,
+        probe.hubRefreshAttempts, probe.hubRefreshes, probe.hubRefreshFailures,
         probe.viewportFinds, probe.worldReads, probe.worldChanges, probe.worldFaults, probe.activeWorld,
         probe.worldKind, probe.excludedWorlds, probe.nativeWaves, probe.tagged, probe.spawnSuccesses, probe.delivered,
         probe.autoFrames, probe.deliveryMaxMs, probe.deliveryMaxUs, probe.regionsDropped,

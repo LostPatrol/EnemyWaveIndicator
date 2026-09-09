@@ -26,16 +26,19 @@ struct PresentationApi {
     void* (*activeWorld)() = nullptr;
     WorldKind (*worldKind)(void*) = nullptr;
     bool (*prepareClass)(void*) = nullptr;
+    bool (*refreshModHub)(void*) = nullptr;
 };
 class PresentationBootstrap {
 public:
     static constexpr uint32_t MaxWorlds = 8; // Bound all object creation, including a failed attempt.
+    static constexpr uint32_t MaxRefreshAttempts = 8; // Mod Hub may finish BeginPlay shortly after our Init actor.
     uint32_t status = 0, spawned = 0, loads = 0, attempted = 0;
+    uint32_t refreshAttempts = 0, refreshes = 0, refreshFailures = 0;
     uint32_t excluded = 0;
     WorldKind kind = WorldKind::Excluded;
     void configure(PresentationApi api, uint64_t now) noexcept { api_ = api; readyAt_ = now + 30000; status = 1; }
     void tick(uint64_t now) noexcept {
-        if (!api_.find || !api_.activeWorld || !api_.worldKind || status == 4 || status == 5 || now < readyAt_) return;
+        if (!api_.find || !api_.activeWorld || !api_.worldKind || status == 4 || status == 5 || status == 8 || now < readyAt_) return;
         if (attempted >= MaxWorlds) { status = 5; return; }
         {
             void* world = api_.activeWorld();
@@ -45,6 +48,11 @@ public:
                 if (kind == WorldKind::Excluded) ++excluded;
             }
             if (kind == WorldKind::Excluded) { candidate_ = nullptr; status = 6; return; }
+            if (pendingRefreshWorld_ && pendingRefreshWorld_ != world) clearRefresh();
+            if (pendingRefreshWorld_ == world) {
+                if (now >= nextRefreshAt_) tryRefresh(world, now);
+                return;
+            }
             bool seen = false;
             for (uint32_t i = 0; i < attempted; ++i) if (worlds_[i] == world) seen = true;
             if (seen) { candidate_ = nullptr; status = 3; return; }
@@ -60,7 +68,12 @@ public:
             worlds_[attempted++] = world; // Commit before spawn: failures cannot turn into a spawn loop.
             const Position3 zero{0, 0, 0};
             if (!api_.valid(api_.spawn(world, cls, &zero))) { status = 4; return; }
-            ++spawned; status = 3; return;
+            ++spawned;
+            if (api_.refreshModHub) {
+                pendingRefreshWorld_ = world; refreshAttemptsForWorld_ = 0;
+                tryRefresh(world, now);
+            } else status = 3;
+            return;
         }
     }
     inline static constexpr wchar_t RigClassPath[] = L"/Game/NormalWaveIndicator/InitSpacerig.InitSpacerig_C";
@@ -68,9 +81,19 @@ public:
 private:
     template<size_t N> static WideView view(const wchar_t (&text)[N]) noexcept { return {text, N - 1}; }
     PresentationApi api_{};
+    void clearRefresh() noexcept { pendingRefreshWorld_ = nullptr; refreshAttemptsForWorld_ = 0; nextRefreshAt_ = 0; }
+    void tryRefresh(void* world, uint64_t now) noexcept {
+        ++refreshAttempts; ++refreshAttemptsForWorld_;
+        if (api_.refreshModHub(world)) { ++refreshes; clearRefresh(); status = 3; return; }
+        ++refreshFailures;
+        if (refreshAttemptsForWorld_ >= MaxRefreshAttempts) { clearRefresh(); status = 8; return; }
+        nextRefreshAt_ = now + 1000; status = 7;
+    }
     void* worlds_[MaxWorlds]{}; // Identity tokens only; old world pointers are never dereferenced.
+    void* pendingRefreshWorld_ = nullptr;
+    uint32_t refreshAttemptsForWorld_ = 0;
     void* candidate_ = nullptr;
     void* checkedWorld_ = nullptr; // Cache name classification only while this active World is unchanged.
-    uint64_t candidateSince_ = 0, readyAt_ = 0;
+    uint64_t candidateSince_ = 0, readyAt_ = 0, nextRefreshAt_ = 0;
 };
 } // namespace nwi

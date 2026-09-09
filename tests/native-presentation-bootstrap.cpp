@@ -7,8 +7,8 @@
 namespace {
 int worlds[12]{}, classToken = 0, actorToken = 0;
 void* world = nullptr;
-bool cached = false, loadFails = false, spawnFails = false, prepareFails = false, badArguments = false;
-unsigned finds = 0, loads = 0, spawns = 0, preparations = 0;
+bool cached = false, loadFails = false, spawnFails = false, prepareFails = false, refreshFails = false, badArguments = false;
+unsigned finds = 0, loads = 0, spawns = 0, preparations = 0, refreshCalls = 0;
 const wchar_t* expectedClass() {
     return world == &worlds[10] ? L"/Game/NormalWaveIndicator/InitSpacerig.InitSpacerig_C"
         : L"/Game/NormalWaveIndicator/InitCave.InitCave_C";
@@ -54,9 +54,11 @@ void* spawn(void* w, void* cls, const nwi::Position3* p) {
     if (w != world || cls != &classToken || !preparations || !p || p->x || p->y || p->z) badArguments = true;
     return spawnFails ? nullptr : &actorToken;
 }
+bool refresh(void* w) { ++refreshCalls; if (w != world) badArguments = true; return !refreshFails; }
 void setup(nwi::PresentationBootstrap& p) {
-    world = &worlds[0]; cached = loadFails = spawnFails = prepareFails = badArguments = false;
-    finds = loads = spawns = preparations = 0; p.configure({find, load, valid, spawn, currentWorld, worldKind, prepare}, 0);
+    world = &worlds[0]; cached = loadFails = spawnFails = prepareFails = refreshFails = badArguments = false;
+    finds = loads = spawns = preparations = refreshCalls = 0;
+    p.configure({find, load, valid, spawn, currentWorld, worldKind, prepare, refresh}, 0);
 }
 #define REQUIRE(x) do { if (!(x)) { printf("FAIL line %d: %s\n", __LINE__, #x); return 1; } } while (0)
 }
@@ -64,10 +66,28 @@ int main() {
     {
         nwi::PresentationBootstrap p; setup(p); world = &worlds[10];
         p.tick(30000); p.tick(35000);
-        REQUIRE(p.kind == nwi::WorldKind::SpaceRig && loads == 1 && preparations == 1 && spawns == 1 && !badArguments);
+        REQUIRE(p.kind == nwi::WorldKind::SpaceRig && loads == 1 && preparations == 1 && spawns == 1 && refreshCalls == 1 && !badArguments);
         // A preloaded class from an integration entry still receives the native binding on mission travel.
         world = &worlds[0]; p.tick(40000); p.tick(45000);
         REQUIRE(p.kind == nwi::WorldKind::Mission && loads == 1 && preparations == 2 && spawns == 2 && !badArguments);
+    }
+    {
+        // Mod Hub may not exist on the first post-spawn callback; retry without duplicating Init.
+        nwi::PresentationBootstrap p; setup(p); refreshFails = true;
+        p.tick(30000); p.tick(35000);
+        REQUIRE(p.status == 7 && spawns == 1 && refreshCalls == 1);
+        p.tick(35999); REQUIRE(refreshCalls == 1);
+        refreshFails = false; p.tick(36000);
+        REQUIRE(p.status == 3 && p.refreshes == 1 && p.refreshFailures == 1 && refreshCalls == 2 && spawns == 1);
+    }
+    {
+        // A permanently absent Mod Hub has a strict retry cap and never becomes an actor-spawn loop.
+        nwi::PresentationBootstrap p; setup(p); refreshFails = true;
+        p.tick(30000); p.tick(35000);
+        for (unsigned i = 1; i < nwi::PresentationBootstrap::MaxRefreshAttempts; ++i) p.tick(35000 + i * 1000);
+        REQUIRE(p.status == 8 && refreshCalls == nwi::PresentationBootstrap::MaxRefreshAttempts && spawns == 1);
+        for (int i = 0; i < 100; ++i) p.tick(50000 + i * 1000);
+        REQUIRE(refreshCalls == nwi::PresentationBootstrap::MaxRefreshAttempts && spawns == 1);
     }
     {
         REQUIRE(nwi::classifyWorldName(L"", 0) == nwi::WorldKind::Excluded);
@@ -145,5 +165,5 @@ int main() {
         p.tick(50000); REQUIRE(spawns == 2 && !badArguments);
         // find() accepts only our class name: loaded map paths can never influence bootstrap.
     }
-    puts("PASS: cached viewport, null travel world, bridge fault stop, eight lookup cap, active-world-only bootstrap, interrupted travel, reuse and creation limits.");
+    puts("PASS: cached viewport, bounded Mod Hub refresh, null travel world, bridge fault stop, eight lookup cap, active-world-only bootstrap, interrupted travel, reuse and creation limits.");
 }

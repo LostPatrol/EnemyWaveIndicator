@@ -62,7 +62,7 @@ DLL 和 Pak 必须来自同一个版本。手动更新时需要同时替换这�
 
 ## 常见问题
 
-- **Mod Hub 中没有出现本 Mod：**确认 Mod Hub 已启用，在空间站等待约 40 秒，并重启一次游戏。
+- **Mod Hub 中没有出现本 Mod：**确认 Mod Hub 已启用，并在空间站等待约 40 秒。当前 0.9.1 包会在控制器启动后自动要求 Mod Hub 重新扫描；若使用的是本次热修复前构建的压缩包，请在 MintCat 中重新导入。
 - **四种默认关闭的事件没有显示：**请在 Mod Hub 中开启对应类型，再点击**应用并保存**。
 - **完全没有标记：**确认 `main.dll` 和 `NormalWaveIndicator_P.pak` 来自同一版本。房主需要安装 DLL，客机需要匹配的 Pak 内容才能显示自定义标记。
 - **MintCat 提示重复或松散 Pak：**先确认 MintCat 已管理本 Mod，再删除手动安装的 `NormalWaveIndicator_P.pak`，然后重新应用更改。

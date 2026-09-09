@@ -12,6 +12,7 @@ struct ThreadSample {
     bool runtimeInitialized = false, identityReadOk = true;
     bool actionRan = false; // Invalid-thread samples must never erase the last gameplay snapshot.
     uint32_t bootstrapStatus = 0, visualActors = 0, classLoads = 0;
+    uint32_t hubRefreshAttempts = 0, hubRefreshes = 0, hubRefreshFailures = 0;
     uint32_t viewportFinds = 0, worldReads = 0, worldChanges = 0, worldFaults = 0;
     uint64_t activeWorld = 0;
     uint32_t worldKind = 0, excludedWorlds = 0;
@@ -44,6 +45,7 @@ public:
         uint64_t runtimeInitialized = 0, identityReadFailures = 0;
         uint32_t lastTid = 0, expectedTid = 0;
         uint32_t bootstrapStatus = 0, visualActors = 0, classLoads = 0;
+        uint32_t hubRefreshAttempts = 0, hubRefreshes = 0, hubRefreshFailures = 0;
         uint32_t viewportFinds = 0, worldReads = 0, worldChanges = 0, worldFaults = 0;
         uint64_t activeWorld = 0;
         uint32_t worldKind = 0, excludedWorlds = 0;
@@ -84,6 +86,9 @@ public:
                 stats.bootstrapStatus = result_.bootstrapStatus;
                 stats.visualActors = result_.visualActors;
                 stats.classLoads = result_.classLoads;
+                stats.hubRefreshAttempts = result_.hubRefreshAttempts;
+                stats.hubRefreshes = result_.hubRefreshes;
+                stats.hubRefreshFailures = result_.hubRefreshFailures;
                 stats.viewportFinds = result_.viewportFinds; stats.worldReads = result_.worldReads;
                 stats.worldChanges = result_.worldChanges; stats.worldFaults = result_.worldFaults;
                 stats.activeWorld = result_.activeWorld;
