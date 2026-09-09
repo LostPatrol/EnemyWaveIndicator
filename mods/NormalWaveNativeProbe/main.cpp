@@ -8,6 +8,7 @@
 #include "DispatchProbe.h"
 #include "EngineThreadIdentity.h"
 #include "PresentationBootstrap.h"
+#include "ModHubRegistration.h"
 #include "ActiveWorld.h"
 #include "AutomaticPresentation.h"
 #include "GameCapture.h"
@@ -73,18 +74,11 @@ nwi::WorldKind worldKind(void* world) noexcept {
     return nwi::classifyWorldName(name, length);
 }
 
-// A loose local Pak can create our controller after Mod Hub's one-shot BeginPlay scan.
-// Re-running its public Blueprint search registers every still-missing IHubMod actor idempotently.
+// SearchForMods updates discovery; RefreshPages rebuilds the already-created visible UI.
 bool refreshModHubUnchecked(void* world) {
     void* hub = findFirst(L"Mod_ModHub_C");
     if (!validObject(hub) || objectWorld(hub) != world) return false;
-    constexpr wchar_t path[] = L"/Game/ModHub/Mod_ModHub.Mod_ModHub_C:SearchForMods";
-    const nwi::WideView name{path, std::size(path) - 1};
-    void* function = staticFind(&name);
-    if (!validObject(function)) return false;
-    uint16_t* size = getParmsSize(function);
-    if (!size || *size != 0) return false;
-    return safeProcessEvent(hub, function, nullptr);
+    return nwi::rescanAndRefreshModHub({staticFind, validObject, getParmsSize, safeProcessEvent}, hub);
 }
 bool guardedRefreshModHub(void* world) {
     __try { return refreshModHubUnchecked(world); }

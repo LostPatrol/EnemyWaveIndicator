@@ -62,7 +62,7 @@ The DLL and Pak must come from the same release. When updating manually, replace
 
 ## Troubleshooting
 
-- **The mod is missing from Mod Hub:** confirm that Mod Hub is enabled and that the Space Rig has finished loading. The current 0.9.1 package has no fixed startup delay: it initializes on the first readiness check and then asks Mod Hub to rescan. Packages built before this hotfix must be reimported in MintCat.
+- **The mod is missing from Mod Hub:** confirm that Mod Hub is enabled and that the Space Rig has finished loading. The current 0.9.1 package has no fixed startup delay: it initializes on the first readiness check, refreshes Mod Hub's discovered-mod array, and rebuilds its visible pages. Packages built before this hotfix must be reimported in MintCat.
 - **One of the four default-disabled events does not appear:** enable its matching type in Mod Hub and select **Apply and save**.
 - **Nothing appears:** verify that `main.dll` and `NormalWaveIndicator_P.pak` are from the same version. The host needs the DLL; clients need matching Pak content to render the custom markers.
 - **MintCat reports a duplicate or loose Pak:** remove the manually installed `NormalWaveIndicator_P.pak` after confirming MintCat manages the mod, then apply changes again.

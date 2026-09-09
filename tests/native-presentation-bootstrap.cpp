@@ -1,5 +1,6 @@
 // Fake-host tests for bounded visual bootstrap; these do not load or simulate Unreal objects.
 #include "../mods/NormalWaveNativeProbe/PresentationBootstrap.h"
+#include "../mods/NormalWaveNativeProbe/ModHubRegistration.h"
 #include "../mods/NormalWaveNativeProbe/ActiveWorld.h"
 #include <cwchar>
 #include <cstdio>
@@ -10,6 +11,9 @@ void* world = nullptr;
 bool cached = false, loadFails = false, spawnFails = false, prepareFails = false, refreshFails = false;
 bool worldIsReady = true, badArguments = false;
 unsigned finds = 0, loads = 0, spawns = 0, preparations = 0, refreshCalls = 0;
+int searchFunction = 0, refreshFunction = 0;
+unsigned hubFinds = 0, hubProcesses = 0;
+uint16_t hubParameterSize = 0;
 const wchar_t* expectedClass() {
     return world == &worlds[10] ? L"/Game/NormalWaveIndicator/InitSpacerig.InitSpacerig_C"
         : L"/Game/NormalWaveIndicator/InitCave.InitCave_C";
@@ -57,6 +61,19 @@ void* spawn(void* w, void* cls, const nwi::Position3* p) {
     return spawnFails ? nullptr : &actorToken;
 }
 bool refresh(void* w) { ++refreshCalls; if (w != world) badArguments = true; return !refreshFails; }
+void* findHubFunction(const nwi::WideView* value) {
+    ++hubFinds;
+    if (equal(value, nwi::ModHubSearchPath)) return &searchFunction;
+    if (equal(value, nwi::ModHubRefreshPath)) return &refreshFunction;
+    badArguments = true; return nullptr;
+}
+uint16_t* parameterSize(void*) { return &hubParameterSize; }
+bool processHub(void* hub, void* function, void* parameters) {
+    if (hub != &actorToken || parameters || (function != &searchFunction && function != &refreshFunction)) badArguments = true;
+    if (hubProcesses == 0 && function != &searchFunction) badArguments = true;
+    if (hubProcesses == 1 && function != &refreshFunction) badArguments = true;
+    ++hubProcesses; return true;
+}
 void setup(nwi::PresentationBootstrap& p) {
     world = &worlds[0]; cached = loadFails = spawnFails = prepareFails = refreshFails = badArguments = false;
     worldIsReady = true;
@@ -66,6 +83,15 @@ void setup(nwi::PresentationBootstrap& p) {
 #define REQUIRE(x) do { if (!(x)) { printf("FAIL line %d: %s\n", __LINE__, #x); return 1; } } while (0)
 }
 int main() {
+    {
+        // Discovery alone is insufficient: the visible Mod Hub pages must be rebuilt afterwards.
+        badArguments = false; hubFinds = hubProcesses = 0; hubParameterSize = 0;
+        REQUIRE(nwi::rescanAndRefreshModHub({findHubFunction, valid, parameterSize, processHub}, &actorToken));
+        REQUIRE(hubFinds == 2 && hubProcesses == 2 && !badArguments);
+        hubFinds = hubProcesses = 0; hubParameterSize = 4;
+        REQUIRE(!nwi::rescanAndRefreshModHub({findHubFunction, valid, parameterSize, processHub}, &actorToken));
+        REQUIRE(hubFinds == 1 && hubProcesses == 0);
+    }
     {
         nwi::PresentationBootstrap p; setup(p); world = &worlds[10];
         p.tick();
