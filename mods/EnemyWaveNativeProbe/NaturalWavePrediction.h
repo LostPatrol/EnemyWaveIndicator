@@ -11,6 +11,9 @@ inline constexpr float SpawnDistanceCm = 3000.0f; // Matches the game's current 
 inline constexpr uintptr_t WorldNavigationOwnerOffset = 0x120; // Current selector's UWorld intermediate object.
 inline constexpr uintptr_t NavigationOffset = 0x420; // Navigation wrapper on the intermediate owner.
 inline constexpr uintptr_t PathfinderOffset = 0x708; // Query object used by both audited navigation helpers.
+inline constexpr uintptr_t PlayerControllerPawnOffset = 0x250; // Pawn member read by the stock selector.
+inline constexpr uintptr_t ActorRootOffset = 0x130; // RootComponent member in the current game image.
+inline constexpr uintptr_t SceneTranslationOffset = 0x1d0; // Component world translation used by the selector.
 
 struct Position { float x = 0, y = 0, z = 0; };
 struct Geometry { Position center{}; float radius = 0; bool valid = false; };
@@ -27,6 +30,15 @@ inline void* resolvePathfinder(void* world) noexcept {
         ? *reinterpret_cast<void**>(static_cast<unsigned char*>(owner) + NavigationOffset) : nullptr;
     return navigation
         ? *reinterpret_cast<void**>(static_cast<unsigned char*>(navigation) + PathfinderOffset) : nullptr;
+}
+
+// Read the same actor-root translation used by the selector, without invoking an actor method.
+inline bool readActorPosition(void* actor, Position& result) noexcept {
+    if (!actor) return false;
+    auto* root = *reinterpret_cast<void**>(static_cast<unsigned char*>(actor) + ActorRootOffset);
+    if (!root) return false;
+    result = *reinterpret_cast<Position*>(static_cast<unsigned char*>(root) + SceneTranslationOffset);
+    return finite(result);
 }
 
 // Reproduce the deterministic player-sphere portion of the game's natural-wave selector.

@@ -13,6 +13,8 @@ struct Stats {
     uint64_t predictionManagerLookups = 0, predictionManagerResolved = 0, predictionCountdownSamples = 0, predictionWindowSamples = 0;
     uint64_t predictionPlayersReady = 0, predictionGeometryReady = 0, predictionNavigationReady = 0;
     uint64_t predictionProjectionReady = 0, predictionCenterReady = 0;
+    uint64_t predictionPlayerLists = 0, predictionControllersResolved = 0;
+    uint64_t predictionPawnsResolved = 0, predictionPositionsRead = 0;
     float predictionLastErrorCm = 0, predictionMinErrorCm = 0, predictionMaxErrorCm = 0, predictionErrorTotalCm = 0;
 };
 Stats stats() noexcept;

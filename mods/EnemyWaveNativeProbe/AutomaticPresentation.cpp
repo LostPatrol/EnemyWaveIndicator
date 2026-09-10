@@ -44,15 +44,23 @@ Output output[OriginRegions::Capacity]{};
 #if NWI_NATURAL_PREDICTION
 using NavQuery = bool (*)(void*, uint8_t, uint8_t, const prediction::Position*, float, prediction::Position*);
 NavQuery projectToNav = nullptr, findSpawnCenter = nullptr;
+struct ObjectArray { void* data = nullptr; int32_t count = 0, capacity = 0; };
+struct PlayerIterator { ObjectArray* players = nullptr; int32_t index = 0; };
+static_assert(sizeof(ObjectArray) == 16 && sizeof(PlayerIterator) == 16, "Audited UE array/iterator ABI changed.");
+using GetPlayerIterator = PlayerIterator* (*)(void*, PlayerIterator*);
+using ResolveWeakObject = void* (*)(const void*);
+using PlayerPredicate = bool (*)(void*);
+GetPlayerIterator getPlayerIterator = nullptr;
+ResolveWeakObject resolveWeakObject = nullptr;
+PlayerPredicate eligiblePlayer = nullptr;
 prediction::CountdownGate predictionGate;
 prediction::Position lastPrediction{};
 uint64_t lastPredictionMs = 0, comparedWave = 0;
 void* predictionGameMode = nullptr; void* predictionManager = nullptr;
 void* waveManagerFunction = nullptr;
 
-struct ObjectArray { void** data = nullptr; int32_t count = 0, capacity = 0; };
-
-bool bindNavQuery(uintptr_t base, uintptr_t rva, const unsigned char (&expected)[24], NavQuery& outputFunction) noexcept {
+template<class Function>
+bool bindGameQuery(uintptr_t base, uintptr_t rva, const unsigned char (&expected)[24], Function& outputFunction) noexcept {
     auto* raw = reinterpret_cast<unsigned char*>(base + rva);
     if (std::memcmp(raw, expected, sizeof(expected))) return false;
     std::memcpy(&outputFunction, &raw, sizeof(outputFunction));
@@ -90,26 +98,35 @@ void showPrediction(const prediction::Position& point, uint64_t now) noexcept {
     selected->visible = 1; ++selected->serial;
 }
 
-bool readPlayers(void* gameMode, prediction::Position (&players)[4], uint32_t& count) {
+bool readPlayers(prediction::Position (&players)[4], uint32_t& count) {
     count = 0;
-    const auto* controllers = static_cast<ObjectArray*>(value(gameMode, L"PlayerControllers"));
-    if (!controllers || controllers->count < 1 || controllers->count > 4 || controllers->capacity < controllers->count || !controllers->data) return false;
-    for (int32_t i = 0; i < controllers->count; ++i) {
-        void* controller = controllers->data[i];
-        void* pawn = reflectedObject(controller, L"Pawn");
-        if (!pawn) pawn = reflectedObject(controller, L"AcknowledgedPawn");
-        void* root = pawn ? reflectedObject(pawn, L"RootComponent") : nullptr;
-        if (!root) continue;
-        // The audited natural selector reads the scene-component translation at +0x1d0 in this game image.
-        const auto point = *reinterpret_cast<prediction::Position*>(static_cast<unsigned char*>(root) + 0x1d0);
-        if (prediction::finite(point)) players[count++] = point;
+    PlayerIterator iterator{};
+    if (!getPlayerIterator(activeWorld, &iterator) || !iterator.players) return false;
+    const auto* controllers = iterator.players;
+    if (controllers->count < 1 || controllers->count > 32 || controllers->capacity < controllers->count || !controllers->data) return false;
+    ++counters.predictionPlayerLists;
+    const auto* weakObjects = static_cast<const unsigned char*>(controllers->data);
+    for (int32_t i = 0; i < controllers->count && count < 4; ++i) {
+        // UWorld stores eight-byte FWeakObjectPtr entries; use the same serial-validating resolver as the selector.
+        void* controller = resolveWeakObject(weakObjects + static_cast<size_t>(i) * 8);
+        if (!controller) continue;
+        ++counters.predictionControllersResolved;
+        void* pawn = *reinterpret_cast<void**>(static_cast<unsigned char*>(controller) + prediction::PlayerControllerPawnOffset);
+        if (!pawn) continue;
+        ++counters.predictionPawnsResolved;
+        if (!eligiblePlayer(pawn)) continue;
+        prediction::Position point{};
+        if (prediction::readActorPosition(pawn, point)) {
+            players[count++] = point;
+            ++counters.predictionPositionsRead;
+        }
     }
     return count != 0;
 }
 
-bool calculatePrediction(void* gameMode, prediction::Position& result) {
+bool calculatePrediction(prediction::Position& result) {
     prediction::Position players[4]{}; uint32_t count = 0;
-    if (!readPlayers(gameMode, players, count)) return false;
+    if (!readPlayers(players, count)) return false;
     ++counters.predictionPlayersReady;
     const auto geometry = prediction::playerSphere(players, count);
     if (!geometry.valid) return false;
@@ -145,7 +162,7 @@ void samplePrediction(uint64_t now) {
     if (!predictionGate.sample(seconds, enabled, blocked)) return;
     ++counters.predictionAttempts;
     prediction::Position point{};
-    if (!calculatePrediction(predictionGameMode, point)) { ++counters.predictionFailures; hidePrediction(); return; }
+    if (!calculatePrediction(point)) { ++counters.predictionFailures; hidePrediction(); return; }
     ++counters.predictionSuccesses; lastPrediction = point; lastPredictionMs = now;
     showPrediction(point, now);
 }
@@ -326,8 +343,14 @@ bool configure(HMODULE runtime, HMODULE game, uint32_t gameThread) noexcept {
 #if NWI_NATURAL_PREDICTION
     constexpr unsigned char projectBytes[24]{0x80,0x79,0x18,0x00,0x4d,0x8b,0xd1,0x0f,0x84,0xf9,0x00,0x00,0x00,0x0f,0xb6,0xc2,0x45,0x0f,0xb6,0xc0,0x41,0x8d,0x50,0xff};
     constexpr unsigned char centerBytes[24]{0x48,0x83,0xec,0x48,0x48,0x8b,0x44,0x24,0x78,0xf3,0x0f,0x10,0x44,0x24,0x70,0x48,0x89,0x44,0x24,0x30,0xf3,0x0f,0x11,0x44};
-    if (!bindNavQuery(base, 0x4019320, projectBytes, projectToNav)
-        || !bindNavQuery(base, 0x40079e0, centerBytes, findSpawnCenter)) return false;
+    constexpr unsigned char iteratorBytes[24]{0x48,0x8d,0x81,0xc0,0x01,0x00,0x00,0xc7,0x42,0x08,0x00,0x00,0x00,0x00,0x48,0x89,0x02,0x48,0x8b,0xc2,0xc3,0xcc,0xcc,0xcc};
+    constexpr unsigned char weakObjectBytes[24]{0x44,0x8b,0x41,0x04,0x45,0x85,0xc0,0x74,0x4e,0x8b,0x01,0x85,0xc0,0x78,0x48,0x3b,0x05,0x7f,0x16,0x5f,0x04,0x7d,0x40,0x99};
+    constexpr unsigned char eligibleBytes[24]{0x48,0x83,0xec,0x28,0x48,0x8b,0x81,0xd8,0x0c,0x00,0x00,0x48,0x85,0xc0,0x74,0x09,0x80,0xb8,0xb8,0x00,0x00,0x00,0x01,0x74};
+    if (!bindGameQuery(base, 0x4019320, projectBytes, projectToNav)
+        || !bindGameQuery(base, 0x40079e0, centerBytes, findSpawnCenter)
+        || !bindGameQuery(base, 0x3b95720, iteratorBytes, getPlayerIterator)
+        || !bindGameQuery(base, 0x1faa750, weakObjectBytes, resolveWeakObject)
+        || !bindGameQuery(base, 0x158fc40, eligibleBytes, eligiblePlayer)) return false;
     constexpr wchar_t managerPath[] = L"/Script/FSD.FSDGameMode:GetWaveManager";
     const WideView managerView{managerPath, std::size(managerPath)-1};
     waveManagerFunction = find(&managerView);

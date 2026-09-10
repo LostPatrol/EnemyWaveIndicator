@@ -26,6 +26,7 @@ struct ThreadSample {
     std::array<uint64_t, 4> predictionCounts{}; // attempts, successes, failures, actual-center comparisons.
     std::array<uint64_t, 4> predictionProbe{}; // manager lookups/resolutions, countdown samples, in-window samples.
     std::array<uint64_t, 5> predictionStages{}; // player list, geometry, navigation, projection and final-center successes.
+    std::array<uint64_t, 4> predictionPlayerProbe{}; // valid lists, resolved controllers/pawns and accepted positions.
     std::array<float, 4> predictionErrors{}; // last, minimum, maximum and total error in centimeters.
 };
 using Callback = void (*)(void*);
@@ -64,6 +65,7 @@ public:
         std::array<uint64_t, 4> predictionCounts{};
         std::array<uint64_t, 4> predictionProbe{};
         std::array<uint64_t, 5> predictionStages{};
+        std::array<uint64_t, 4> predictionPlayerProbe{};
         std::array<float, 4> predictionErrors{};
         bool disabled = false;
     } stats;
@@ -117,6 +119,7 @@ public:
                 stats.rejectedSourceFrames = result_.rejectedSourceFrames; stats.timing = result_.timing;
                 stats.predictionCounts = result_.predictionCounts; stats.predictionProbe = result_.predictionProbe;
                 stats.predictionStages = result_.predictionStages;
+                stats.predictionPlayerProbe = result_.predictionPlayerProbe;
                 stats.predictionErrors = result_.predictionErrors;
                 }
                 if (result_.runtimeInitialized) ++stats.runtimeInitialized;

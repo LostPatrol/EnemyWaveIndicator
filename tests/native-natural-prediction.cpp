@@ -34,6 +34,15 @@ int main() {
     pointer = nullptr; std::memcpy(owner + NavigationOffset, &pointer, sizeof(pointer));
     REQUIRE(resolvePathfinder(world) == nullptr && resolvePathfinder(nullptr) == nullptr);
 
+    alignas(void*) unsigned char actor[ActorRootOffset + sizeof(void*)]{};
+    alignas(void*) unsigned char root[SceneTranslationOffset + sizeof(Position)]{};
+    pointer = root; std::memcpy(actor + ActorRootOffset, &pointer, sizeof(pointer));
+    const Position actorPoint{7, 8, 9}; std::memcpy(root + SceneTranslationOffset, &actorPoint, sizeof(actorPoint));
+    Position readPoint{};
+    REQUIRE(readActorPosition(actor, readPoint) && readPoint.x == 7 && readPoint.y == 8 && readPoint.z == 9);
+    pointer = nullptr; std::memcpy(actor + ActorRootOffset, &pointer, sizeof(pointer));
+    REQUIRE(!readActorPosition(actor, readPoint) && !readActorPosition(nullptr, readPoint));
+
     CountdownGate gate;
     REQUIRE(!gate.sample(12, true, false));
     REQUIRE(!gate.sample(5.01f, true, false));
@@ -45,5 +54,5 @@ int main() {
     REQUIRE(!gate.sample(30, true, false));
     REQUIRE(!gate.sample(4, false, false));
     REQUIRE(gate.sample(3, true, false));
-    std::puts("PASS: player sphere, stock navigation chain and one-shot T-5 countdown gate.");
+    std::puts("PASS: player/root geometry, stock navigation chain and one-shot T-5 countdown gate.");
 }
