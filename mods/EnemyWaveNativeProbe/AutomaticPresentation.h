@@ -17,6 +17,9 @@ struct Stats {
     uint64_t predictionPawnsResolved = 0, predictionPositionsRead = 0;
     uint64_t predictionNavPointsTotal = 0, predictionNavPointsMax = 0;
     uint64_t predictionCandidatesTotal = 0, predictionCandidatesMax = 0;
+    uint64_t predictionLocksArmed = 0, predictionMovementRejects = 0;
+    uint64_t predictionValidationRejects = 0, predictionOverrides = 0;
+    uint64_t predictionFingerprintQueries = 0, predictionFingerprintFailures = 0;
     float predictionLastErrorCm = 0, predictionMinErrorCm = 0, predictionMaxErrorCm = 0, predictionErrorTotalCm = 0;
 };
 Stats stats() noexcept;

@@ -28,6 +28,7 @@ struct ThreadSample {
     std::array<uint64_t, 5> predictionStages{}; // player list, geometry, navigation, projection and final-center successes.
     std::array<uint64_t, 4> predictionPlayerProbe{}; // valid lists, resolved controllers/pawns and accepted positions.
     std::array<uint64_t, 4> predictionCandidateProbe{}; // total/max nav points and total/max accepted candidates.
+    std::array<uint64_t, 10> predictionOverride{}; // lock/reject/validation plus selector sample/call/override/fallback.
     std::array<float, 4> predictionErrors{}; // last, minimum, maximum and total error in centimeters.
 };
 using Callback = void (*)(void*);
@@ -68,6 +69,7 @@ public:
         std::array<uint64_t, 5> predictionStages{};
         std::array<uint64_t, 4> predictionPlayerProbe{};
         std::array<uint64_t, 4> predictionCandidateProbe{};
+        std::array<uint64_t, 10> predictionOverride{}; // lock/reject/validation plus selector sample/call/override/fallback.
         std::array<float, 4> predictionErrors{};
         bool disabled = false;
     } stats;

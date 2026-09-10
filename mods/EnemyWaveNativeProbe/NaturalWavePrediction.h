@@ -9,6 +9,9 @@ inline constexpr float LeadSeconds = 5.0f;
 inline constexpr float ProjectionPaddingCm = 300.0f; // Matches the game's current natural-wave projection padding.
 inline constexpr float SpawnDistanceCm = 3000.0f; // Matches the game's current natural-wave search extension.
 inline constexpr float ShellDepthCm = 1000.0f; // Prefer the outer 10 m of the stock search radius.
+inline constexpr float MovementToleranceCm = 5.0f; // Allow tiny idle/root jitter while rejecting meaningful movement.
+inline constexpr float InputToleranceCm = 25.0f; // Projected selector input may vary slightly between adjacent frames.
+inline constexpr uint64_t MaximumLockAgeMs = 7500; // Refuse stale samples from a delayed or cancelled countdown.
 inline constexpr uintptr_t WorldNavigationOwnerOffset = 0x120; // Current selector's UWorld intermediate object.
 inline constexpr uintptr_t NavigationOffset = 0x420; // Navigation wrapper on the intermediate owner.
 inline constexpr uintptr_t PathfinderOffset = 0x708; // Query object used by both audited navigation helpers.
@@ -26,6 +29,11 @@ inline float distanceSquared(const Position& a, const Position& b) noexcept {
 
 inline bool finite(const Position& point) noexcept {
     return std::isfinite(point.x) && std::isfinite(point.y) && std::isfinite(point.z);
+}
+
+inline bool positionsNear(const Position& a, const Position& b, float tolerance) noexcept {
+    return finite(a) && finite(b) && std::isfinite(tolerance) && tolerance >= 0
+        && distanceSquared(a, b) <= tolerance * tolerance;
 }
 
 // Reproduce only the selector's pointer lookup; callers separately check Pathfinder readiness.

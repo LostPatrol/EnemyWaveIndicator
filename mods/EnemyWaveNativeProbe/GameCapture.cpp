@@ -1,9 +1,10 @@
-// Synchronous source scopes and bounded queue observations; originals run once with unchanged arguments.
+// Synchronous source scopes and bounded queue observations; only the opt-in natural-center hook can replace a result.
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <windows.h>
 #include <intrin.h>
 #include <cstring>
+#include <cmath>
 #include <atomic>
 #include "GameCapture.h"
 #include "../../third_party/MinHook/include/MinHook.h"
@@ -21,9 +22,11 @@ using Location = void (*)(void*, void*, int32_t, const void*, const void*, bool,
 using Group = void (*)(void*, void*, float, const void*, bool, uint8_t);
 using SpreadCallback = void (*)(void*, void*, float, const void*, bool, uint8_t, const void*);
 using Center = void (*)(void*, void*, int32_t, float, const void*, const void*, uint8_t, const void*, bool);
+using NaturalCenter = bool (*)(void*, uint8_t, uint8_t, const void*, float, void*);
 Pool originalPool = nullptr; Location originalLocation = nullptr;
 Group originalGroup = nullptr, originalSpread = nullptr;
 SpreadCallback originalSpreadCallback = nullptr; Center originalCenter = nullptr;
+NaturalCenter originalNaturalCenter = nullptr;
 Binding binding; Stats counters; SpawnAttribution ledger;
 void* world = nullptr; void* manager = nullptr;
 uint64_t epoch = 0, frame = 0, scopeWave = 0; void* scopeWorld = nullptr;
@@ -104,6 +107,12 @@ SpawnKey readPoint(const void* point) noexcept {
     __except(EXCEPTION_EXECUTE_HANDLER) { return {}; }
     return result.valid() ? result : SpawnKey{};
 }
+bool writePoint(void* point, const SpawnKey& value) noexcept {
+    if (!point || !value.valid()) return false;
+    __try { memcpy(point, &value.x, 12); }
+    __except(EXCEPTION_EXECUTE_HANDLER) { return false; }
+    return true;
+}
 // A scope ends when the synchronous source call returns. Queued entries retain their own identity.
 // Nested unrecognized sources clear provenance rather than borrowing another source's wave.
 struct SourceScope {
@@ -148,6 +157,24 @@ void hookCenter(void* context, void* descriptor, int32_t count, float weight, co
     if (observe) scopeCenter = readPoint(point);
     originalCenter(context, descriptor, count, weight, point, callback, pathSize, settings, flag);
     if (observe) scopeCenter = previous;
+}
+
+// Intercept only the audited call inside the stock natural scheduler. Every other caller, mode,
+// path size, thread and world runs the original selector unchanged.
+bool hookNaturalCenter(void* pathfinder, uint8_t mode, uint8_t pathSize, const void* origin, float radius, void* output) {
+    const auto caller = reinterpret_cast<uintptr_t>(_ReturnAddress());
+    const bool candidate = enabled.load(std::memory_order_relaxed) && onThread() && !counters.fault && world
+        && caller == binding.naturalCenterReturn && mode == 0 && pathSize == 2 && binding.consumeNaturalOverride;
+    if (candidate) {
+        ++counters.naturalCenterCalls;
+        SpawnKey replacement{}; const auto input = readPoint(origin);
+        if (input.valid() && binding.consumeNaturalOverride(input, radius, replacement) && writePoint(output, replacement)) {
+            ++counters.naturalCenterOverrides;
+            return true;
+        }
+        ++counters.naturalCenterFallbacks;
+    }
+    return originalNaturalCenter(pathfinder, mode, pathSize, origin, radius, output);
 }
 
 void hookNormal(void* context, float difficulty, void* locations, bool a, bool b) {
@@ -253,13 +280,13 @@ bool install(const Binding& input) noexcept {
     binding = input;
     if (!onThread()) return false;
     LARGE_INTEGER frequency{}; QueryPerformanceFrequency(&frequency); qpcFrequency = frequency.QuadPart;
-    const Target targets[] = {binding.normal, binding.enqueue, binding.actor, binding.shrink, binding.pool, binding.location, binding.group, binding.spread, binding.spreadCallback, binding.center};
-    const size_t count = binding.classifySource ? std::size(targets) : 4; // Four-hook legacy synthetic fixture remains supported.
+    const Target targets[] = {binding.normal, binding.enqueue, binding.actor, binding.shrink, binding.pool, binding.location, binding.group, binding.spread, binding.spreadCallback, binding.center, binding.naturalCenter};
+    const size_t count = binding.naturalCenter.address ? std::size(targets) : (binding.classifySource ? std::size(targets) - 1 : 4);
     for (size_t i = 0; i < count; ++i) if (!targets[i].address || memcmp(targets[i].address, targets[i].bytes.data(), targets[i].bytes.size())) { counters.hookStatus = 100; return false; }
     auto status = MH_Initialize();
     if (status != MH_OK) { counters.hookStatus = static_cast<uint32_t>(status) + 1; return false; }
-    void* replacements[] = {reinterpret_cast<void*>(&hookNormal), reinterpret_cast<void*>(&hookEnqueue), reinterpret_cast<void*>(&hookActor), reinterpret_cast<void*>(&hookShrink), reinterpret_cast<void*>(&hookPool), reinterpret_cast<void*>(&hookLocation), reinterpret_cast<void*>(&hookGroup), reinterpret_cast<void*>(&hookSpread), reinterpret_cast<void*>(&hookSpreadCallback), reinterpret_cast<void*>(&hookCenter)};
-    void** originals[] = {reinterpret_cast<void**>(&originalNormal), reinterpret_cast<void**>(&originalEnqueue), reinterpret_cast<void**>(&originalActor), reinterpret_cast<void**>(&originalShrink), reinterpret_cast<void**>(&originalPool), reinterpret_cast<void**>(&originalLocation), reinterpret_cast<void**>(&originalGroup), reinterpret_cast<void**>(&originalSpread), reinterpret_cast<void**>(&originalSpreadCallback), reinterpret_cast<void**>(&originalCenter)};
+    void* replacements[] = {reinterpret_cast<void*>(&hookNormal), reinterpret_cast<void*>(&hookEnqueue), reinterpret_cast<void*>(&hookActor), reinterpret_cast<void*>(&hookShrink), reinterpret_cast<void*>(&hookPool), reinterpret_cast<void*>(&hookLocation), reinterpret_cast<void*>(&hookGroup), reinterpret_cast<void*>(&hookSpread), reinterpret_cast<void*>(&hookSpreadCallback), reinterpret_cast<void*>(&hookCenter), reinterpret_cast<void*>(&hookNaturalCenter)};
+    void** originals[] = {reinterpret_cast<void**>(&originalNormal), reinterpret_cast<void**>(&originalEnqueue), reinterpret_cast<void**>(&originalActor), reinterpret_cast<void**>(&originalShrink), reinterpret_cast<void**>(&originalPool), reinterpret_cast<void**>(&originalLocation), reinterpret_cast<void**>(&originalGroup), reinterpret_cast<void**>(&originalSpread), reinterpret_cast<void**>(&originalSpreadCallback), reinterpret_cast<void**>(&originalCenter), reinterpret_cast<void**>(&originalNaturalCenter)};
     for (size_t i = 0; i < count; ++i) {
         status = MH_CreateHook(targets[i].address, replacements[i], originals[i]);
         if (status != MH_OK) { counters.hookStatus = static_cast<uint32_t>(status) + 1; return false; }
@@ -292,4 +319,15 @@ bool pop(SpawnEvent& event) noexcept {
 }
 Stats stats() noexcept { return counters; } // Caller is the game thread; publish through DispatchProbe's snapshot.
 void* spawnManager() noexcept { return onThread() ? manager : nullptr; }
+bool sampleNaturalCenter(void* pathfinder, const SpawnKey& origin, float radius, SpawnKey& output) noexcept {
+    output = {};
+    if (!originalNaturalCenter || !enabled.load(std::memory_order_relaxed) || !onThread() || !world
+        || !pathfinder || !origin.valid() || !std::isfinite(radius) || radius <= 0) return false;
+    ++counters.naturalCenterSamples;
+    SpawnKey sampled{};
+    if (!originalNaturalCenter(pathfinder, 0, 2, &origin.x, radius, &sampled.x)) return false;
+    sampled.descriptor = 1;
+    if (!sampled.valid()) return false;
+    output = sampled; return true;
+}
 } // namespace nwi::capture

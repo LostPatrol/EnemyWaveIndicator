@@ -1,4 +1,4 @@
-// Host-only game-thread handoff. All pointer lookup is one-time per controller; updates touch only our own fields.
+// Host-only game-thread handoff; the opt-in experiment also samples and conditionally locks one audited selector result.
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <windows.h>
@@ -65,6 +65,13 @@ uint32_t lastPredictionCount = 0;
 uint64_t lastPredictionMs = 0, comparedWave = 0;
 void* predictionGameMode = nullptr; void* predictionManager = nullptr;
 void* waveManagerFunction = nullptr;
+struct PlayerSample { void* pawn = nullptr; prediction::Position point{}; };
+struct NavFingerprint { uint64_t xorHash = 0, sumHash = 0; uint32_t count = 0; };
+struct PredictionLock {
+    PlayerSample players[4]{}; uint32_t playerCount = 0;
+    prediction::Position origin{}, point{}; float radius = 0;
+    NavFingerprint navigation{}; uint64_t armedMs = 0; bool active = false;
+} predictionLock;
 
 template<class Function>
 bool bindGameQuery(uintptr_t base, uintptr_t rva, const unsigned char (&expected)[24], Function& outputFunction) noexcept {
@@ -105,7 +112,7 @@ bool showPrediction(const prediction::Position& point, uint64_t now, uint32_t ca
     return true;
 }
 
-bool readPlayers(prediction::Position (&players)[4], uint32_t& count) {
+bool readPlayers(PlayerSample (&players)[4], uint32_t& count) {
     count = 0;
     PlayerIterator iterator{};
     if (!getPlayerIterator(activeWorld, &iterator) || !iterator.players) return false;
@@ -124,19 +131,60 @@ bool readPlayers(prediction::Position (&players)[4], uint32_t& count) {
         if (!eligiblePlayer(pawn)) continue;
         prediction::Position point{};
         if (prediction::readActorPosition(pawn, point)) {
-            players[count++] = point;
+            players[count++] = {pawn, point};
             ++counters.predictionPositionsRead;
         }
     }
     return count != 0;
 }
 
-bool calculatePredictions(prediction::Position (&results)[OriginRegions::Capacity], uint32_t& resultCount) {
-    resultCount = 0;
-    prediction::Position players[4]{}; uint32_t count = 0;
+bool fingerprintNavigation(const prediction::Position& origin, float radius, NavFingerprint& result) {
+    result = {}; prediction::Position zeroNormal{}; ObjectArray navPoints{};
+    ++counters.predictionFingerprintQueries;
+    if (!getNavPoints(&navPoints, activeWorld, &origin, radius, 2, &zeroNormal, 180.0f)
+        || navPoints.count < 1 || navPoints.count > 1000000 || navPoints.capacity < navPoints.count || !navPoints.data) {
+        if (navPoints.data) gameFree(navPoints.data);
+        ++counters.predictionFingerprintFailures; return false;
+    }
+    // Hash the FVector multiset independently of enumeration order; count and two accumulators make collisions negligible.
+    uint64_t xorHash = 0, sumHash = 0;
+    const auto* bytes = static_cast<const unsigned char*>(navPoints.data);
+    for (int32_t point = 0; point < navPoints.count; ++point) {
+        uint64_t hash = 1469598103934665603ull;
+        for (size_t byte = 0; byte < sizeof(prediction::Position); ++byte) {
+            hash ^= bytes[static_cast<size_t>(point) * sizeof(prediction::Position) + byte]; hash *= 1099511628211ull;
+        }
+        const unsigned shift = static_cast<unsigned>(hash & 63); const uint64_t rotated = shift ? (hash << shift) | (hash >> (64 - shift)) : hash;
+        xorHash ^= rotated; sumHash += hash * 0x9e3779b97f4a7c15ull;
+    }
+    result = {xorHash, sumHash, static_cast<uint32_t>(navPoints.count)};
+    counters.predictionNavPointsTotal += static_cast<uint64_t>(navPoints.count);
+    if (static_cast<uint64_t>(navPoints.count) > counters.predictionNavPointsMax) counters.predictionNavPointsMax = navPoints.count;
+    gameFree(navPoints.data); return true;
+}
+
+bool playersUnchanged(const PlayerSample (&expected)[4], uint32_t expectedCount) {
+    PlayerSample current[4]{}; uint32_t currentCount = 0;
+    if (!readPlayers(current, currentCount) || currentCount != expectedCount) return false;
+    for (uint32_t i = 0; i < currentCount; ++i)
+        if (current[i].pawn != expected[i].pawn || !prediction::positionsNear(current[i].point, expected[i].point, prediction::MovementToleranceCm)) return false;
+    return true;
+}
+
+void invalidateLock(bool movement) noexcept {
+    if (!predictionLock.active) return;
+    predictionLock.active = false;
+    if (movement) ++counters.predictionMovementRejects; else ++counters.predictionValidationRejects;
+    hidePrediction();
+}
+
+bool calculateLock(uint64_t now, prediction::Position& result) {
+    PlayerSample players[4]{}; uint32_t count = 0;
     if (!readPlayers(players, count)) return false;
     ++counters.predictionPlayersReady;
-    const auto geometry = prediction::playerSphere(players, count);
+    prediction::Position points[4]{};
+    for (uint32_t i = 0; i < count; ++i) points[i] = players[i].point;
+    const auto geometry = prediction::playerSphere(points, count);
     if (!geometry.valid) return false;
     ++counters.predictionGeometryReady;
     // The selector follows UActorComponent::WorldPrivate -> UWorld+0x120 -> navigation owner+0x420.
@@ -148,28 +196,57 @@ bool calculatePredictions(prediction::Position (&results)[OriginRegions::Capacit
     if (!projectToNav(pathfinder, 1, 2, &geometry.center, geometry.radius + prediction::ProjectionPaddingCm, &projected)) return false;
     ++counters.predictionProjectionReady;
     const float searchRadius = geometry.radius + prediction::SpawnDistanceCm;
-    prediction::Position zeroNormal{};
-    ObjectArray navPoints{};
-    if (!getNavPoints(&navPoints, activeWorld, &projected, searchRadius, 2, &zeroNormal, 180.0f)
-        || navPoints.count < 1 || navPoints.count > 1000000 || navPoints.capacity < navPoints.count || !navPoints.data) {
-        if (navPoints.data) gameFree(navPoints.data);
-        return false;
-    }
-    counters.predictionNavPointsTotal += static_cast<uint64_t>(navPoints.count);
-    if (static_cast<uint64_t>(navPoints.count) > counters.predictionNavPointsMax) counters.predictionNavPointsMax = navPoints.count;
-    prediction::Position representatives[32]{};
-    const uint32_t representativeCount = prediction::selectShellCandidates(
-        static_cast<const prediction::Position*>(navPoints.data), static_cast<uint32_t>(navPoints.count),
-        projected, searchRadius, representatives, static_cast<uint32_t>(std::size(representatives)));
-    gameFree(navPoints.data);
-    for (uint32_t i = 0; i < representativeCount && resultCount < OriginRegions::Capacity; ++i) {
-        if (positionsConnected(pathfinder, 1, 2, &representatives[i], &projected)) results[resultCount++] = representatives[i];
-    }
-    if (!resultCount) return false;
-    counters.predictionCandidatesTotal += resultCount;
-    if (resultCount > counters.predictionCandidatesMax) counters.predictionCandidatesMax = resultCount;
+    NavFingerprint fingerprint{};
+    if (!fingerprintNavigation(projected, searchRadius, fingerprint)) return false;
+    SpawnKey input{1, projected.x, projected.y, projected.z}, sampled{};
+    if (!capture::sampleNaturalCenter(pathfinder, input, searchRadius, sampled)) return false;
+    result = {sampled.x, sampled.y, sampled.z};
+    if (!prediction::finite(result)) return false;
+    predictionLock = {};
+    memcpy(predictionLock.players, players, sizeof(players));
+    predictionLock.playerCount = count; predictionLock.origin = projected; predictionLock.radius = searchRadius;
+    predictionLock.point = result; predictionLock.navigation = fingerprint; predictionLock.armedMs = now; predictionLock.active = true;
+    ++counters.predictionLocksArmed;
     ++counters.predictionCenterReady;
     return true;
+}
+
+bool consumeNaturalOverrideUnchecked(const SpawnKey& input, float radius, SpawnKey& replacement) {
+    if (!predictionLock.active) return false;
+    const auto now = GetTickCount64();
+    if (now < predictionLock.armedMs || now - predictionLock.armedMs > prediction::MaximumLockAgeMs
+        || !prediction::positionsNear({input.x, input.y, input.z}, predictionLock.origin, prediction::InputToleranceCm)
+        || !std::isfinite(radius) || std::fabs(radius - predictionLock.radius) > prediction::InputToleranceCm) {
+        invalidateLock(false); return false;
+    }
+    if (!playersUnchanged(predictionLock.players, predictionLock.playerCount)) {
+        invalidateLock(true); return false;
+    }
+    NavFingerprint current{};
+    if (!fingerprintNavigation(predictionLock.origin, predictionLock.radius, current)
+        || current.count != predictionLock.navigation.count || current.xorHash != predictionLock.navigation.xorHash
+        || current.sumHash != predictionLock.navigation.sumHash) {
+        invalidateLock(false); return false;
+    }
+    void* pathfinder = prediction::resolvePathfinder(activeWorld);
+    prediction::Position projected{};
+    if (!pathfinder || !*reinterpret_cast<unsigned char*>(static_cast<unsigned char*>(pathfinder) + 0x18)
+        || !projectToNav(pathfinder, 1, 2, &predictionLock.point, prediction::ProjectionPaddingCm, &projected)
+        || !prediction::positionsNear(projected, predictionLock.point, prediction::InputToleranceCm)
+        || !positionsConnected(pathfinder, 1, 2, &predictionLock.point, &predictionLock.origin)) {
+        invalidateLock(false); return false;
+    }
+    replacement = {1, predictionLock.point.x, predictionLock.point.y, predictionLock.point.z};
+    predictionLock.active = false; ++counters.predictionOverrides;
+    return true;
+}
+
+bool consumeNaturalOverride(const SpawnKey& input, float radius, SpawnKey& replacement) noexcept {
+    bool result = false; bool faulted = false;
+    __try { result = consumeNaturalOverrideUnchecked(input, radius, replacement); }
+    __except(EXCEPTION_EXECUTE_HANDLER) { faulted = true; }
+    if (faulted) { invalidateLock(false); return false; }
+    return result;
 }
 
 void samplePrediction(uint64_t now) {
@@ -184,16 +261,23 @@ void samplePrediction(uint64_t now) {
     const bool enabled = bytes[0x111] != 0;
     const bool blocked = *reinterpret_cast<const int32_t*>(bytes + 0x148) != 0;
     ++counters.predictionCountdownSamples;
+    if (predictionLock.active && (!enabled || blocked)) invalidateLock(false);
+    if (predictionLock.active && !playersUnchanged(predictionLock.players, predictionLock.playerCount)) invalidateLock(true);
     if (std::isfinite(seconds) && seconds > 0 && seconds <= prediction::LeadSeconds) ++counters.predictionWindowSamples;
-    if (std::isfinite(seconds) && seconds > prediction::LeadSeconds + 0.25f) hidePrediction();
+    if (std::isfinite(seconds) && seconds > prediction::LeadSeconds + 0.25f) {
+        hidePrediction(); predictionLock.active = false;
+    }
     if (!predictionGate.sample(seconds, enabled, blocked)) return;
     ++counters.predictionAttempts;
-    prediction::Position candidates[OriginRegions::Capacity]{}; uint32_t candidateCount = 0;
-    if (!calculatePredictions(candidates, candidateCount)) { ++counters.predictionFailures; hidePrediction(); return; }
-    hidePrediction(); lastPredictionCount = 0;
-    for (uint32_t i = 0; i < candidateCount; ++i) if (showPrediction(candidates[i], now, i))
-        lastPredictions[lastPredictionCount++] = candidates[i];
-    if (!lastPredictionCount) { ++counters.predictionFailures; return; }
+    hidePrediction();
+    bool outputAvailable = false;
+    for (const auto& region : regions.items) if (!region.visible) { outputAvailable = true; break; }
+    if (!outputAvailable) { ++counters.predictionFailures; return; }
+    prediction::Position point{};
+    if (!calculateLock(now, point)) { ++counters.predictionFailures; return; }
+    lastPredictionCount = 0;
+    if (showPrediction(point, now, 0)) { lastPredictions[0] = point; lastPredictionCount = 1; }
+    if (!lastPredictionCount) { predictionLock.active = false; ++counters.predictionFailures; return; }
     ++counters.predictionSuccesses; lastPredictionMs = now;
 }
 
@@ -257,7 +341,7 @@ bool bind(void* actor) {
     }
     activeController = actor; activeWorld = world; regions.reset(); ++counters.bindings;
 #if NWI_NATURAL_PREDICTION
-    predictionGate.reset(); lastPredictionMs = comparedWave = 0; lastPredictionCount = 0;
+    predictionGate.reset(); predictionLock = {}; lastPredictionMs = comparedWave = 0; lastPredictionCount = 0;
     predictionGameMode = reflectedObject(world, L"AuthorityGameMode");
     predictionManager = resolveWaveManager(predictionGameMode);
 #endif
@@ -412,6 +496,11 @@ bool configure(HMODULE runtime, HMODULE game, uint32_t gameThread) noexcept {
     binding.spread = target(base, 0x19dc1b0, "4c8bdc53565741564881ec98000000803d22e0ab0405488d");
     binding.spreadCallback = target(base, 0x19dc470, "405355565741574881eca0000000803d63ddab0405498bf1");
     binding.center = target(base, 0x19db3d0, "40555356574154415541564157488dac2428ffffff4881ec");
+#if NWI_NATURAL_PREDICTION
+    binding.naturalCenter = target(base, 0x40079e0, "4883ec48488b442478f30f104424704889442430f30f1144");
+    binding.naturalCenterReturn = base + 0x16abde9;
+    binding.consumeNaturalOverride = &consumeNaturalOverride;
+#endif
     binding.classifySource = &sourceClass;
     configured = capture::install(binding); return configured;
 }

@@ -21,6 +21,9 @@ int main() {
     REQUIRE(one.valid && one.center.x == 12 && one.center.y == -4 && one.center.z == 8 && one.radius == 0);
     REQUIRE(!playerSphere(nullptr, 1).valid && !playerSphere(solo, 0).valid);
     Position bad = solo[0]; bad.x = NAN; REQUIRE(!playerSphere(&bad, 1).valid);
+    REQUIRE(positionsNear(Position{1,2,3}, Position{4,6,3}, 5));
+    REQUIRE(!positionsNear(Position{1,2,3}, Position{4,6,3}, 4.99f));
+    REQUIRE(!positionsNear(bad, Position{}, 100));
 
     const Position navPoints[]{{0,0,0},{3000,0,0},{-3000,0,0},{0,3000,0},{0,-3000,0},{0,0,3000},{0,0,-3000},{100,0,0}};
     Position candidates[4]{};
@@ -61,5 +64,5 @@ int main() {
     REQUIRE(!gate.sample(30, true, false));
     REQUIRE(!gate.sample(4, false, false));
     REQUIRE(gate.sample(3, true, false));
-    std::puts("PASS: player/root geometry, stock navigation chain and one-shot T-5 countdown gate.");
+    std::puts("PASS: player/root geometry, movement tolerance, stock navigation chain and one-shot T-5 countdown gate.");
 }

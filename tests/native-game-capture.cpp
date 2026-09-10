@@ -18,8 +18,10 @@ struct Item { unsigned char bytes[128]{}; };
 std::vector<Item> queue;
 uintptr_t normalReturn = 0, enqueueReturn = 0, actorReturn = 0, shrinkReturn = 0;
 uintptr_t schedulerReturn = 0;
+uintptr_t naturalCenterReturn = 0;
 uintptr_t batchReturn = 0, middleReturn = 0, outerReturn = 0;
 uint64_t normalCalls = 0, enqueueCalls = 0, actorCalls = 0, shrinkCalls = 0;
+uint64_t naturalCenterCalls = 0; bool allowNaturalOverride = false;
 volatile uint32_t afterCall = 0;
 bool badArguments = false;
 bool bypassMiddle = false; // Same normal entry but an unproven downstream route must still be rejected.
@@ -96,6 +98,17 @@ __declspec(noinline) void callNormal() {
     normal(normalContext, 1.75f, &locations, true, false); ++afterCall;
 }
 __declspec(noinline) void scheduleNormal() { callNormal(); ++afterCall; }
+__declspec(noinline) bool naturalCenter(void* pathfinder, uint8_t mode, uint8_t pathSize, const void* origin, float radius, void* output) {
+    naturalCenterReturn = reinterpret_cast<uintptr_t>(_ReturnAddress()); ++naturalCenterCalls;
+    const auto* input = static_cast<const float*>(origin);
+    if (pathfinder != &worldToken || mode != 0 || pathSize != 2 || !input || radius != 3000.0f || !output
+        || input[0] != 10 || input[1] != 20 || input[2] != 30) badArguments = true;
+    const float selected[3]{100, 200, 300}; memcpy(output, selected, sizeof(selected)); return true;
+}
+__declspec(noinline) bool callNaturalCenter(float (&output)[3]) {
+    const float origin[3]{10, 20, 30};
+    const bool result = naturalCenter(&worldToken, 0, 2, origin, 3000.0f, output); ++afterCall; return result;
+}
 __declspec(noinline) void* actor(void* world, void* cls, const void* transform, const void* params) {
     actorReturn = reinterpret_cast<uintptr_t>(_ReturnAddress()); ++actorCalls;
     if (world != &worldToken || !transform || !params) badArguments = true;
@@ -125,12 +138,16 @@ int32_t classifySource(void* context, void* world) {
     const auto id = reinterpret_cast<uintptr_t>(context);
     return world == &worldToken && id > 0 && id < nwi::WaveTypeCount ? static_cast<int32_t>(id) : -1;
 }
+bool consumeNaturalOverride(const nwi::SpawnKey& origin, float radius, nwi::SpawnKey& output) noexcept {
+    if (!allowNaturalOverride || origin.x != 10 || origin.y != 20 || origin.z != 30 || radius != 3000.0f) return false;
+    output = {1, 900, 800, 700}; return true;
+}
 }
 int main() {
     using namespace nwi;
     auto* world = &worldToken; memcpy(owner + 0xa8, &world, 8);
     memcpy(normalContext + 0xa8, &world, 8);
-    scheduleNormal(); consume(); // Capture exact harness call sites before enabling actual trampolines.
+    scheduleNormal(); consume(); float initialCenter[3]{}; REQUIRE(callNaturalCenter(initialCenter)); // Capture exact harness call sites before enabling actual trampolines.
     capture::Binding binding;
     binding.normal = target(normal); binding.enqueue = target(enqueue); binding.actor = target(actor); binding.shrink = target(shrink);
     binding.normalReturn = normalReturn; binding.enqueueReturns[0] = enqueueReturn;
@@ -149,7 +166,19 @@ int main() {
     binding.sourceChain = {enqueueReturn, batchReturn, middleReturn, outerReturn, normalReturn, schedulerReturn};
     binding.pool=target(sourcePool);binding.location=target(sourceLocation);binding.group=target(sourceGroup);
     binding.spread=target(sourceSpread);binding.spreadCallback=target(sourceCallback);binding.center=target(sourceCenter);binding.classifySource=classifySource;
+    binding.naturalCenter=target(naturalCenter);binding.naturalCenterReturn=naturalCenterReturn;binding.consumeNaturalOverride=consumeNaturalOverride;
     REQUIRE(capture::install(binding)); capture::setWorld(world);
+    const auto selectorBaseline = naturalCenterCalls;
+    SpawnKey sampledInput{1,10,20,30}, sampledOutput{};
+    REQUIRE(capture::sampleNaturalCenter(&worldToken, sampledInput, 3000.0f, sampledOutput));
+    REQUIRE(sampledOutput.x == 100 && sampledOutput.y == 200 && sampledOutput.z == 300 && naturalCenterCalls == selectorBaseline + 1);
+    float selected[3]{}; allowNaturalOverride = true;
+    REQUIRE(callNaturalCenter(selected) && selected[0] == 900 && selected[1] == 800 && selected[2] == 700 && naturalCenterCalls == selectorBaseline + 1);
+    allowNaturalOverride = false;
+    REQUIRE(callNaturalCenter(selected) && selected[0] == 100 && selected[1] == 200 && selected[2] == 300 && naturalCenterCalls == selectorBaseline + 2);
+    REQUIRE(capture::stats().naturalCenterSamples == 1 && capture::stats().naturalCenterCalls == 2
+        && capture::stats().naturalCenterOverrides == 1 && capture::stats().naturalCenterFallbacks == 1 && !badArguments);
+    puts("PASS: early selector sample uses the trampoline; exact natural call consumes one locked center; rejected override falls through once.");
     SpawnEvent event;
     void* absent = nullptr;
     memcpy(normalContext + 0xa8, &absent, 8);
@@ -260,7 +289,7 @@ int main() {
     for(uint32_t type=1;type<=4;++type) REQUIRE(perType[type]==4);
     for(const auto& region:regions.items) REQUIRE(region.visible && region.count==2);
     REQUIRE(!badArguments && !capture::stats().fault);
-    puts("PASS: all 46 stock scripted types; ten real hooks; interleaved queued sources, unknown-descriptor isolation, exact multi-centers and callback/float/bool/pointer ABI.");
+    puts("PASS: all 46 stock scripted types; eleven real hooks; interleaved queued sources, unknown-descriptor isolation, exact multi-centers and callback/float/bool/pointer ABI.");
     scheduleNormal(); consume(); while (capture::pop(event)) {}
     REQUIRE(!capture::stats().fault);
     const auto wavesBeforeStop = capture::stats().waves, normalBeforeStop = normalCalls;
