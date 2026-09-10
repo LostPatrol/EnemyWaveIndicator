@@ -26,8 +26,10 @@ using GetFlags = uint32_t* (*)(void*);
 using GetSize = uint16_t* (*)(void*);
 using GetWorld = void* (*)(void*);
 using GetName = size_t (*)(void*, wchar_t*, size_t);
+using ProcessEvent = bool (*)(void*, void*, void*);
 Find find = nullptr; Value value = nullptr; GetFunc functionSlot = nullptr;
 GetFlags flags = nullptr; GetSize parameters = nullptr; GetWorld actorWorld = nullptr; GetName name = nullptr;
+ProcessEvent processEvent = nullptr;
 uint32_t thread = 0; bool configured = false; Stats counters; OriginRegions regions;
 void* activeController = nullptr; void* activeWorld = nullptr;
 std::atomic<bool> retired{false};
@@ -46,6 +48,7 @@ prediction::CountdownGate predictionGate;
 prediction::Position lastPrediction{};
 uint64_t lastPredictionMs = 0, comparedWave = 0;
 void* predictionGameMode = nullptr; void* predictionManager = nullptr;
+void* waveManagerFunction = nullptr;
 
 struct ObjectArray { void** data = nullptr; int32_t count = 0, capacity = 0; };
 
@@ -59,6 +62,15 @@ bool bindNavQuery(uintptr_t base, uintptr_t rva, const unsigned char (&expected)
 void* reflectedObject(void* object, const wchar_t* field) {
     auto* slot = static_cast<void**>(value(object, field));
     return slot ? *slot : nullptr;
+}
+
+void* resolveWaveManager(void* gameMode) {
+    if (!gameMode || !waveManagerFunction) return nullptr;
+    ++counters.predictionManagerLookups;
+    struct Parameters { void* result = nullptr; } callParameters{};
+    if (!processEvent(gameMode, waveManagerFunction, &callParameters) || !callParameters.result) return nullptr;
+    ++counters.predictionManagerResolved;
+    return callParameters.result;
 }
 
 void hidePrediction() noexcept {
@@ -114,13 +126,15 @@ void samplePrediction(uint64_t now) {
     // GameMode and wave-manager lifetimes match this bound mission controller; retry only while startup is incomplete.
     if ((!predictionGameMode || !predictionManager) && counters.frames % 60 == 0) {
         predictionGameMode = reflectedObject(activeWorld, L"AuthorityGameMode");
-        predictionManager = predictionGameMode ? reflectedObject(predictionGameMode, L"CachedWaveManager") : nullptr;
+        predictionManager = resolveWaveManager(predictionGameMode);
     }
     if (!predictionManager) return;
     const auto* bytes = static_cast<unsigned char*>(predictionManager);
     const float seconds = *reinterpret_cast<const float*>(bytes + 0x138);
     const bool enabled = bytes[0x111] != 0;
     const bool blocked = *reinterpret_cast<const int32_t*>(bytes + 0x148) != 0;
+    ++counters.predictionCountdownSamples;
+    if (std::isfinite(seconds) && seconds > 0 && seconds <= prediction::LeadSeconds) ++counters.predictionWindowSamples;
     if (std::isfinite(seconds) && seconds > prediction::LeadSeconds + 0.25f) hidePrediction();
     if (!predictionGate.sample(seconds, enabled, blocked)) return;
     ++counters.predictionAttempts;
@@ -187,7 +201,7 @@ bool bind(void* actor) {
 #if NWI_NATURAL_PREDICTION
     predictionGate.reset(); lastPredictionMs = comparedWave = 0;
     predictionGameMode = reflectedObject(world, L"AuthorityGameMode");
-    predictionManager = predictionGameMode ? reflectedObject(predictionGameMode, L"CachedWaveManager") : nullptr;
+    predictionManager = resolveWaveManager(predictionGameMode);
 #endif
     capture::setWorld(classifyWorldName(text, length) == WorldKind::Mission ? world : nullptr);
     return true;
@@ -300,13 +314,18 @@ bool configure(HMODULE runtime, HMODULE game, uint32_t gameThread) noexcept {
     parameters = resolve<GetSize>(runtime, "?GetParmsSize@UFunction@Unreal@RC@@QEAAAEAGXZ", 0x1f7ee0);
     actorWorld = resolve<GetWorld>(runtime, "ue4ssl_host_actor_get_world_v1", 0x769520);
     name = resolve<GetName>(runtime, "ue4ssl_host_object_full_name_v1", 0x76a090);
-    if (!find || !value || !functionSlot || !flags || !parameters || !actorWorld || !name) return false;
+    processEvent = resolve<ProcessEvent>(runtime, "?SafeProcessEvent@Seh@RC@@YA_NPEAVUObject@Unreal@2@PEAVUFunction@42@PEAX@Z", 0x78efd0);
+    if (!find || !value || !functionSlot || !flags || !parameters || !actorWorld || !name || !processEvent) return false;
     const auto base = reinterpret_cast<uintptr_t>(game);
 #if NWI_NATURAL_PREDICTION
     constexpr unsigned char projectBytes[24]{0x80,0x79,0x18,0x00,0x4d,0x8b,0xd1,0x0f,0x84,0xf9,0x00,0x00,0x00,0x0f,0xb6,0xc2,0x45,0x0f,0xb6,0xc0,0x41,0x8d,0x50,0xff};
     constexpr unsigned char centerBytes[24]{0x48,0x83,0xec,0x48,0x48,0x8b,0x44,0x24,0x78,0xf3,0x0f,0x10,0x44,0x24,0x70,0x48,0x89,0x44,0x24,0x30,0xf3,0x0f,0x11,0x44};
     if (!bindNavQuery(base, 0x4019320, projectBytes, projectToNav)
         || !bindNavQuery(base, 0x40079e0, centerBytes, findSpawnCenter)) return false;
+    constexpr wchar_t managerPath[] = L"/Script/FSD.FSDGameMode:GetWaveManager";
+    const WideView managerView{managerPath, std::size(managerPath)-1};
+    waveManagerFunction = find(&managerView);
+    if (!waveManagerFunction || *parameters(waveManagerFunction) != sizeof(void*)) return false;
 #endif
     capture::Binding binding;
     binding.normal = target(base, 0x19db3a0, "4883ec4833c0488944243048894424380fb6442470884424");

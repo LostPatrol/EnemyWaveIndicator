@@ -24,6 +24,7 @@ struct ThreadSample {
     std::array<uint64_t, 8> rejectedSourceFrames{};
     std::array<uint64_t, 6> timing{}; // count, center minimum/maximum, queue maximum, handoff maximum, excluded.
     std::array<uint64_t, 4> predictionCounts{}; // attempts, successes, failures, actual-center comparisons.
+    std::array<uint64_t, 4> predictionProbe{}; // manager lookups/resolutions, countdown samples, in-window samples.
     std::array<float, 4> predictionErrors{}; // last, minimum, maximum and total error in centimeters.
 };
 using Callback = void (*)(void*);
@@ -60,6 +61,7 @@ public:
         std::array<uint64_t, 8> rejectedSourceFrames{};
         std::array<uint64_t, 6> timing{}; // count, center minimum/maximum, queue maximum, handoff maximum, excluded.
         std::array<uint64_t, 4> predictionCounts{};
+        std::array<uint64_t, 4> predictionProbe{};
         std::array<float, 4> predictionErrors{};
         bool disabled = false;
     } stats;
@@ -111,7 +113,8 @@ public:
                 stats.normalEntries = result_.normalEntries; stats.normalSiteMatches = result_.normalSiteMatches;
                 stats.noMissionWorld = result_.noMissionWorld; stats.contextRejected = result_.contextRejected;
                 stats.rejectedSourceFrames = result_.rejectedSourceFrames; stats.timing = result_.timing;
-                stats.predictionCounts = result_.predictionCounts; stats.predictionErrors = result_.predictionErrors;
+                stats.predictionCounts = result_.predictionCounts; stats.predictionProbe = result_.predictionProbe;
+                stats.predictionErrors = result_.predictionErrors;
                 }
                 if (result_.runtimeInitialized) ++stats.runtimeInitialized;
                 if (!result_.identityReadOk) { ++stats.identityReadFailures; stats.disabled = true; }

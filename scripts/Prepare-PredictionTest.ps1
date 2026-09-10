@@ -5,7 +5,7 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 $native = Get-Content -LiteralPath (Join-Path $BuildDirectory 'verification.json') -Raw | ConvertFrom-Json
 $cook = Get-Content -LiteralPath (Join-Path $PresentationCook 'verification.json') -Raw | ConvertFrom-Json
-if (!$native.PredictionTest -or $native.ProbeVersion -ne '0.9.4-prediction-test.1' -or !$native.OfflinePassed -or !$native.PredictionOfflinePassed) {
+if (!$native.PredictionTest -or $native.ProbeVersion -ne '0.9.4-prediction-test.2' -or !$native.OfflinePassed -or !$native.PredictionOfflinePassed) {
     throw 'A verified -PredictionTest native build is required.'
 }
 if (!$cook.Success -or !$cook.AssetsOnly -or $cook.ContainsGameAssetCopies -or !$cook.PakHashesVerified -or $cook.Files.Count -ne 18) {
@@ -14,7 +14,7 @@ if (!$cook.Success -or !$cook.AssetsOnly -or $cook.ContainsGameAssetCopies -or !
 foreach ($file in @($native.SourceFiles) + @($cook.Files) + @($cook.Pak, $cook.DependencyAudit, $cook.PackagingConfig)) {
     if ((Get-FileHash -LiteralPath $file.Path).Hash -ne $file.Hash) { throw "Input changed: $($file.Path)" }
 }
-$output = Join-Path $root ('agent\codex\EnemyWaveIndicator-prediction-test-1-' + (Get-Date -Format 'yyyyMMdd-HHmmss-fff'))
+$output = Join-Path $root ('agent\codex\EnemyWaveIndicator-prediction-test-2-' + (Get-Date -Format 'yyyyMMdd-HHmmss-fff'))
 New-Item -ItemType Directory -Path $output | Out-Null
 $dll = Join-Path $BuildDirectory 'main.dll'
 $pak = Join-Path $output 'EnemyWaveIndicator_P.pak'
@@ -24,7 +24,7 @@ $licenses = (Get-Content -LiteralPath (Join-Path $root 'LICENSE') -Raw) + "`r`n`
 $licensePath = Join-Path $output 'LICENSES.txt'
 Set-Content -LiteralPath $licensePath -Value $licenses -Encoding utf8
 @{
-    Version = '0.9.4-prediction-test.1'; Experimental = $true; Published = $false; Installed = $false
+    Version = '0.9.4-prediction-test.2'; Experimental = $true; Published = $false; Installed = $false
     Behavior = 'One read-only T-5 sample; player farthest-pair sphere plus stock navigation queries; no spawn call and no RNG call.'
     Marker = '[?] PREDICTED NATURAL (~5s)'; PredictionRegionType = 255
     OutputScope = 'agent/codex only'; DistModified = $false
