@@ -42,9 +42,13 @@ struct Output { float* point = nullptr; int32_t* serial = nullptr; int32_t* visi
 Output output[OriginRegions::Capacity]{};
 
 #if NWI_NATURAL_PREDICTION
-using NavQuery = bool (*)(void*, uint8_t, uint8_t, const prediction::Position*, float, prediction::Position*);
-NavQuery projectToNav = nullptr, findSpawnCenter = nullptr;
 struct ObjectArray { void* data = nullptr; int32_t count = 0, capacity = 0; };
+using NavQuery = bool (*)(void*, uint8_t, uint8_t, const prediction::Position*, float, prediction::Position*);
+using ConnectivityQuery = bool (*)(void*, uint8_t, uint8_t, const prediction::Position*, const prediction::Position*);
+using GetNavPoints = ObjectArray* (*)(ObjectArray*, void*, const prediction::Position*, float, uint8_t, const prediction::Position*, float);
+using GameFree = void (*)(void*);
+NavQuery projectToNav = nullptr;
+ConnectivityQuery positionsConnected = nullptr;
 struct PlayerIterator { ObjectArray* players = nullptr; int32_t index = 0; };
 static_assert(sizeof(ObjectArray) == 16 && sizeof(PlayerIterator) == 16, "Audited UE array/iterator ABI changed.");
 using GetPlayerIterator = PlayerIterator* (*)(void*, PlayerIterator*);
@@ -53,8 +57,11 @@ using PlayerPredicate = bool (*)(void*);
 GetPlayerIterator getPlayerIterator = nullptr;
 ResolveWeakObject resolveWeakObject = nullptr;
 PlayerPredicate eligiblePlayer = nullptr;
+GetNavPoints getNavPoints = nullptr;
+GameFree gameFree = nullptr;
 prediction::CountdownGate predictionGate;
-prediction::Position lastPrediction{};
+prediction::Position lastPredictions[OriginRegions::Capacity]{};
+uint32_t lastPredictionCount = 0;
 uint64_t lastPredictionMs = 0, comparedWave = 0;
 void* predictionGameMode = nullptr; void* predictionManager = nullptr;
 void* waveManagerFunction = nullptr;
@@ -87,15 +94,15 @@ void hidePrediction() noexcept {
     }
 }
 
-void showPrediction(const prediction::Position& point, uint64_t now) noexcept {
+bool showPrediction(const prediction::Position& point, uint64_t now, uint32_t candidate) noexcept {
     OriginRegions::Region* selected = nullptr;
-    for (auto& region : regions.items) if (waveType(region.wave) == prediction::RegionType) { selected = &region; break; }
-    if (!selected) for (auto& region : regions.items) if (!region.visible) { selected = &region; break; }
-    if (!selected) { ++regions.overflow; return; }
+    for (auto& region : regions.items) if (!region.visible) { selected = &region; break; }
+    if (!selected) { ++regions.overflow; return false; }
     selected->point = {1, point.x, point.y, point.z};
-    selected->wave = waveIdentity(counters.predictionAttempts, prediction::RegionType);
+    selected->wave = waveIdentity(counters.predictionAttempts * OriginRegions::Capacity + candidate, prediction::RegionType);
     selected->expires = now + 5500; selected->weight = 0; selected->count = 0;
     selected->visible = 1; ++selected->serial;
+    return true;
 }
 
 bool readPlayers(prediction::Position (&players)[4], uint32_t& count) {
@@ -124,7 +131,8 @@ bool readPlayers(prediction::Position (&players)[4], uint32_t& count) {
     return count != 0;
 }
 
-bool calculatePrediction(prediction::Position& result) {
+bool calculatePredictions(prediction::Position (&results)[OriginRegions::Capacity], uint32_t& resultCount) {
+    resultCount = 0;
     prediction::Position players[4]{}; uint32_t count = 0;
     if (!readPlayers(players, count)) return false;
     ++counters.predictionPlayersReady;
@@ -139,8 +147,27 @@ bool calculatePrediction(prediction::Position& result) {
     prediction::Position projected{};
     if (!projectToNav(pathfinder, 1, 2, &geometry.center, geometry.radius + prediction::ProjectionPaddingCm, &projected)) return false;
     ++counters.predictionProjectionReady;
-    if (!findSpawnCenter(pathfinder, 0, 2, &projected, geometry.radius + prediction::SpawnDistanceCm, &result)
-        || !prediction::finite(result)) return false;
+    const float searchRadius = geometry.radius + prediction::SpawnDistanceCm;
+    prediction::Position zeroNormal{};
+    ObjectArray navPoints{};
+    if (!getNavPoints(&navPoints, activeWorld, &projected, searchRadius, 2, &zeroNormal, 180.0f)
+        || navPoints.count < 1 || navPoints.count > 1000000 || navPoints.capacity < navPoints.count || !navPoints.data) {
+        if (navPoints.data) gameFree(navPoints.data);
+        return false;
+    }
+    counters.predictionNavPointsTotal += static_cast<uint64_t>(navPoints.count);
+    if (static_cast<uint64_t>(navPoints.count) > counters.predictionNavPointsMax) counters.predictionNavPointsMax = navPoints.count;
+    prediction::Position representatives[32]{};
+    const uint32_t representativeCount = prediction::selectShellCandidates(
+        static_cast<const prediction::Position*>(navPoints.data), static_cast<uint32_t>(navPoints.count),
+        projected, searchRadius, representatives, static_cast<uint32_t>(std::size(representatives)));
+    gameFree(navPoints.data);
+    for (uint32_t i = 0; i < representativeCount && resultCount < OriginRegions::Capacity; ++i) {
+        if (positionsConnected(pathfinder, 1, 2, &representatives[i], &projected)) results[resultCount++] = representatives[i];
+    }
+    if (!resultCount) return false;
+    counters.predictionCandidatesTotal += resultCount;
+    if (resultCount > counters.predictionCandidatesMax) counters.predictionCandidatesMax = resultCount;
     ++counters.predictionCenterReady;
     return true;
 }
@@ -161,18 +188,26 @@ void samplePrediction(uint64_t now) {
     if (std::isfinite(seconds) && seconds > prediction::LeadSeconds + 0.25f) hidePrediction();
     if (!predictionGate.sample(seconds, enabled, blocked)) return;
     ++counters.predictionAttempts;
-    prediction::Position point{};
-    if (!calculatePrediction(point)) { ++counters.predictionFailures; hidePrediction(); return; }
-    ++counters.predictionSuccesses; lastPrediction = point; lastPredictionMs = now;
-    showPrediction(point, now);
+    prediction::Position candidates[OriginRegions::Capacity]{}; uint32_t candidateCount = 0;
+    if (!calculatePredictions(candidates, candidateCount)) { ++counters.predictionFailures; hidePrediction(); return; }
+    hidePrediction(); lastPredictionCount = 0;
+    for (uint32_t i = 0; i < candidateCount; ++i) if (showPrediction(candidates[i], now, i))
+        lastPredictions[lastPredictionCount++] = candidates[i];
+    if (!lastPredictionCount) { ++counters.predictionFailures; return; }
+    ++counters.predictionSuccesses; lastPredictionMs = now;
 }
 
 void comparePrediction(const SpawnEvent& event, uint64_t now) noexcept {
     if (waveType(event.wave) != 0 || event.wave == comparedWave || !event.center.valid()
-        || !lastPredictionMs || now < lastPredictionMs || now - lastPredictionMs > 15000) return;
+        || !lastPredictionMs || !lastPredictionCount || now < lastPredictionMs || now - lastPredictionMs > 15000) return;
     comparedWave = event.wave;
-    const float x = event.center.x - lastPrediction.x, y = event.center.y - lastPrediction.y, z = event.center.z - lastPrediction.z;
-    const float error = std::sqrt(x*x + y*y + z*z);
+    const prediction::Position actual{event.center.x, event.center.y, event.center.z};
+    float squared = prediction::distanceSquared(actual, lastPredictions[0]);
+    for (uint32_t i = 1; i < lastPredictionCount; ++i) {
+        const float candidate = prediction::distanceSquared(actual, lastPredictions[i]);
+        if (candidate < squared) squared = candidate;
+    }
+    const float error = std::sqrt(squared);
     if (!std::isfinite(error)) return;
     counters.predictionLastErrorCm = error; counters.predictionErrorTotalCm += error;
     if (!counters.predictionComparisons || error < counters.predictionMinErrorCm) counters.predictionMinErrorCm = error;
@@ -222,7 +257,7 @@ bool bind(void* actor) {
     }
     activeController = actor; activeWorld = world; regions.reset(); ++counters.bindings;
 #if NWI_NATURAL_PREDICTION
-    predictionGate.reset(); lastPredictionMs = comparedWave = 0;
+    predictionGate.reset(); lastPredictionMs = comparedWave = 0; lastPredictionCount = 0;
     predictionGameMode = reflectedObject(world, L"AuthorityGameMode");
     predictionManager = resolveWaveManager(predictionGameMode);
 #endif
@@ -342,12 +377,16 @@ bool configure(HMODULE runtime, HMODULE game, uint32_t gameThread) noexcept {
     const auto base = reinterpret_cast<uintptr_t>(game);
 #if NWI_NATURAL_PREDICTION
     constexpr unsigned char projectBytes[24]{0x80,0x79,0x18,0x00,0x4d,0x8b,0xd1,0x0f,0x84,0xf9,0x00,0x00,0x00,0x0f,0xb6,0xc2,0x45,0x0f,0xb6,0xc0,0x41,0x8d,0x50,0xff};
-    constexpr unsigned char centerBytes[24]{0x48,0x83,0xec,0x48,0x48,0x8b,0x44,0x24,0x78,0xf3,0x0f,0x10,0x44,0x24,0x70,0x48,0x89,0x44,0x24,0x30,0xf3,0x0f,0x11,0x44};
+    constexpr unsigned char connectedBytes[24]{0x80,0x79,0x18,0x00,0x0f,0x84,0xb7,0x00,0x00,0x00,0x0f,0xb6,0xc2,0x45,0x0f,0xb6,0xc0,0x41,0x8d,0x50,0xff,0x8d,0x14,0x50};
+    constexpr unsigned char navPointsBytes[24]{0x48,0x89,0x5c,0x24,0x08,0x48,0x89,0x74,0x24,0x10,0x57,0x48,0x83,0xec,0x60,0x33,0xc0,0x0f,0x29,0x74,0x24,0x50,0x49,0x8b};
+    constexpr unsigned char freeBytes[24]{0x48,0x85,0xc9,0x74,0x2e,0x53,0x48,0x83,0xec,0x20,0x48,0x8b,0xd9,0x48,0x8b,0x0d,0x44,0x14,0x8a,0x04,0x48,0x85,0xc9,0x75};
     constexpr unsigned char iteratorBytes[24]{0x48,0x8d,0x81,0xc0,0x01,0x00,0x00,0xc7,0x42,0x08,0x00,0x00,0x00,0x00,0x48,0x89,0x02,0x48,0x8b,0xc2,0xc3,0xcc,0xcc,0xcc};
     constexpr unsigned char weakObjectBytes[24]{0x44,0x8b,0x41,0x04,0x45,0x85,0xc0,0x74,0x4e,0x8b,0x01,0x85,0xc0,0x78,0x48,0x3b,0x05,0x7f,0x16,0x5f,0x04,0x7d,0x40,0x99};
     constexpr unsigned char eligibleBytes[24]{0x48,0x83,0xec,0x28,0x48,0x8b,0x81,0xd8,0x0c,0x00,0x00,0x48,0x85,0xc0,0x74,0x09,0x80,0xb8,0xb8,0x00,0x00,0x00,0x01,0x74};
     if (!bindGameQuery(base, 0x4019320, projectBytes, projectToNav)
-        || !bindGameQuery(base, 0x40079e0, centerBytes, findSpawnCenter)
+        || !bindGameQuery(base, 0x401f2c0, connectedBytes, positionsConnected)
+        || !bindGameQuery(base, 0x19c7740, navPointsBytes, getNavPoints)
+        || !bindGameQuery(base, 0x1c75c90, freeBytes, gameFree)
         || !bindGameQuery(base, 0x3b95720, iteratorBytes, getPlayerIterator)
         || !bindGameQuery(base, 0x1faa750, weakObjectBytes, resolveWeakObject)
         || !bindGameQuery(base, 0x158fc40, eligibleBytes, eligiblePlayer)) return false;

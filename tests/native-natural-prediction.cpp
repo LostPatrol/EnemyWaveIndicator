@@ -22,6 +22,13 @@ int main() {
     REQUIRE(!playerSphere(nullptr, 1).valid && !playerSphere(solo, 0).valid);
     Position bad = solo[0]; bad.x = NAN; REQUIRE(!playerSphere(&bad, 1).valid);
 
+    const Position navPoints[]{{0,0,0},{3000,0,0},{-3000,0,0},{0,3000,0},{0,-3000,0},{0,0,3000},{0,0,-3000},{100,0,0}};
+    Position candidates[4]{};
+    const auto selected = selectShellCandidates(navPoints, 8, Position{}, 3000, candidates, 4);
+    REQUIRE(selected == 4);
+    for (uint32_t i = 0; i < selected; ++i) REQUIRE(distanceSquared(candidates[i], Position{}) >= 4000000.0f);
+    REQUIRE(selectShellCandidates(nullptr, 8, Position{}, 3000, candidates, 4) == 0);
+
     // Keep the three-hop pointer layout locked to the audited stock selector sequence.
     alignas(void*) unsigned char world[WorldNavigationOwnerOffset + sizeof(void*)]{};
     alignas(void*) unsigned char owner[NavigationOffset + sizeof(void*)]{};

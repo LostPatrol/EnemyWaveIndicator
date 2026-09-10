@@ -156,6 +156,8 @@ void showPresentation(nwi::ThreadSample& sample) noexcept {
         automatic.predictionNavigationReady, automatic.predictionProjectionReady, automatic.predictionCenterReady};
     sample.predictionPlayerProbe = {automatic.predictionPlayerLists, automatic.predictionControllersResolved,
         automatic.predictionPawnsResolved, automatic.predictionPositionsRead};
+    sample.predictionCandidateProbe = {automatic.predictionNavPointsTotal, automatic.predictionNavPointsMax,
+        automatic.predictionCandidatesTotal, automatic.predictionCandidatesMax};
     sample.predictionErrors = {automatic.predictionLastErrorCm, automatic.predictionMinErrorCm,
         automatic.predictionMaxErrorCm, automatic.predictionErrorTotalCm};
     sample.captureFault = captured.fault; sample.autoFault = automatic.fault; sample.hookStatus = captured.hookStatus;
@@ -216,7 +218,7 @@ void record(const char* event) noexcept {
     char line[4096];
     const int size = sprintf_s(line,
 #if NWI_NATURAL_PREDICTION
-        "{\"probe\":\"0.9.4-prediction-test.4\",\"prediction_test\":true,\"event\":\"%s\",\"utc\":\"%04u-%02u-%02uT%02u:%02u:%02u.%03uZ\","
+        "{\"probe\":\"0.9.4-prediction-test.5\",\"prediction_test\":true,\"event\":\"%s\",\"utc\":\"%04u-%02u-%02uT%02u:%02u:%02u.%03uZ\","
 #else
         "{\"probe\":\"0.9.4\",\"prediction_test\":false,\"event\":\"%s\",\"utc\":\"%04u-%02u-%02uT%02u:%02u:%02u.%03uZ\","
 #endif
@@ -245,6 +247,7 @@ void record(const char* event) noexcept {
         "\"prediction_probe\":[%llu,%llu,%llu,%llu],"
         "\"prediction_stages\":[%llu,%llu,%llu,%llu,%llu],"
         "\"prediction_player_probe\":[%llu,%llu,%llu,%llu],"
+        "\"prediction_candidate_probe\":[%llu,%llu,%llu,%llu],"
         "\"prediction_error_cm\":[%.3f,%.3f,%.3f,%.3f],"
         "\"capture_fault\":%u,\"auto_fault\":%u,\"hook_status\":%u}\n",
         event, utc.wYear, utc.wMonth, utc.wDay, utc.wHour, utc.wMinute, utc.wSecond, utc.wMilliseconds,
@@ -271,6 +274,7 @@ void record(const char* event) noexcept {
         probe.predictionProbe[0],probe.predictionProbe[1],probe.predictionProbe[2],probe.predictionProbe[3],
         probe.predictionStages[0],probe.predictionStages[1],probe.predictionStages[2],probe.predictionStages[3],probe.predictionStages[4],
         probe.predictionPlayerProbe[0],probe.predictionPlayerProbe[1],probe.predictionPlayerProbe[2],probe.predictionPlayerProbe[3],
+        probe.predictionCandidateProbe[0],probe.predictionCandidateProbe[1],probe.predictionCandidateProbe[2],probe.predictionCandidateProbe[3],
         probe.predictionErrors[0],probe.predictionErrors[1],probe.predictionErrors[2],probe.predictionErrors[3],
         probe.captureFault, probe.autoFault, probe.hookStatus);
     DWORD written = 0;

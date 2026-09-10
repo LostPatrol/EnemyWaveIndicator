@@ -8,6 +8,7 @@ inline constexpr uint32_t RegionType = 255; // Reserved test-only handoff value;
 inline constexpr float LeadSeconds = 5.0f;
 inline constexpr float ProjectionPaddingCm = 300.0f; // Matches the game's current natural-wave projection padding.
 inline constexpr float SpawnDistanceCm = 3000.0f; // Matches the game's current natural-wave search extension.
+inline constexpr float ShellDepthCm = 1000.0f; // Prefer the outer 10 m of the stock search radius.
 inline constexpr uintptr_t WorldNavigationOwnerOffset = 0x120; // Current selector's UWorld intermediate object.
 inline constexpr uintptr_t NavigationOffset = 0x420; // Navigation wrapper on the intermediate owner.
 inline constexpr uintptr_t PathfinderOffset = 0x708; // Query object used by both audited navigation helpers.
@@ -17,6 +18,11 @@ inline constexpr uintptr_t SceneTranslationOffset = 0x1d0; // Component world tr
 
 struct Position { float x = 0, y = 0, z = 0; };
 struct Geometry { Position center{}; float radius = 0; bool valid = false; };
+
+inline float distanceSquared(const Position& a, const Position& b) noexcept {
+    const float x = a.x-b.x, y = a.y-b.y, z = a.z-b.z;
+    return x*x + y*y + z*z;
+}
 
 inline bool finite(const Position& point) noexcept {
     return std::isfinite(point.x) && std::isfinite(point.y) && std::isfinite(point.z);
@@ -39,6 +45,39 @@ inline bool readActorPosition(void* actor, Position& result) noexcept {
     if (!root) return false;
     result = *reinterpret_cast<Position*>(static_cast<unsigned char*>(root) + SceneTranslationOffset);
     return finite(result);
+}
+
+// Deterministic farthest-first representatives cover the navigable outer shell without consuming game RNG.
+inline uint32_t selectShellCandidates(const Position* points, uint32_t count, const Position& center,
+    float radius, Position* output, uint32_t capacity) noexcept {
+    if (!points || !count || !finite(center) || !std::isfinite(radius) || radius <= 0 || !output || !capacity) return 0;
+    const float innerRadius = radius > ShellDepthCm ? radius - ShellDepthCm : 0.0f;
+    const float innerSquared = innerRadius * innerRadius;
+    bool shellAvailable = false;
+    for (uint32_t i = 0; i < count; ++i)
+        if (finite(points[i]) && distanceSquared(points[i], center) >= innerSquared) { shellAvailable = true; break; }
+    uint32_t selected = 0;
+    while (selected < capacity) {
+        uint32_t best = count; float bestScore = -1.0f;
+        for (uint32_t i = 0; i < count; ++i) {
+            if (!finite(points[i])) continue;
+            const float radial = distanceSquared(points[i], center);
+            if (shellAvailable && radial < innerSquared) continue;
+            float score = radial;
+            if (selected) {
+                score = distanceSquared(points[i], output[0]);
+                for (uint32_t j = 1; j < selected; ++j) {
+                    const float candidate = distanceSquared(points[i], output[j]);
+                    if (candidate < score) score = candidate;
+                }
+            }
+            if (score > bestScore) { bestScore = score; best = i; }
+        }
+        // Stop when only duplicate/sub-meter grid points remain.
+        if (best == count || (selected && bestScore < 10000.0f)) break;
+        output[selected++] = points[best];
+    }
+    return selected;
 }
 
 // Reproduce the deterministic player-sphere portion of the game's natural-wave selector.

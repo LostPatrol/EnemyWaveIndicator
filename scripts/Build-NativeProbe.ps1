@@ -68,7 +68,7 @@ try {
         EngineHeaderSHA256 = (Get-FileHash (Join-Path $projectRoot 'mods\EnemyWaveNativeProbe\EngineThreadIdentity.h')).Hash
         PresentationHeaderSHA256 = (Get-FileHash (Join-Path $projectRoot 'mods\EnemyWaveNativeProbe\PresentationBootstrap.h')).Hash
         WorldHeaderSHA256 = (Get-FileHash (Join-Path $projectRoot 'mods\EnemyWaveNativeProbe\ActiveWorld.h')).Hash
-        ProbeVersion = if ($PredictionTest) { '0.9.4-prediction-test.4' } else { '0.9.4' }
+        ProbeVersion = if ($PredictionTest) { '0.9.4-prediction-test.5' } else { '0.9.4' }
         PredictionTest = [bool]$PredictionTest
         DispatchOfflinePassed = $true; PresentationOfflinePassed = $true; CaptureOfflinePassed = $true; PredictionOfflinePassed = $true
         SourceFiles = @(@(Get-ChildItem (Join-Path $projectRoot 'mods\EnemyWaveNativeProbe') -File | Where-Object Extension -in '.cpp','.h') + @(Get-Item (Join-Path $projectRoot 'engine\Authoring\NwiAuthoring\Source\NwiAuthoring\Public\NwiWaveTypes.h')) + @(Get-ChildItem $vendor -File -Recurse) | Get-FileHash)
