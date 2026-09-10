@@ -1,5 +1,6 @@
 // Offline tests for prediction geometry and countdown gating; no game process or Unreal object is used.
 #include "../mods/EnemyWaveNativeProbe/NaturalWavePrediction.h"
+#include <cstring>
 #include <cmath>
 #include <cstdio>
 
@@ -21,6 +22,18 @@ int main() {
     REQUIRE(!playerSphere(nullptr, 1).valid && !playerSphere(solo, 0).valid);
     Position bad = solo[0]; bad.x = NAN; REQUIRE(!playerSphere(&bad, 1).valid);
 
+    // Keep the three-hop pointer layout locked to the audited stock selector sequence.
+    alignas(void*) unsigned char world[WorldNavigationOwnerOffset + sizeof(void*)]{};
+    alignas(void*) unsigned char owner[NavigationOffset + sizeof(void*)]{};
+    alignas(void*) unsigned char navigation[PathfinderOffset + sizeof(void*)]{};
+    int pathfinder = 0;
+    void* pointer = owner; std::memcpy(world + WorldNavigationOwnerOffset, &pointer, sizeof(pointer));
+    pointer = navigation; std::memcpy(owner + NavigationOffset, &pointer, sizeof(pointer));
+    pointer = &pathfinder; std::memcpy(navigation + PathfinderOffset, &pointer, sizeof(pointer));
+    REQUIRE(resolvePathfinder(world) == &pathfinder);
+    pointer = nullptr; std::memcpy(owner + NavigationOffset, &pointer, sizeof(pointer));
+    REQUIRE(resolvePathfinder(world) == nullptr && resolvePathfinder(nullptr) == nullptr);
+
     CountdownGate gate;
     REQUIRE(!gate.sample(12, true, false));
     REQUIRE(!gate.sample(5.01f, true, false));
@@ -32,5 +45,5 @@ int main() {
     REQUIRE(!gate.sample(30, true, false));
     REQUIRE(!gate.sample(4, false, false));
     REQUIRE(gate.sample(3, true, false));
-    std::puts("PASS: player sphere and one-shot T-5 countdown gate.");
+    std::puts("PASS: player sphere, stock navigation chain and one-shot T-5 countdown gate.");
 }

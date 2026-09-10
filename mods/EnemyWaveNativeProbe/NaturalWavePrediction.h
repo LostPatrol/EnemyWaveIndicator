@@ -8,12 +8,25 @@ inline constexpr uint32_t RegionType = 255; // Reserved test-only handoff value;
 inline constexpr float LeadSeconds = 5.0f;
 inline constexpr float ProjectionPaddingCm = 300.0f; // Matches the game's current natural-wave projection padding.
 inline constexpr float SpawnDistanceCm = 3000.0f; // Matches the game's current natural-wave search extension.
+inline constexpr uintptr_t WorldNavigationOwnerOffset = 0x120; // Current selector's UWorld intermediate object.
+inline constexpr uintptr_t NavigationOffset = 0x420; // Navigation wrapper on the intermediate owner.
+inline constexpr uintptr_t PathfinderOffset = 0x708; // Query object used by both audited navigation helpers.
 
 struct Position { float x = 0, y = 0, z = 0; };
 struct Geometry { Position center{}; float radius = 0; bool valid = false; };
 
 inline bool finite(const Position& point) noexcept {
     return std::isfinite(point.x) && std::isfinite(point.y) && std::isfinite(point.z);
+}
+
+// Reproduce only the selector's pointer lookup; callers separately check Pathfinder readiness.
+inline void* resolvePathfinder(void* world) noexcept {
+    if (!world) return nullptr;
+    auto* owner = *reinterpret_cast<void**>(static_cast<unsigned char*>(world) + WorldNavigationOwnerOffset);
+    auto* navigation = owner
+        ? *reinterpret_cast<void**>(static_cast<unsigned char*>(owner) + NavigationOffset) : nullptr;
+    return navigation
+        ? *reinterpret_cast<void**>(static_cast<unsigned char*>(navigation) + PathfinderOffset) : nullptr;
 }
 
 // Reproduce the deterministic player-sphere portion of the game's natural-wave selector.

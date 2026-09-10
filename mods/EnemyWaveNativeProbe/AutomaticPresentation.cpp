@@ -110,16 +110,22 @@ bool readPlayers(void* gameMode, prediction::Position (&players)[4], uint32_t& c
 bool calculatePrediction(void* gameMode, prediction::Position& result) {
     prediction::Position players[4]{}; uint32_t count = 0;
     if (!readPlayers(gameMode, players, count)) return false;
+    ++counters.predictionPlayersReady;
     const auto geometry = prediction::playerSphere(players, count);
     if (!geometry.valid) return false;
-    // This reproduces UWorld->pathfinder ownership used by the stock selector; both calls are navigation queries.
-    void* navigation = *reinterpret_cast<void**>(static_cast<unsigned char*>(activeWorld) + 0x420);
-    void* pathfinder = navigation ? *reinterpret_cast<void**>(static_cast<unsigned char*>(navigation) + 0x708) : nullptr;
+    ++counters.predictionGeometryReady;
+    // The selector follows UActorComponent::WorldPrivate -> UWorld+0x120 -> navigation owner+0x420.
+    // Test.2 incorrectly skipped the intermediate UWorld+0x120 object and therefore never reached Pathfinder.
+    void* pathfinder = prediction::resolvePathfinder(activeWorld);
     if (!pathfinder || !*reinterpret_cast<unsigned char*>(static_cast<unsigned char*>(pathfinder) + 0x18)) return false;
+    ++counters.predictionNavigationReady;
     prediction::Position projected{};
     if (!projectToNav(pathfinder, 1, 2, &geometry.center, geometry.radius + prediction::ProjectionPaddingCm, &projected)) return false;
-    return findSpawnCenter(pathfinder, 0, 2, &projected, geometry.radius + prediction::SpawnDistanceCm, &result)
-        && prediction::finite(result);
+    ++counters.predictionProjectionReady;
+    if (!findSpawnCenter(pathfinder, 0, 2, &projected, geometry.radius + prediction::SpawnDistanceCm, &result)
+        || !prediction::finite(result)) return false;
+    ++counters.predictionCenterReady;
+    return true;
 }
 
 void samplePrediction(uint64_t now) {
