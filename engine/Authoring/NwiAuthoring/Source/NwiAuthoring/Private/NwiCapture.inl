@@ -37,6 +37,12 @@ UK2Node_CallFunction* RegionSetting(UEdGraph* G, int32 I, bool Enabled)
         }
         Current=Select;Output=TEXT("ReturnValue");
     }
+    if (!Enabled) {
+        // 255 is emitted only by the isolated prediction-test DLL and is never a stock wave ID.
+        auto* Prediction=Call(G,UKismetMathLibrary::StaticClass(),TEXT("EqualEqual_IntInt"));Link(Get(G,*Region),*Region,Prediction,TEXT("A"));Value(Prediction,TEXT("B"),TEXT("255"));
+        auto* PredictionLabel=Call(G,UKismetMathLibrary::StaticClass(),TEXT("SelectString"));Link(Prediction,TEXT("ReturnValue"),PredictionLabel,TEXT("bPickA"));
+        Value(PredictionLabel,TEXT("A"),TEXT("[?] PREDICTED NATURAL WAVE (~5s)"));Link(Current,Output,PredictionLabel,TEXT("B"));Select=PredictionLabel;
+    }
     return Select;
 }
 UK2Node_CallFunction* UpdateRegionLabel(UEdGraph* G, UClass* HudClass, int32 I)

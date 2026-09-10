@@ -10,6 +10,11 @@
 #include "GameCapture.h"
 #include "OriginRegions.h"
 #include "EnemyBuckets.h"
+#include "NaturalWavePrediction.h"
+
+#ifndef NWI_NATURAL_PREDICTION
+#define NWI_NATURAL_PREDICTION 0
+#endif
 
 namespace nwi::automatic {
 namespace {
@@ -33,6 +38,111 @@ int32_t* enabledTypes[WaveTypeCount]{};
 int32_t cookie = 0; // A fresh Blueprint instance has zero even when its allocator reuses an old address.
 struct Output { float* point = nullptr; int32_t* serial = nullptr; int32_t* visible = nullptr; float* expires = nullptr; float* scale = nullptr; int32_t* type = nullptr; };
 Output output[OriginRegions::Capacity]{};
+
+#if NWI_NATURAL_PREDICTION
+using NavQuery = bool (*)(void*, uint8_t, uint8_t, const prediction::Position*, float, prediction::Position*);
+NavQuery projectToNav = nullptr, findSpawnCenter = nullptr;
+prediction::CountdownGate predictionGate;
+prediction::Position lastPrediction{};
+uint64_t lastPredictionMs = 0, comparedWave = 0;
+void* predictionGameMode = nullptr; void* predictionManager = nullptr;
+
+struct ObjectArray { void** data = nullptr; int32_t count = 0, capacity = 0; };
+
+bool bindNavQuery(uintptr_t base, uintptr_t rva, const unsigned char (&expected)[24], NavQuery& outputFunction) noexcept {
+    auto* raw = reinterpret_cast<unsigned char*>(base + rva);
+    if (std::memcmp(raw, expected, sizeof(expected))) return false;
+    std::memcpy(&outputFunction, &raw, sizeof(outputFunction));
+    return true;
+}
+
+void* reflectedObject(void* object, const wchar_t* field) {
+    auto* slot = static_cast<void**>(value(object, field));
+    return slot ? *slot : nullptr;
+}
+
+void hidePrediction() noexcept {
+    for (auto& region : regions.items) if (waveType(region.wave) == prediction::RegionType && region.visible) {
+        region.visible = 0; ++region.serial;
+    }
+}
+
+void showPrediction(const prediction::Position& point, uint64_t now) noexcept {
+    OriginRegions::Region* selected = nullptr;
+    for (auto& region : regions.items) if (waveType(region.wave) == prediction::RegionType) { selected = &region; break; }
+    if (!selected) for (auto& region : regions.items) if (!region.visible) { selected = &region; break; }
+    if (!selected) { ++regions.overflow; return; }
+    selected->point = {1, point.x, point.y, point.z};
+    selected->wave = waveIdentity(counters.predictionAttempts, prediction::RegionType);
+    selected->expires = now + 5500; selected->weight = 0; selected->count = 0;
+    selected->visible = 1; ++selected->serial;
+}
+
+bool readPlayers(void* gameMode, prediction::Position (&players)[4], uint32_t& count) {
+    count = 0;
+    const auto* controllers = static_cast<ObjectArray*>(value(gameMode, L"PlayerControllers"));
+    if (!controllers || controllers->count < 1 || controllers->count > 4 || controllers->capacity < controllers->count || !controllers->data) return false;
+    for (int32_t i = 0; i < controllers->count; ++i) {
+        void* controller = controllers->data[i];
+        void* pawn = reflectedObject(controller, L"Pawn");
+        if (!pawn) pawn = reflectedObject(controller, L"AcknowledgedPawn");
+        void* root = pawn ? reflectedObject(pawn, L"RootComponent") : nullptr;
+        if (!root) continue;
+        // The audited natural selector reads the scene-component translation at +0x1d0 in this game image.
+        const auto point = *reinterpret_cast<prediction::Position*>(static_cast<unsigned char*>(root) + 0x1d0);
+        if (prediction::finite(point)) players[count++] = point;
+    }
+    return count != 0;
+}
+
+bool calculatePrediction(void* gameMode, prediction::Position& result) {
+    prediction::Position players[4]{}; uint32_t count = 0;
+    if (!readPlayers(gameMode, players, count)) return false;
+    const auto geometry = prediction::playerSphere(players, count);
+    if (!geometry.valid) return false;
+    // This reproduces UWorld->pathfinder ownership used by the stock selector; both calls are navigation queries.
+    void* navigation = *reinterpret_cast<void**>(static_cast<unsigned char*>(activeWorld) + 0x420);
+    void* pathfinder = navigation ? *reinterpret_cast<void**>(static_cast<unsigned char*>(navigation) + 0x708) : nullptr;
+    if (!pathfinder || !*reinterpret_cast<unsigned char*>(static_cast<unsigned char*>(pathfinder) + 0x18)) return false;
+    prediction::Position projected{};
+    if (!projectToNav(pathfinder, 1, 2, &geometry.center, geometry.radius + prediction::ProjectionPaddingCm, &projected)) return false;
+    return findSpawnCenter(pathfinder, 0, 2, &projected, geometry.radius + prediction::SpawnDistanceCm, &result)
+        && prediction::finite(result);
+}
+
+void samplePrediction(uint64_t now) {
+    // GameMode and wave-manager lifetimes match this bound mission controller; retry only while startup is incomplete.
+    if ((!predictionGameMode || !predictionManager) && counters.frames % 60 == 0) {
+        predictionGameMode = reflectedObject(activeWorld, L"AuthorityGameMode");
+        predictionManager = predictionGameMode ? reflectedObject(predictionGameMode, L"CachedWaveManager") : nullptr;
+    }
+    if (!predictionManager) return;
+    const auto* bytes = static_cast<unsigned char*>(predictionManager);
+    const float seconds = *reinterpret_cast<const float*>(bytes + 0x138);
+    const bool enabled = bytes[0x111] != 0;
+    const bool blocked = *reinterpret_cast<const int32_t*>(bytes + 0x148) != 0;
+    if (std::isfinite(seconds) && seconds > prediction::LeadSeconds + 0.25f) hidePrediction();
+    if (!predictionGate.sample(seconds, enabled, blocked)) return;
+    ++counters.predictionAttempts;
+    prediction::Position point{};
+    if (!calculatePrediction(predictionGameMode, point)) { ++counters.predictionFailures; hidePrediction(); return; }
+    ++counters.predictionSuccesses; lastPrediction = point; lastPredictionMs = now;
+    showPrediction(point, now);
+}
+
+void comparePrediction(const SpawnEvent& event, uint64_t now) noexcept {
+    if (waveType(event.wave) != 0 || event.wave == comparedWave || !event.center.valid()
+        || !lastPredictionMs || now < lastPredictionMs || now - lastPredictionMs > 15000) return;
+    comparedWave = event.wave;
+    const float x = event.center.x - lastPrediction.x, y = event.center.y - lastPrediction.y, z = event.center.z - lastPrediction.z;
+    const float error = std::sqrt(x*x + y*y + z*z);
+    if (!std::isfinite(error)) return;
+    counters.predictionLastErrorCm = error; counters.predictionErrorTotalCm += error;
+    if (!counters.predictionComparisons || error < counters.predictionMinErrorCm) counters.predictionMinErrorCm = error;
+    if (error > counters.predictionMaxErrorCm) counters.predictionMaxErrorCm = error;
+    ++counters.predictionComparisons; hidePrediction();
+}
+#endif
 
 template<class T> T resolve(HMODULE module, const char* symbol, uintptr_t rva) noexcept {
     auto raw = GetProcAddress(module, symbol); T result = nullptr;
@@ -74,6 +184,11 @@ bool bind(void* actor) {
             || !localAddress(actor, output[i].expires, 4) || !localAddress(actor, output[i].scale, 4) || !localAddress(actor, output[i].type, 4)) return false;
     }
     activeController = actor; activeWorld = world; regions.reset(); ++counters.bindings;
+#if NWI_NATURAL_PREDICTION
+    predictionGate.reset(); lastPredictionMs = comparedWave = 0;
+    predictionGameMode = reflectedObject(world, L"AuthorityGameMode");
+    predictionManager = predictionGameMode ? reflectedObject(predictionGameMode, L"CachedWaveManager") : nullptr;
+#endif
     capture::setWorld(classifyWorldName(text, length) == WorldKind::Mission ? world : nullptr);
     return true;
 }
@@ -102,9 +217,15 @@ void update(void* actor) {
     if ((activeController != actor || !instanceCookie || *instanceCookie != cookie) && !bind(actor)) { counters.fault = 1; capture::stop(); return; }
     ++counters.frames; capture::poll(counters.frames);
     const auto now = GetTickCount64(); SpawnEvent event;
+#if NWI_NATURAL_PREDICTION
+    samplePrediction(now);
+#endif
     const float seconds = *durationSec;
     regions.lifetimeMs = seconds >= 1.0f && seconds <= 30.0f ? static_cast<uint64_t>(seconds * 1000.0f) : OriginRegions::LifetimeMs;
     for (uint32_t i = 0; i < SpawnAttribution::Capacity && capture::pop(event); ++i) {
+#if NWI_NATURAL_PREDICTION
+        comparePrediction(event, now);
+#endif
         float cost = 0;
         if (eligible(event, cost)) {
             if (waveType(event.wave) == 0 && event.selectedMs && event.capturedMs >= event.selectedMs && event.capturedMs >= event.queuedMs) {
@@ -120,13 +241,14 @@ void update(void* actor) {
         } else ++counters.filtered;
     }
     regions.expire(now);
-    for (auto& r : regions.items) if (r.visible && (capture::stats().fault || waveType(r.wave) >= WaveTypeCount || !*enabledTypes[waveType(r.wave)])) { r.visible = 0; ++r.serial; }
+    for (auto& r : regions.items) if (r.visible && (capture::stats().fault
+        || (waveType(r.wave) != prediction::RegionType && (waveType(r.wave) >= WaveTypeCount || !*enabledTypes[waveType(r.wave)])))) { r.visible = 0; ++r.serial; }
     for (uint32_t i = 0; i < OriginRegions::Capacity; ++i) {
         const auto& r = regions.items[i];
         if (*output[i].serial == r.serial) continue;
         memcpy(output[i].point, &r.point.x, 12);
         *output[i].expires = *worldTime + (r.expires > now ? static_cast<float>(r.expires - now) / 1000.f : 0.f);
-        *output[i].scale = r.scale();
+        *output[i].scale = waveType(r.wave) == prediction::RegionType ? 0.6f : r.scale();
         *output[i].type = static_cast<int32_t>(waveType(r.wave));
         *output[i].visible = r.visible; *output[i].serial = r.serial;
     }
@@ -180,6 +302,12 @@ bool configure(HMODULE runtime, HMODULE game, uint32_t gameThread) noexcept {
     name = resolve<GetName>(runtime, "ue4ssl_host_object_full_name_v1", 0x76a090);
     if (!find || !value || !functionSlot || !flags || !parameters || !actorWorld || !name) return false;
     const auto base = reinterpret_cast<uintptr_t>(game);
+#if NWI_NATURAL_PREDICTION
+    constexpr unsigned char projectBytes[24]{0x80,0x79,0x18,0x00,0x4d,0x8b,0xd1,0x0f,0x84,0xf9,0x00,0x00,0x00,0x0f,0xb6,0xc2,0x45,0x0f,0xb6,0xc0,0x41,0x8d,0x50,0xff};
+    constexpr unsigned char centerBytes[24]{0x48,0x83,0xec,0x48,0x48,0x8b,0x44,0x24,0x78,0xf3,0x0f,0x10,0x44,0x24,0x70,0x48,0x89,0x44,0x24,0x30,0xf3,0x0f,0x11,0x44};
+    if (!bindNavQuery(base, 0x4019320, projectBytes, projectToNav)
+        || !bindNavQuery(base, 0x40079e0, centerBytes, findSpawnCenter)) return false;
+#endif
     capture::Binding binding;
     binding.normal = target(base, 0x19db3a0, "4883ec4833c0488944243048894424380fb6442470884424");
     binding.enqueue = target(base, 0x16571c0, "48895c24184c894c24204889542410555657415441554156");

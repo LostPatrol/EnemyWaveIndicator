@@ -148,6 +148,10 @@ void showPresentation(nwi::ThreadSample& sample) noexcept {
     sample.noMissionWorld = captured.noMissionWorld; sample.contextRejected = captured.contextRejected;
     sample.rejectedSourceFrames = captured.rejectedSourceFrames;
     sample.timing = {automatic.timingSamples, automatic.centerMinMs, automatic.centerMaxMs, automatic.queueMaxMs, automatic.handoffMaxMs, automatic.filtered};
+    sample.predictionCounts = {automatic.predictionAttempts, automatic.predictionSuccesses,
+        automatic.predictionFailures, automatic.predictionComparisons};
+    sample.predictionErrors = {automatic.predictionLastErrorCm, automatic.predictionMinErrorCm,
+        automatic.predictionMaxErrorCm, automatic.predictionErrorTotalCm};
     sample.captureFault = captured.fault; sample.autoFault = automatic.fault; sample.hookStatus = captured.hookStatus;
 }
 
@@ -205,7 +209,11 @@ void record(const char* event) noexcept {
     const auto& probe = dispatchProbe.stats;
     char line[4096];
     const int size = sprintf_s(line,
-        "{\"probe\":\"0.9.4\",\"event\":\"%s\",\"utc\":\"%04u-%02u-%02uT%02u:%02u:%02u.%03uZ\","
+#if NWI_NATURAL_PREDICTION
+        "{\"probe\":\"0.9.4-prediction-test.1\",\"prediction_test\":true,\"event\":\"%s\",\"utc\":\"%04u-%02u-%02uT%02u:%02u:%02u.%03uZ\","
+#else
+        "{\"probe\":\"0.9.4\",\"prediction_test\":false,\"event\":\"%s\",\"utc\":\"%04u-%02u-%02uT%02u:%02u:%02u.%03uZ\","
+#endif
         "\"pid\":%lu,\"tid\":%lu,\"elapsed_ms\":%llu,\"updates\":%llu,\"thread_changes\":%llu,"
         "\"gap_min_ms\":%.6f,\"gap_max_ms\":%.6f,\"gap_mean_ms\":%.6f,"
         "\"dispatch_enabled\":%s,\"dispatch_pending\":%s,\"dispatch_disabled\":%s,"
@@ -227,6 +235,8 @@ void record(const char* event) noexcept {
         "\"normal_entries\":%llu,\"normal_site_matches\":%llu,\"normal_no_mission_world\":%llu,\"normal_context_rejected\":%llu,"
         "\"rejected_source_rvas\":[%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu],"
         "\"timing\":[%llu,%llu,%llu,%llu,%llu,%llu],"
+        "\"prediction_counts\":[%llu,%llu,%llu,%llu],"
+        "\"prediction_error_cm\":[%.3f,%.3f,%.3f,%.3f],"
         "\"capture_fault\":%u,\"auto_fault\":%u,\"hook_status\":%u}\n",
         event, utc.wYear, utc.wMonth, utc.wDay, utc.wHour, utc.wMinute, utc.wSecond, utc.wMilliseconds,
         GetCurrentProcessId(), GetCurrentThreadId(), GetTickCount64() - state.started,
@@ -248,6 +258,8 @@ void record(const char* event) noexcept {
         probe.rejectedSourceFrames[0], probe.rejectedSourceFrames[1], probe.rejectedSourceFrames[2], probe.rejectedSourceFrames[3],
         probe.rejectedSourceFrames[4], probe.rejectedSourceFrames[5], probe.rejectedSourceFrames[6], probe.rejectedSourceFrames[7],
         probe.timing[0],probe.timing[1],probe.timing[2],probe.timing[3],probe.timing[4],probe.timing[5],
+        probe.predictionCounts[0],probe.predictionCounts[1],probe.predictionCounts[2],probe.predictionCounts[3],
+        probe.predictionErrors[0],probe.predictionErrors[1],probe.predictionErrors[2],probe.predictionErrors[3],
         probe.captureFault, probe.autoFault, probe.hookStatus);
     DWORD written = 0;
     if (size <= 0 || !WriteFile(state.log, line, static_cast<DWORD>(size), &written, nullptr)
