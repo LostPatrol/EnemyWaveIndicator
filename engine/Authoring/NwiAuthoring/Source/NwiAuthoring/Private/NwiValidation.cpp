@@ -32,6 +32,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Internationalization/Internationalization.h"
 #include "Internationalization/Culture.h"
+#include "NwiValidationPlayerController.h"
 
 // Test failures log and unwind normally; they must not deliberately crash the editor.
 #define NWI_REQUIRE(Condition) do { if (!(Condition)) { UE_LOG(LogTemp, Error, TEXT("NWI validation failed: %s"), TEXT(#Condition)); return false; } } while (false)
@@ -77,6 +78,147 @@ bool Initialize(AActor* Actor, UObject* Material, UObject* Scale, UObject* Alpha
         Property->SetObjectPropertyValue_InContainer(Parameters.GetStructMemory(), Inputs[Index]);
     }
     Actor->ProcessEvent(Function, Parameters.GetStructMemory());
+    return true;
+}
+
+// Tick the serialized Blueprint graph while async asset loads complete.
+bool TickUntil(UWorld* World, TFunctionRef<bool()> Complete, int32 MaximumTicks = 240)
+{
+    for (int32 Index = 0; Index < MaximumTicks; ++Index)
+    {
+        FlushAsyncLoading();
+        ++GFrameCounter;
+        World->Tick(LEVELTICK_All, 0.05f);
+        if (Complete()) return true;
+    }
+    return false;
+}
+
+// Exercise Auto's real BeginPlay/Tick pool path under both local-first and remote-first ordering.
+bool ValidateListenHostControllerSelection(UClass* AutomaticClass)
+{
+    if (!FSlateApplication::IsInitialized())
+    {
+        auto& NullRenderer = FModuleManager::LoadModuleChecked<ISlateNullRendererModule>(TEXT("SlateNullRenderer"));
+        FSlateApplication::InitializeAsStandaloneApplication(NullRenderer.CreateSlateNullRenderer());
+    }
+    auto ConfigureWorld = [](FTestWorld& Test, ANwiValidationPlayerController*& Host,
+        ANwiValidationPlayerController*& Remote, TSharedPtr<SOverlay>& Overlay, bool RemoteFirst)
+    {
+        auto* Instance = NewObject<UGameInstance>(GEngine);
+        Test.World->SetGameInstance(Instance);
+        auto* Viewport = NewObject<UGameViewportClient>(GEngine);
+        const TSharedRef<SOverlay> ViewportOverlay = SNew(SOverlay);
+        Overlay = ViewportOverlay;
+        Viewport->SetViewportOverlayWidget(TSharedPtr<SWindow>(), ViewportOverlay);
+        GEngine->GetWorldContextFromWorldChecked(Test.World).GameViewport = Viewport;
+
+        if (RemoteFirst)
+        {
+            Remote = Test.World->SpawnActor<ANwiValidationPlayerController>();
+            if (Remote) Remote->bValidationLocal = false;
+        }
+        Host = Test.World->SpawnActor<ANwiValidationPlayerController>();
+        if (Host)
+        {
+            Host->bValidationLocal = true;
+            auto* Local = NewObject<ULocalPlayer>(GEngine);
+            Local->SetControllerId(0);
+            Host->Player = Local;
+            Local->PlayerController = Host;
+        }
+        if (!RemoteFirst) Remote = nullptr;
+        return Instance && Viewport && Host;
+    };
+
+    // Normal listen-host order: adding a remote controller must not disturb the existing local pool.
+    {
+        FTestWorld Test;
+        ANwiValidationPlayerController* Host = nullptr;
+        ANwiValidationPlayerController* Remote = nullptr;
+        TSharedPtr<SOverlay> Overlay;
+        NWI_REQUIRE(Test.World && ConfigureWorld(Test, Host, Remote, Overlay, false));
+        NWI_REQUIRE(UGameplayStatics::GetPlayerController(Test.World, 0) == Host && Host->IsLocalController());
+        auto* Controller = Test.World->SpawnActor<AActor>(AutomaticClass);
+        auto* PoolReady = FindFProperty<FBoolProperty>(AutomaticClass, TEXT("PoolReady"));
+        auto* Hud = FindFProperty<FObjectPropertyBase>(AutomaticClass, TEXT("AutoHud0"));
+        NWI_REQUIRE(Controller && PoolReady && Hud);
+        NWI_REQUIRE(TickUntil(Test.World, [&] { return PoolReady->GetPropertyValue_InContainer(Controller); }));
+        auto* OriginalHud = Cast<UUserWidget>(Hud->GetObjectPropertyValue_InContainer(Controller));
+        NWI_REQUIRE(OriginalHud && OriginalHud->GetOwningPlayer() == Host);
+
+        TArray<ANwiValidationPlayerController*> Remotes;
+        for (int32 PlayerIndex = 1; PlayerIndex < 4; ++PlayerIndex)
+        {
+            Remote = Test.World->SpawnActor<ANwiValidationPlayerController>();
+            NWI_REQUIRE(Remote); Remote->bValidationLocal = false; Remotes.Add(Remote);
+            NWI_REQUIRE(UGameplayStatics::GetPlayerController(Test.World, 0) == Host);
+            for (int32 TickIndex = 0; TickIndex < 20; ++TickIndex) { ++GFrameCounter; Test.World->Tick(LEVELTICK_All, 0.05f); }
+            NWI_REQUIRE(PoolReady->GetPropertyValue_InContainer(Controller));
+            NWI_REQUIRE(Hud->GetObjectPropertyValue_InContainer(Controller) == OriginalHud && OriginalHud->GetOwningPlayer() == Host);
+        }
+        auto* Service = AutomaticClass->FindFunctionByName(TEXT("ServiceRegions"));
+        auto* Point = FindFProperty<FStructProperty>(AutomaticClass, TEXT("RegionPoint0"));
+        auto* Serial = FindFProperty<FIntProperty>(AutomaticClass, TEXT("RegionSerial0"));
+        auto* Visible = FindFProperty<FIntProperty>(AutomaticClass, TEXT("RegionVisible0"));
+        auto* Expires = FindFProperty<FFloatProperty>(AutomaticClass, TEXT("RegionExpires0"));
+        NWI_REQUIRE(Service && Point && Serial && Visible && Expires);
+        *Point->ContainerPtrToValuePtr<FVector>(Controller) = FVector(1000.f, 2000.f, 300.f);
+        Serial->SetPropertyValue_InContainer(Controller, 1);
+        Visible->SetPropertyValue_InContainer(Controller, 1);
+        Expires->SetPropertyValue_InContainer(Controller, Test.World->GetTimeSeconds() + 8.f);
+        Controller->ProcessEvent(Service, nullptr);
+        NWI_REQUIRE(OriginalHud->GetVisibility() == ESlateVisibility::HitTestInvisible);
+        for (auto* JoinedRemote : Remotes) NWI_REQUIRE(JoinedRemote->Destroy());
+        NWI_REQUIRE(Controller->Destroy() && Host->Destroy());
+        UE_LOG(LogTemp, Display, TEXT("NWI_TEST listen host marker remained visible after three sequential remote joins"));
+    }
+
+    // Adverse ordering: index zero is remote, but controller ID zero still resolves the local host.
+    {
+        FTestWorld Test;
+        ANwiValidationPlayerController* Host = nullptr;
+        ANwiValidationPlayerController* Remote = nullptr;
+        TSharedPtr<SOverlay> Overlay;
+        NWI_REQUIRE(Test.World && ConfigureWorld(Test, Host, Remote, Overlay, true) && Remote);
+        NWI_REQUIRE(Host->Destroy()); Host = nullptr;
+        NWI_REQUIRE(UGameplayStatics::GetPlayerController(Test.World, 0) == Remote && !Remote->IsLocalController());
+        NWI_REQUIRE(UGameplayStatics::GetPlayerControllerFromID(Test.World, 0) == nullptr);
+        auto* Controller = Test.World->SpawnActor<AActor>(AutomaticClass);
+        auto* ResourcesReady = FindFProperty<FBoolProperty>(AutomaticClass, TEXT("Ready"));
+        auto* PoolAttempted = FindFProperty<FBoolProperty>(AutomaticClass, TEXT("PoolAttempted"));
+        auto* PoolReady = FindFProperty<FBoolProperty>(AutomaticClass, TEXT("PoolReady"));
+        auto* Hud = FindFProperty<FObjectPropertyBase>(AutomaticClass, TEXT("AutoHud0"));
+        NWI_REQUIRE(Controller && ResourcesReady && PoolAttempted && PoolReady && Hud);
+        // Isolate controller selection from game-only soft assets absent in the authoring project.
+        ResourcesReady->SetPropertyValue_InContainer(Controller, true);
+        for (int32 Index = 0; Index < 20; ++Index) { ++GFrameCounter; Test.World->Tick(LEVELTICK_All, 0.05f); }
+        NWI_REQUIRE(!PoolAttempted->GetPropertyValue_InContainer(Controller) && !PoolReady->GetPropertyValue_InContainer(Controller));
+        Host = Test.World->SpawnActor<ANwiValidationPlayerController>();
+        NWI_REQUIRE(Host); Host->bValidationLocal = true;
+        auto* Local = NewObject<ULocalPlayer>(GEngine); Local->SetControllerId(0);
+        Host->Player = Local; Local->PlayerController = Host;
+        NWI_REQUIRE(UGameplayStatics::GetPlayerController(Test.World, 0) == Remote);
+        NWI_REQUIRE(UGameplayStatics::GetPlayerControllerFromID(Test.World, 0) == Host);
+        NWI_REQUIRE(TickUntil(Test.World, [&] { return PoolReady->GetPropertyValue_InContainer(Controller); }));
+        auto* LocalHud = Cast<UUserWidget>(Hud->GetObjectPropertyValue_InContainer(Controller));
+        NWI_REQUIRE(PoolAttempted->GetPropertyValue_InContainer(Controller) && LocalHud && LocalHud->GetOwningPlayer() == Host);
+        auto* Service = AutomaticClass->FindFunctionByName(TEXT("ServiceRegions"));
+        auto* Cleanup = AutomaticClass->FindFunctionByName(TEXT("CleanupPool"));
+        auto* Serial = FindFProperty<FIntProperty>(AutomaticClass, TEXT("RegionSerial0"));
+        auto* Visible = FindFProperty<FIntProperty>(AutomaticClass, TEXT("RegionVisible0"));
+        auto* Expires = FindFProperty<FFloatProperty>(AutomaticClass, TEXT("RegionExpires0"));
+        NWI_REQUIRE(Service && Cleanup && Serial && Visible && Expires);
+        Serial->SetPropertyValue_InContainer(Controller, 1);
+        Visible->SetPropertyValue_InContainer(Controller, 1);
+        Expires->SetPropertyValue_InContainer(Controller, Test.World->GetTimeSeconds() + 8.f);
+        Controller->ProcessEvent(Service, nullptr);
+        NWI_REQUIRE(LocalHud->GetVisibility() == ESlateVisibility::HitTestInvisible);
+        Controller->ProcessEvent(Cleanup, nullptr);
+        NWI_REQUIRE(!PoolAttempted->GetPropertyValue_InContainer(Controller) && !PoolReady->GetPropertyValue_InContainer(Controller));
+        NWI_REQUIRE(Controller->Destroy() && Host->Destroy() && Remote->Destroy());
+        UE_LOG(LogTemp, Display, TEXT("NWI_TEST remote-first ordering selected the local host and cleanup enabled retry"));
+    }
     return true;
 }
 
@@ -330,6 +472,7 @@ bool ValidateAutomatic(UClass* PulseClass, UClass* WidgetClass)
     auto* Attempted = FindFProperty<FBoolProperty>(Class, TEXT("PoolAttempted"));
     NWI_REQUIRE(Controller && Service && Attempted);
     NWI_REQUIRE(Controller->IsActorTickEnabled() && Controller->GetIsReplicated());
+    NWI_REQUIRE(Controller->bAlwaysRelevant && Controller->NetUpdateFrequency == 20.f && Controller->MinNetUpdateFrequency == 20.f);
     ++GFrameCounter; Test.World->Tick(LEVELTICK_All, 0.1f);
     NWI_REQUIRE(!Attempted->GetPropertyValue_InContainer(Controller));
     auto* Material = LoadObject<UMaterial>(nullptr, TEXT("/Game/EnemyWaveIndicator/M_NwiRedPulse.M_NwiRedPulse"));
@@ -344,9 +487,16 @@ bool ValidateAutomatic(UClass* PulseClass, UClass* WidgetClass)
         auto* Point = FindFProperty<FStructProperty>(Class, *FString::Printf(TEXT("RegionPoint%d"), I));
         auto* Serial = FindFProperty<FIntProperty>(Class, *FString::Printf(TEXT("RegionSerial%d"), I));
         auto* Visible = FindFProperty<FIntProperty>(Class, *FString::Printf(TEXT("RegionVisible%d"), I));
+        auto* Type = FindFProperty<FIntProperty>(Class, *FString::Printf(TEXT("RegionType%d"), I));
+        auto* Expires = FindFProperty<FFloatProperty>(Class, *FString::Printf(TEXT("RegionExpires%d"), I));
+        auto* RegionScale = FindFProperty<FFloatProperty>(Class, *FString::Printf(TEXT("RegionScale%d"), I));
         auto* Pulse = FindFProperty<FObjectPropertyBase>(Class, *FString::Printf(TEXT("AutoPulse%d"), I));
         auto* Hud = FindFProperty<FObjectPropertyBase>(Class, *FString::Printf(TEXT("AutoHud%d"), I));
-        NWI_REQUIRE(Point && Point->Struct == TBaseStructure<FVector>::Get() && Serial && Visible && Pulse && Hud);
+        NWI_REQUIRE(Point && Point->Struct == TBaseStructure<FVector>::Get() && Serial && Visible && Type && Expires && RegionScale && Pulse && Hud);
+        NWI_REQUIRE(Point->HasAnyPropertyFlags(CPF_Net) && Serial->HasAnyPropertyFlags(CPF_Net)
+            && Visible->HasAnyPropertyFlags(CPF_Net) && Type->HasAnyPropertyFlags(CPF_Net)
+            && Expires->HasAnyPropertyFlags(CPF_Net) && RegionScale->HasAnyPropertyFlags(CPF_Net));
+        NWI_REQUIRE(!Pulse->HasAnyPropertyFlags(CPF_Net) && !Hud->HasAnyPropertyFlags(CPF_Net));
         Pulses[I] = Test.World->SpawnActor<AStaticMeshActor>(PulseClass);
         Huds[I] = NewObject<UUserWidget>(GetTransientPackage(), WidgetClass);
         NWI_REQUIRE(Huds[I]->Initialize());
@@ -550,7 +700,7 @@ bool ValidateAutomatic(UClass* PulseClass, UClass* WidgetClass)
     for (int32 I = 0; I < 8; ++I) NWI_REQUIRE(FindFProperty<FFloatProperty>(PulseClass, TEXT("RadiusScale"))->GetPropertyValue_InContainer(Pulses[I]) == 6.f && Mid->GetObjectPropertyValue_InContainer(Pulses[I]) == Mids[I]);
     auto* Pc = Test.World->SpawnActor<APlayerController>(); auto* Pawn = Test.World->SpawnActor<ADefaultPawn>();
     NWI_REQUIRE(Pc && Pawn); auto* Instance = NewObject<UGameInstance>(GEngine); Test.World->SetGameInstance(Instance);
-    auto* Local = NewObject<ULocalPlayer>(GEngine); Pc->Player = Local; Local->PlayerController = Pc;
+    auto* Local = NewObject<ULocalPlayer>(GEngine); Local->SetControllerId(0); Pc->Player = Local; Local->PlayerController = Pc;
     Pc->Possess(Pawn); Huds[0]->SetOwningPlayer(Pc);
     NWI_REQUIRE(Pawn->SetActorLocation(FVector(0, 0, 0), false, nullptr, ETeleportType::TeleportPhysics));
     *FindFProperty<FStructProperty>(WidgetClass, TEXT("WorldLocation"))->ContainerPtrToValuePtr<FVector>(Huds[0]) = FVector(300, 400, 0);
@@ -657,6 +807,8 @@ bool ValidateNwiPresentation()
     NWI_REQUIRE(ValidatePlacement(WidgetClass));
     UE_LOG(LogTemp, Display, TEXT("NWI_TEST saved Blueprint classes loaded"));
     const int32 Before = GEngine->GetWorldContexts().Num();
+    NWI_REQUIRE(ValidateListenHostControllerSelection(AutomaticClass));
+    NWI_REQUIRE(GEngine->GetWorldContexts().Num() == Before);
     NWI_REQUIRE(ValidateAutomatic(PulseClass, WidgetClass));
     NWI_REQUIRE(ValidateCapture());
     NWI_REQUIRE(GEngine->GetWorldContexts().Num() == Before);

@@ -33,7 +33,9 @@ void BuildAutomatic()
     Compile(BP);
 
     auto* Self = Node<UK2Node_Self>(G); Self->AllocateDefaultPins();
-    auto* Player = Call(G, UGameplayStatics::StaticClass(), TEXT("GetPlayerController"));
+    // Controller ID lookup ignores remote controllers, whose local controller ID is INDEX_NONE.
+    auto* Player = Call(G, UGameplayStatics::StaticClass(), TEXT("GetPlayerControllerFromID"));
+    Value(Player, TEXT("ControllerID"), TEXT("0"));
     auto* Ready = Get(G, TEXT("Ready")); auto* PlayerValid = Valid(G, Player, TEXT("ReturnValue"));
     auto* Host = Call(G, UKismetSystemLibrary::StaticClass(), TEXT("IsServer"));
     auto* Local = Call(G, UKismetMathLibrary::StaticClass(), TEXT("BooleanAND"));
@@ -78,6 +80,9 @@ void BuildAutomatic()
         auto* Pair = Call(G, UKismetMathLibrary::StaticClass(), TEXT("BooleanAND"));
         Link(PulseValid, TEXT("ReturnValue"), Pair, TEXT("A")); Link(HudValid, TEXT("ReturnValue"), Pair, TEXT("B"));
         auto* ValidPair = Branch(G, Pair, TEXT("ReturnValue")); Link(SaveHud, TEXT("then"), ValidPair, TEXT("execute"));
+        // Tear down a partial pool and permit a later Tick to retry instead of remaining permanently attempted.
+        auto* RetryCleanup = Call(G, BP->GeneratedClass, TEXT("CleanupPool"));
+        Link(ValidPair, TEXT("else"), RetryCleanup, TEXT("execute"));
         auto* Init = Call(G, PulseClass, TEXT("InitializeVisual")); Link(Pulse, *PulseName, Init, TEXT("self"));
         for (auto* ResourceName : { TEXT("Material"), TEXT("Scale"), TEXT("Alpha") }) { auto* Resource = Get(G, ResourceName); Link(Resource, ResourceName, Init, ResourceName); }
         Link(ValidPair, TEXT("then"), Init, TEXT("execute"));
@@ -147,6 +152,8 @@ void BuildAutomatic()
         Link(Destroy, TEXT("then"), NextCall, TEXT("execute")); Link(CleanPulse, TEXT("else"), NextCall, TEXT("execute")); CleanupExec = Next[I];
     }
     auto* ReadyPool = Set(G, TEXT("PoolReady")); Value(ReadyPool, TEXT("PoolReady"), TEXT("true")); Link(BuildExec, TEXT("then"), ReadyPool, TEXT("execute"));
+    auto* ClearReady = Set(G, TEXT("PoolReady")); Value(ClearReady, TEXT("PoolReady"), TEXT("false")); Link(CleanupExec, TEXT("then"), ClearReady, TEXT("execute"));
+    auto* ClearAttempted = Set(G, TEXT("PoolAttempted")); Value(ClearAttempted, TEXT("PoolAttempted"), TEXT("false")); Link(ClearReady, TEXT("then"), ClearAttempted, TEXT("execute"));
     auto* End = Event(G, AActor::StaticClass(), TEXT("ReceiveEndPlay"));
     auto* Clean = Call(G, BP->GeneratedClass, TEXT("CleanupPool")); Link(End, TEXT("then"), Clean, TEXT("execute"));
     auto* ParentEnd = Node<UK2Node_CallParentFunction>(G); ParentEnd->SetFromFunction(AActor::StaticClass()->FindFunctionByName(TEXT("ReceiveEndPlay"))); ParentEnd->AllocateDefaultPins();

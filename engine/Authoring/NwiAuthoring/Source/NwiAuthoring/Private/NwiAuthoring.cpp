@@ -647,7 +647,7 @@ public:
             if (FParse::Value(FCommandLine::Get(), TEXT("NwiValidationResult="), ResultFile))
             {
                 FFileHelper::SaveStringToFile(Passed
-                    ? TEXT("{\"success\":true,\"capture_test\":true,\"native_contract_test\":true,\"replication_metadata_test\":true,\"content_only\":false,\"automatic_pool_test\":true,\"settings_test\":true,\"async_resource_tests\":true,\"visual_no_controller_test\":true,\"edge_cases\":1452,\"red_material_test\":true,\"gpu_tested\":false,\"game_integration_tested\":false}")
+                    ? TEXT("{\"success\":true,\"capture_test\":true,\"native_contract_test\":true,\"replication_metadata_test\":true,\"listen_host_local_first_join_test\":true,\"listen_host_remote_first_recovery_test\":true,\"pool_retry_state_test\":true,\"content_only\":false,\"automatic_pool_test\":true,\"settings_test\":true,\"async_resource_tests\":true,\"visual_no_controller_test\":true,\"edge_cases\":1452,\"red_material_test\":true,\"gpu_tested\":false,\"game_integration_tested\":false}")
                     : TEXT("{\"success\":false}"), *ResultFile);
             }
             UE_LOG(LogTemp, Display, TEXT("NWI_VALIDATION_RESULT %s"), Passed ? TEXT("PASS") : TEXT("FAIL"));
