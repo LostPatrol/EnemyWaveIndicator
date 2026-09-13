@@ -1,9 +1,9 @@
 <!-- Native handoff and editor-only Blueprint build boundary. -->
-# Presentation authoring — 0.9.4
+# Presentation authoring — 0.9.5
 
 Open FSD.uproject in UE4.27.2. FSD is the required content mount name, not a shipped native module. The editor-only NwiAuthoring plugin emits nine production assets: Auto, Resources, Pulse, Marker, Settings page, Settings SaveGame, Red Material, InitCave and InitSpacerig.
 
-Auto is an always-relevant replicated actor created by host initializers. The native DLL binds only Auto.NwiPoll (zero arguments), validates NativeAbi=0x90400, and writes owned region fields. Clients skip native polling and render replicated regions. Clock expiry uses server world time; display preferences and visual pools remain local. Each pulse owns one reusable MID and has no collision, gameplay navigation or replication.
+Auto is an always-relevant replicated actor created by host initializers. The native DLL binds only Auto.NwiPoll (zero arguments), validates NativeAbi=0x90500, and writes owned region fields. Clients skip native polling and render replicated regions. Clock expiry uses server world time; display preferences and visual pools remain local. Each pulse owns one reusable MID and has no collision, gameplay navigation or replication.
 
 Settings expose 47 independent wave toggles and labels in a compact three-section layout with 24 rows per wave column. All sources default on except IDs 1, 6, 32, 34 and 46. Text defaults to yellow/red 2 Hz alternation; sphere appearance remains independently editable. Existing saves gain appended fields from their class defaults. The preview checks draft values without saving. Native source, filtering and measured timing are described in the repository README.
 

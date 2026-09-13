@@ -1,10 +1,10 @@
-<!-- Bilingual player reference for every wave type available in Enemy Wave Indicator 0.9.4. -->
+<!-- Bilingual player reference for every wave type available in Enemy Wave Indicator 0.9.5. -->
 
 # Wave Types / 虫潮类型
 
-Enemy Wave Indicator 0.9.4 provides separate switches and labels for one natural-wave source and 46 stock scripted wave types: 35 wave controllers, three direct machine-event sources, and eight mission-warning or anomaly sources. Every type is enabled by default except IDs **1, 6, 32, 34, and 46**. After changing a setting in Mod Hub, select **Apply and save**. The settings UI follows the game language in English or Simplified Chinese, while editable marker defaults remain English.
+Enemy Wave Indicator 0.9.5 provides separate switches and labels for one natural-wave source and 46 stock scripted wave types: 35 wave controllers, three direct machine-event sources, and eight mission-warning or anomaly sources. Every type is enabled by default except IDs **1, 6, 32, 34, and 46**. After changing a setting in Mod Hub, select **Apply and save**. The settings UI follows the game language in English or Simplified Chinese, while editable marker defaults remain English.
 
-Enemy Wave Indicator 0.9.4 为自然潮和 46 种游戏自带的脚本虫潮类型提供独立开关与提示文字，其中包括 35 种虫潮控制器、3 种直接刷怪的机械事件，以及 8 种任务警告或异变来源。除 ID **1、6、32、34、46** 外，其余类型默认全部开启；在 Mod Hub 中修改设置后，请点击**应用并保存**。设置界面会随游戏语言显示英文或简体中文，但可编辑的标记默认内容始终保留英文。
+Enemy Wave Indicator 0.9.5 为自然潮和 46 种游戏自带的脚本虫潮类型提供独立开关与提示文字，其中包括 35 种虫潮控制器、3 种直接刷怪的机械事件，以及 8 种任务警告或异变来源。除 ID **1、6、32、34、46** 外，其余类型默认全部开启；在 Mod Hub 中修改设置后，请点击**应用并保存**。设置界面会随游戏语言显示英文或简体中文，但可编辑的标记默认内容始终保留英文。
 
 ## Main settings / 主要设置
 
