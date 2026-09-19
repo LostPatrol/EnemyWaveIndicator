@@ -15,8 +15,10 @@ function inspect(file){
  return {names,imports:imports.map((_,i)=>full(-i-1))};
 }
 const root=process.argv[2];assert(root,'Provide a cooked content directory');
-const wanted=['BP_NwiAuto','BP_NwiResources','BP_NwiPulse','WBP_NwiMarker','SG_NwiSettings','WBP_NwiSettings','M_NwiRedPulse','InitCave','InitSpacerig'];
+const wanted=['BP_EwiAuto','BP_EwiResources','BP_EwiPulse','WBP_EwiMarker','SG_EwiSettings','WBP_EwiSettings','M_EwiRedPulse','InitCave','InitSpacerig'];
 const result=[],nativePackages=new Set(['/Script/CoreUObject','/Script/Engine','/Script/SlateCore','/Script/UMG']);
-for(const base of wanted){const p=inspect(path.join(root,base+'.uasset'));for(const n of [...p.names,...p.imports])assert(!/NwiAuthoring|NwiValidation|FixtureWaveManager|BP_NwiVisualTest/.test(n),'Unexpected runtime reference: '+n);for(const n of p.imports)if(n.startsWith('/Script/'))assert(nativePackages.has(n.split('.')[0]),'Unexpected native module: '+n);result.push({asset:base,imports:p.imports});}
-const auto=inspect(path.join(root,'BP_NwiAuto.uasset'));for(const field of ['NwiPoll','NativeAbi','NativeTime','RegionScale0'])assert(auto.names.includes(field),'Missing native handoff '+field);for(const old of ['ObserveEnemy','ActiveScriptedWaves','RecordSpawn'])assert(!auto.names.includes(old),'Obsolete approximate capture '+old);
-console.log(JSON.stringify({passed:true,contentOnly:false,nativeAbi:591104,assets:result.length,packages:result}));
+for(const base of wanted){const p=inspect(path.join(root,base+'.uasset'));for(const n of [...p.names,...p.imports])assert(!/EwiAuthoring|EwiValidation|FixtureWaveManager|BP_EwiVisualTest/.test(n),'Unexpected runtime reference: '+n);for(const n of p.imports)if(n.startsWith('/Script/'))assert(nativePackages.has(n.split('.')[0]),'Unexpected native module: '+n);
+  for(const n of p.imports)assert(!/Icon_Warning_Drilldozer|\/Game\/UI\/Art\//.test(n),'Cooked import of game HUD art: '+n);
+  result.push({asset:base,imports:p.imports});}
+const auto=inspect(path.join(root,'BP_EwiAuto.uasset'));for(const field of ['EwiPoll','NativeAbi','NativeTime','RegionScale0'])assert(auto.names.includes(field),'Missing native handoff '+field);for(const old of ['ObserveEnemy','ActiveScriptedWaves','RecordSpawn'])assert(!auto.names.includes(old),'Obsolete approximate capture '+old);
+console.log(JSON.stringify({passed:true,contentOnly:false,nativeAbi:65536,assets:result.length,packages:result}));

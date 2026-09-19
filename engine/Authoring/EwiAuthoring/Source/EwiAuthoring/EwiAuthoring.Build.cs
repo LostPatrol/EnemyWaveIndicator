@@ -1,8 +1,8 @@
 // Editor-only dependencies; generated assets use standard Engine reflection and the native handoff.
 using UnrealBuildTool;
-public class NwiAuthoring : ModuleRules
+public class EwiAuthoring : ModuleRules
 {
-    public NwiAuthoring(ReadOnlyTargetRules Target) : base(Target)
+    public EwiAuthoring(ReadOnlyTargetRules Target) : base(Target)
     {
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
         PrivateDependencyModuleNames.AddRange(new string[] {

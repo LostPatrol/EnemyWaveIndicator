@@ -5,7 +5,7 @@
 #include <cwchar>
 #include <iterator>
 
-namespace nwi {
+namespace ewi {
 enum class WorldKind : uint32_t { Excluded, SpaceRig, Mission };
 // Classify the active object's complete name, not another loaded map found by a global path search.
 inline WorldKind classifyWorldName(const wchar_t* name, size_t length) noexcept {
@@ -68,7 +68,7 @@ public:
             if (recoveryAttemptsForWorld_ >= MaxRecoveryAttempts) { status = 4; return; }
             ++readinessChecks;
             if (!api_.worldReady(world)) { status = 2; return; }
-            // Loading Init also loads its hard-referenced controller before binding NwiPoll.
+            // Loading Init also loads its hard-referenced controller before binding EwiPoll.
             // Init owns the authority check and GetActorOfClass deduplication with MintCat's entry.
             const auto name = kind == WorldKind::SpaceRig ? view(RigClassPath) : view(CaveClassPath);
             void* cls = api_.find(&name); // Never keep an unrooted UClass pointer across callbacks/GC.
@@ -129,4 +129,4 @@ private:
     bool spawnAttemptedForWorld_ = false;
     bool spawnSucceededForWorld_ = false;
 };
-} // namespace nwi
+} // namespace ewi

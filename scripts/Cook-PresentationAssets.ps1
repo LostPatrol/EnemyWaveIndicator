@@ -27,10 +27,10 @@ if (!(Test-Path -LiteralPath $cookedContent)) { throw "Expected cooked output no
 if (Get-ChildItem -LiteralPath (Join-Path $output 'FSD\Content') -Filter 'ShaderArchive-FSD-*.ushaderbytecode' -File) {
     throw 'Custom material shaders were externalized; disable bShareMaterialShaderCode and recook.'
 }
-$files = @(Get-ChildItem -LiteralPath $cookedContent -File | Where-Object { $_.BaseName -ne 'BP_NwiVisualTest' })
-$allowed = @('BP_NwiPulse.uasset', 'BP_NwiPulse.uexp', 'WBP_NwiMarker.uasset', 'WBP_NwiMarker.uexp', 'BP_NwiResources.uasset', 'BP_NwiResources.uexp', 'BP_NwiAuto.uasset', 'BP_NwiAuto.uexp', 'M_NwiRedPulse.uasset', 'M_NwiRedPulse.uexp')
+$files = @(Get-ChildItem -LiteralPath $cookedContent -File | Where-Object { $_.BaseName -ne 'BP_EwiVisualTest' })
+$allowed = @('BP_EwiPulse.uasset', 'BP_EwiPulse.uexp', 'WBP_EwiMarker.uasset', 'WBP_EwiMarker.uexp', 'BP_EwiResources.uasset', 'BP_EwiResources.uexp', 'BP_EwiAuto.uasset', 'BP_EwiAuto.uexp', 'M_EwiRedPulse.uasset', 'M_EwiRedPulse.uexp')
 $allowed += @('InitCave.uasset','InitCave.uexp','InitSpacerig.uasset','InitSpacerig.uexp')
-$allowed += @('SG_NwiSettings.uasset','SG_NwiSettings.uexp','WBP_NwiSettings.uasset','WBP_NwiSettings.uexp')
+$allowed += @('SG_EwiSettings.uasset','SG_EwiSettings.uexp','WBP_EwiSettings.uasset','WBP_EwiSettings.uexp')
 if ($files.Count -ne $allowed.Count) { throw 'Unexpected cooked presentation file count.' }
 foreach ($file in $files) { if ($file.Name -notin $allowed) { throw "Unexpected package entry: $($file.Name)" } }
 $node = (Get-Command node -ErrorAction SilentlyContinue).Source
@@ -56,7 +56,7 @@ if ($LASTEXITCODE -ne 0) { throw "Pak listing failed. See $evidence" }
     Pak = Get-FileHash -LiteralPath $pak; Files = @($files | Get-FileHash); AssetsOnly = $true;
     ContainsGameAssetCopies = $false; InlineMaterialShaders = $true;
     PackagingConfig = Get-FileHash -LiteralPath (Join-Path $projectRoot 'engine\FSD\Config\DefaultGame.ini');
-    SeparateNativeBootstrapRequired = $false; ContentOnly = $false; RuntimeDllRequired = $true; Version = '0.9.5';
+    SeparateNativeBootstrapRequired = $false; ContentOnly = $false; RuntimeDllRequired = $true; Version = '1.0.0';
     DependencyAudit = Get-FileHash -LiteralPath $dependencyLog; PakHashesVerified = $true; GameDeployed = $false } |
     ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $evidence 'verification.json') -Encoding utf8
 Write-Output $evidence

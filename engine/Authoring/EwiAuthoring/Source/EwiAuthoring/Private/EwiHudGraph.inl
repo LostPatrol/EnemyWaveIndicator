@@ -1,4 +1,75 @@
-// Shared square-wave color preview and HUD rendering; Hz means complete A/B cycles per second.
+// Shared square-wave color preview, HUD rendering, and runtime warning-icon load.
+// Hz means complete A/B cycles per second.
+
+// Stock Doretta HUD warning; runtime soft-load only, never cooked into this mod.
+const TCHAR* EwiWarningIconObjectPath = TEXT("/Game/UI/Art/MainOnScreenHUD/Drilldozer/Icon_Warning_Drilldozer_V1.Icon_Warning_Drilldozer_V1");
+constexpr float EwiMarkerWarningIconSize = 28.f; // Matches the 22pt marker type with a small gap.
+constexpr float EwiPreviewWarningIconSize = 22.f; // Matches the 18pt settings preview type.
+// FSD HUD art is a white mask; this tint is fixed and is not the flashing label color.
+const FLinearColor EwiWarningIconTint(1.f, 0.1f, 0.02f, 1.f);
+
+// Request the stock warning texture without blocking Construct/Tick. Missing assets stay collapsed.
+// Returns the Sequence node; the caller continues from then_1. then_0 owns the latent load.
+UK2Node_ExecutionSequence* StartWarningIconLoad(UEdGraph* G, UEdGraphNode* Exec, const TCHAR* ExecPin, const TCHAR* IconWidget)
+{
+    auto* Seq = Node<UK2Node_ExecutionSequence>(G);
+    Seq->AllocateDefaultPins();
+    Link(Exec, ExecPin, Seq, TEXT("execute"));
+    auto* Attempted = Get(G, TEXT("WarningIconAttempted"));
+    auto* Skip = Node<UK2Node_IfThenElse>(G);
+    Skip->AllocateDefaultPins();
+    Link(Attempted, TEXT("WarningIconAttempted"), Skip, TEXT("Condition"));
+    Link(Seq, TEXT("then_0"), Skip, TEXT("execute"));
+    auto* Path = Get(G, TEXT("WarningIconPath"));
+    auto* Empty = Call(G, UKismetStringLibrary::StaticClass(), TEXT("IsEmpty"));
+    Link(Path, TEXT("WarningIconPath"), Empty, TEXT("InString"));
+    auto* PathGate = Node<UK2Node_IfThenElse>(G);
+    PathGate->AllocateDefaultPins();
+    Link(Empty, TEXT("ReturnValue"), PathGate, TEXT("Condition"));
+    Link(Skip, TEXT("else"), PathGate, TEXT("execute"));
+    auto* MarkEmpty = Set(G, TEXT("WarningIconAttempted"));
+    Value(MarkEmpty, TEXT("WarningIconAttempted"), TEXT("true"));
+    Link(PathGate, TEXT("then"), MarkEmpty, TEXT("execute"));
+    auto* Player = Call(G, UUserWidget::StaticClass(), TEXT("GetOwningPlayer"));
+    auto* PlayerOk = Call(G, UKismetSystemLibrary::StaticClass(), TEXT("IsValid"));
+    Link(Player, TEXT("ReturnValue"), PlayerOk, TEXT("Object"));
+    auto* PlayerGate = Node<UK2Node_IfThenElse>(G);
+    PlayerGate->AllocateDefaultPins();
+    Link(PlayerOk, TEXT("ReturnValue"), PlayerGate, TEXT("Condition"));
+    Link(PathGate, TEXT("else"), PlayerGate, TEXT("execute"));
+    auto* Mark = Set(G, TEXT("WarningIconAttempted"));
+    Value(Mark, TEXT("WarningIconAttempted"), TEXT("true"));
+    Link(PlayerGate, TEXT("then"), Mark, TEXT("execute"));
+    auto* MakePath = Call(G, UKismetSystemLibrary::StaticClass(), TEXT("MakeSoftObjectPath"));
+    Link(Path, TEXT("WarningIconPath"), MakePath, TEXT("PathString"));
+    auto* Ref = Call(G, UKismetSystemLibrary::StaticClass(), TEXT("Conv_SoftObjPathToSoftObjRef"));
+    Link(MakePath, TEXT("ReturnValue"), Ref, TEXT("SoftObjectPath"));
+    auto* Load = Node<UK2Node_LoadAsset>(G);
+    Load->AllocateDefaultPins();
+    Link(Ref, TEXT("ReturnValue"), Load, TEXT("Asset"));
+    Link(Mark, TEXT("then"), Load, TEXT("execute"));
+    auto* Cast = Node<UK2Node_DynamicCast>(G);
+    Cast->TargetType = UTexture2D::StaticClass();
+    Cast->AllocateDefaultPins();
+    Cast->SetPurity(true);
+    check(GetDefault<UEdGraphSchema_K2>()->TryCreateConnection(Pin(Load, TEXT("Object")), Cast->GetCastSourcePin()));
+    auto* TexOk = Call(G, UKismetSystemLibrary::StaticClass(), TEXT("IsValid"));
+    check(GetDefault<UEdGraphSchema_K2>()->TryCreateConnection(Cast->GetCastResultPin(), Pin(TexOk, TEXT("Object"))));
+    auto* TexGate = Node<UK2Node_IfThenElse>(G);
+    TexGate->AllocateDefaultPins();
+    Link(TexOk, TEXT("ReturnValue"), TexGate, TEXT("Condition"));
+    Link(Load, TEXT("Completed"), TexGate, TEXT("execute"));
+    auto* Brush = Call(G, UImage::StaticClass(), TEXT("SetBrushFromTexture"));
+    Link(Get(G, IconWidget), IconWidget, Brush, TEXT("self"));
+    check(GetDefault<UEdGraphSchema_K2>()->TryCreateConnection(Cast->GetCastResultPin(), Pin(Brush, TEXT("Texture"))));
+    Value(Brush, TEXT("bMatchSize"), TEXT("false"));
+    Link(TexGate, TEXT("then"), Brush, TEXT("execute"));
+    auto* Show = Call(G, UWidget::StaticClass(), TEXT("SetVisibility"));
+    Link(Get(G, IconWidget), IconWidget, Show, TEXT("self"));
+    Value(Show, TEXT("InVisibility"), TEXT("HitTestInvisible"));
+    Link(Brush, TEXT("then"), Show, TEXT("execute"));
+    return Seq;
+}
 UK2Node_CallFunction* PaintWarning(UEdGraph* G, UEdGraphNode* Target, const TCHAR* TargetPin, UEdGraphNode* A, const TCHAR* APin, UEdGraphNode* B, const TCHAR* BPin, UEdGraphNode* Hz, const TCHAR* HzPin, UEdGraphNode* Enabled, const TCHAR* EnabledPin)
 {
     auto* Frequency=Call(G,UKismetMathLibrary::StaticClass(),TEXT("FClamp")); Link(Hz,HzPin,Frequency,TEXT("Value"));Value(Frequency,TEXT("Min"),TEXT("0.1"));Value(Frequency,TEXT("Max"),TEXT("10"));
@@ -117,6 +188,7 @@ void BuildWarningTick(UBlueprint* BP, UEdGraph* G)
 void ConnectHudTick(UBlueprint* BP, UEdGraph* G)
 {
     auto* Tick = Event(G, UUserWidget::StaticClass(), TEXT("Tick"));
+    auto* LoadIcon = StartWarningIconLoad(G, Tick, TEXT("then"), TEXT("WarningIcon"));
     auto* Player = Call(G, UWidget::StaticClass(), TEXT("GetOwningPlayer"));
     auto* Location = Get(G, TEXT("WorldLocation"));
     auto* Project = Call(G, UWidgetLayoutLibrary::StaticClass(), TEXT("ProjectWorldLocationToWidgetPosition"));
@@ -134,8 +206,8 @@ void ConnectHudTick(UBlueprint* BP, UEdGraph* G)
     Link(Location, TEXT("WorldLocation"), Delta, TEXT("A")); Link(CameraPos, TEXT("ReturnValue"), Delta, TEXT("B"));
     auto* Local = Call(G, UKismetMathLibrary::StaticClass(), TEXT("LessLess_VectorRotator"));
     Link(Delta, TEXT("ReturnValue"), Local, TEXT("A")); Link(Rotation, TEXT("ReturnValue"), Local, TEXT("B"));
-    auto* Marker = Get(G, TEXT("MarkerText")); auto* Arrow = Get(G, TEXT("EdgeArrow"));
-    auto* Measure = Call(G, UWidget::StaticClass(), TEXT("GetDesiredSize")); Link(Marker, TEXT("MarkerText"), Measure, TEXT("self"));
+    auto* Marker = Get(G, TEXT("MarkerRow")); auto* Arrow = Get(G, TEXT("EdgeArrow"));
+    auto* Measure = Call(G, UWidget::StaticClass(), TEXT("GetDesiredSize")); Link(Marker, TEXT("MarkerRow"), Measure, TEXT("self"));
     auto* Place = Call(G, BP->GeneratedClass, TEXT("UpdatePlacement"));
     Link(Project, TEXT("ScreenPosition"), Place, TEXT("Projected")); Link(Project, TEXT("ReturnValue"), Place, TEXT("Front"));
     Link(LocalSize, TEXT("ReturnValue"), Place, TEXT("Viewport")); Link(Local, TEXT("ReturnValue"), Place, TEXT("CameraDelta"));
@@ -143,11 +215,11 @@ void ConnectHudTick(UBlueprint* BP, UEdGraph* G)
     // Slate calls Tick only while the viewport widget is active; validity guards cover teardown.
     auto* Valid = Call(G, UKismetSystemLibrary::StaticClass(), TEXT("IsValid")); Link(Camera, TEXT("ReturnValue"), Valid, TEXT("Object"));
     auto* Gate = Node<UK2Node_IfThenElse>(G); Gate->AllocateDefaultPins();
-    auto* Warning = Call(G, BP->GeneratedClass, TEXT("UpdateWarning")); Link(Tick, TEXT("then"), Warning, TEXT("execute"));
+    auto* Warning = Call(G, BP->GeneratedClass, TEXT("UpdateWarning")); Link(LoadIcon, TEXT("then_1"), Warning, TEXT("execute"));
     Link(Valid, TEXT("ReturnValue"), Gate, TEXT("Condition")); Link(Warning, TEXT("then"), Gate, TEXT("execute")); Link(Gate, TEXT("then"), Place, TEXT("execute"));
     auto* Position = Get(G, TEXT("MarkerPosition"));
     auto* Move = Call(G, UWidget::StaticClass(), TEXT("SetRenderTranslation"));
-    Link(Marker, TEXT("MarkerText"), Move, TEXT("self")); Link(Position, TEXT("MarkerPosition"), Move, TEXT("Translation")); Link(Place, TEXT("then"), Move, TEXT("execute"));
+    Link(Marker, TEXT("MarkerRow"), Move, TEXT("self")); Link(Position, TEXT("MarkerPosition"), Move, TEXT("Translation")); Link(Place, TEXT("then"), Move, TEXT("execute"));
     auto* Offset = Call(G, UKismetMathLibrary::StaticClass(), TEXT("Add_Vector2DVector2D"));
     Link(Position, TEXT("MarkerPosition"), Offset, TEXT("A")); Value(Offset, TEXT("B"), TEXT("(X=0,Y=-28)"));
     auto* ArrowMove = Call(G, UWidget::StaticClass(), TEXT("SetRenderTranslation"));

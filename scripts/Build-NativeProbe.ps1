@@ -18,7 +18,7 @@ try {
     $hookObjects = @('buffer.obj','hook.obj','trampoline.obj','hde64.obj')
     $nativeSources = @('main.cpp','GameCapture.cpp','AutomaticPresentation.cpp') | ForEach-Object { Join-Path $projectRoot ('mods\EnemyWaveNativeProbe\' + $_) }
     # Static CRT avoids passing STL/CRT ownership across the module boundary or shipping new runtimes.
-    $nativeDefines = @(if ($PredictionTest) { '/DNWI_NATURAL_PREDICTION=1' })
+    $nativeDefines = @(if ($PredictionTest) { '/DEWI_NORMAL_PREDICTION=1' })
     & cl.exe /nologo /std:c++17 /O2 /MT /EHsc /W4 /WX /utf-8 @nativeDefines /LD /Zi @nativeSources @hookObjects /link /OUT:main.dll /DEBUG /INCREMENTAL:NO 2>&1 | Tee-Object build-dll.txt | Out-Host
     if ($LASTEXITCODE -ne 0) { throw 'Native probe compilation failed.' }
     & cl.exe /nologo /std:c++17 /O2 /MT /EHsc /W4 /WX /utf-8 (Join-Path $projectRoot 'tests\native-probe-host.cpp') /Fe:probe-host.exe 2>&1 | Tee-Object build-host.txt | Out-Host
@@ -31,10 +31,10 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Presentation test compilation failed.' }
     & .\presentation-test.exe | Tee-Object presentation-test.txt | Out-Host
     if ($LASTEXITCODE -ne 0) { throw 'Presentation bootstrap tests failed.' }
-    & cl.exe /nologo /std:c++17 /O2 /MT /EHsc /W4 /WX /utf-8 (Join-Path $projectRoot 'tests\native-natural-prediction.cpp') /Fe:prediction-test.exe 2>&1 | Tee-Object build-prediction-test.txt | Out-Host
-    if ($LASTEXITCODE -ne 0) { throw 'Natural-wave prediction tests failed to compile.' }
+    & cl.exe /nologo /std:c++17 /O2 /MT /EHsc /W4 /WX /utf-8 (Join-Path $projectRoot 'tests\native-normal-prediction.cpp') /Fe:prediction-test.exe 2>&1 | Tee-Object build-prediction-test.txt | Out-Host
+    if ($LASTEXITCODE -ne 0) { throw 'Normal-wave prediction tests failed to compile.' }
     & .\prediction-test.exe | Tee-Object prediction-test.txt | Out-Host
-    if ($LASTEXITCODE -ne 0) { throw 'Natural-wave prediction geometry/gate tests failed.' }
+    if ($LASTEXITCODE -ne 0) { throw 'Normal-wave prediction geometry/gate tests failed.' }
     & cl.exe /nologo /std:c++17 /O2 /MT /EHsc /W4 /WX /utf-8 (Join-Path $projectRoot 'tests\native-game-capture.cpp') GameCapture.obj @hookObjects /Fe:capture-test.exe /link /OPT:NOICF 2>&1 | Tee-Object build-capture-test.txt | Out-Host
     if ($LASTEXITCODE -ne 0) { throw 'Native capture ABI harness failed to compile.' }
     & .\capture-test.exe | Tee-Object capture-test.txt | Out-Host
@@ -68,10 +68,10 @@ try {
         EngineHeaderSHA256 = (Get-FileHash (Join-Path $projectRoot 'mods\EnemyWaveNativeProbe\EngineThreadIdentity.h')).Hash
         PresentationHeaderSHA256 = (Get-FileHash (Join-Path $projectRoot 'mods\EnemyWaveNativeProbe\PresentationBootstrap.h')).Hash
         WorldHeaderSHA256 = (Get-FileHash (Join-Path $projectRoot 'mods\EnemyWaveNativeProbe\ActiveWorld.h')).Hash
-        ProbeVersion = if ($PredictionTest) { '0.9.4-prediction-test.6' } else { '0.9.5' }
+        ProbeVersion = if ($PredictionTest) { '0.9.4-prediction-test.6' } else { '1.0.0' }
         PredictionTest = [bool]$PredictionTest
         DispatchOfflinePassed = $true; PresentationOfflinePassed = $true; CaptureOfflinePassed = $true; PredictionOfflinePassed = $true
-        SourceFiles = @(@(Get-ChildItem (Join-Path $projectRoot 'mods\EnemyWaveNativeProbe') -File | Where-Object Extension -in '.cpp','.h') + @(Get-Item (Join-Path $projectRoot 'engine\Authoring\NwiAuthoring\Source\NwiAuthoring\Public\NwiWaveTypes.h')) + @(Get-ChildItem $vendor -File -Recurse) | Get-FileHash)
+        SourceFiles = @(@(Get-ChildItem (Join-Path $projectRoot 'mods\EnemyWaveNativeProbe') -File | Where-Object Extension -in '.cpp','.h') + @(Get-Item (Join-Path $projectRoot 'engine\Authoring\EwiAuthoring\Source\EwiAuthoring\Public\EwiWaveTypes.h')) + @(Get-ChildItem $vendor -File -Recurse) | Get-FileHash)
         OfflinePassed = $true; InGameVerified = $false; GameThreadVerified = $false
         Runs = 2; Updates = 20001
     } | ConvertTo-Json | Set-Content verification.json -Encoding utf8

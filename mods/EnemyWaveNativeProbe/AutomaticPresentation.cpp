@@ -10,13 +10,13 @@
 #include "GameCapture.h"
 #include "OriginRegions.h"
 #include "EnemyBuckets.h"
-#include "NaturalWavePrediction.h"
+#include "NormalWavePrediction.h"
 
-#ifndef NWI_NATURAL_PREDICTION
-#define NWI_NATURAL_PREDICTION 0
+#ifndef EWI_NORMAL_PREDICTION
+#define EWI_NORMAL_PREDICTION 0
 #endif
 
-namespace nwi::automatic {
+namespace ewi::automatic {
 namespace {
 using NativeFunction = void (*)(void*, void*, void*);
 using Find = void* (*)(const WideView*);
@@ -41,7 +41,7 @@ int32_t cookie = 0; // A fresh Blueprint instance has zero even when its allocat
 struct Output { float* point = nullptr; int32_t* serial = nullptr; int32_t* visible = nullptr; float* expires = nullptr; float* scale = nullptr; int32_t* type = nullptr; };
 Output output[OriginRegions::Capacity]{};
 
-#if NWI_NATURAL_PREDICTION
+#if EWI_NORMAL_PREDICTION
 struct ObjectArray { void* data = nullptr; int32_t count = 0, capacity = 0; };
 using NavQuery = bool (*)(void*, uint8_t, uint8_t, const prediction::Position*, float, prediction::Position*);
 using ConnectivityQuery = bool (*)(void*, uint8_t, uint8_t, const prediction::Position*, const prediction::Position*);
@@ -199,7 +199,7 @@ bool calculateLock(uint64_t now, prediction::Position& result) {
     NavFingerprint fingerprint{};
     if (!fingerprintNavigation(projected, searchRadius, fingerprint)) return false;
     SpawnKey input{1, projected.x, projected.y, projected.z}, sampled{};
-    if (!capture::sampleNaturalCenter(pathfinder, input, searchRadius, sampled)) return false;
+    if (!capture::sampleNormalCenter(pathfinder, input, searchRadius, sampled)) return false;
     result = {sampled.x, sampled.y, sampled.z};
     if (!prediction::finite(result)) return false;
     predictionLock = {};
@@ -211,7 +211,7 @@ bool calculateLock(uint64_t now, prediction::Position& result) {
     return true;
 }
 
-bool consumeNaturalOverrideUnchecked(const SpawnKey& input, float radius, SpawnKey& replacement) {
+bool consumeNormalOverrideUnchecked(const SpawnKey& input, float radius, SpawnKey& replacement) {
     if (!predictionLock.active) return false;
     const auto now = GetTickCount64();
     if (now < predictionLock.armedMs || now - predictionLock.armedMs > prediction::MaximumLockAgeMs
@@ -241,9 +241,9 @@ bool consumeNaturalOverrideUnchecked(const SpawnKey& input, float radius, SpawnK
     return true;
 }
 
-bool consumeNaturalOverride(const SpawnKey& input, float radius, SpawnKey& replacement) noexcept {
+bool consumeNormalOverride(const SpawnKey& input, float radius, SpawnKey& replacement) noexcept {
     bool result = false; bool faulted = false;
-    __try { result = consumeNaturalOverrideUnchecked(input, radius, replacement); }
+    __try { result = consumeNormalOverrideUnchecked(input, radius, replacement); }
     __except(EXCEPTION_EXECUTE_HANDLER) { faulted = true; }
     if (faulted) { invalidateLock(false); return false; }
     return result;
@@ -311,7 +311,7 @@ bool localAddress(void* actor, void* pointer, size_t bytes) noexcept {
 }
 bool bind(void* actor) {
     auto* abi = static_cast<int32_t*>(value(actor, L"NativeAbi"));
-    if (!localAddress(actor, abi, 4) || *abi != 0x90500) return false;
+    if (!localAddress(actor, abi, 4) || *abi != 0x10000) return false; // Packed 1.0.0 ABI.
     worldTime = static_cast<float*>(value(actor, L"NativeTime"));
     for (uint32_t i = 0; i < WaveTypeCount; ++i) {
         wchar_t field[48]; if (i) swprintf_s(field, L"NativeEnabled%u", i); else wcscpy_s(field, L"NativeEnabled");
@@ -340,7 +340,7 @@ bool bind(void* actor) {
             || !localAddress(actor, output[i].expires, 4) || !localAddress(actor, output[i].scale, 4) || !localAddress(actor, output[i].type, 4)) return false;
     }
     activeController = actor; activeWorld = world; regions.reset(); ++counters.bindings;
-#if NWI_NATURAL_PREDICTION
+#if EWI_NORMAL_PREDICTION
     predictionGate.reset(); predictionLock = {}; lastPredictionMs = comparedWave = 0; lastPredictionCount = 0;
     predictionGameMode = reflectedObject(world, L"AuthorityGameMode");
     predictionManager = resolveWaveManager(predictionGameMode);
@@ -349,7 +349,7 @@ bool bind(void* actor) {
     return true;
 }
 
-// Natural waves exclude small enemies; explicitly enabled scripted swarmers remain displayable.
+// Normal waves exclude small enemies; explicitly enabled scripted swarmers remain displayable.
 // Unknown/unregistered actors and critters fail closed for both paths.
 bool eligible(const SpawnEvent& event, float& cost) {
     auto* manager = capture::spawnManager();
@@ -373,13 +373,13 @@ void update(void* actor) {
     if ((activeController != actor || !instanceCookie || *instanceCookie != cookie) && !bind(actor)) { counters.fault = 1; capture::stop(); return; }
     ++counters.frames; capture::poll(counters.frames);
     const auto now = GetTickCount64(); SpawnEvent event;
-#if NWI_NATURAL_PREDICTION
+#if EWI_NORMAL_PREDICTION
     samplePrediction(now);
 #endif
     const float seconds = *durationSec;
     regions.lifetimeMs = seconds >= 1.0f && seconds <= 30.0f ? static_cast<uint64_t>(seconds * 1000.0f) : OriginRegions::LifetimeMs;
     for (uint32_t i = 0; i < SpawnAttribution::Capacity && capture::pop(event); ++i) {
-#if NWI_NATURAL_PREDICTION
+#if EWI_NORMAL_PREDICTION
         comparePrediction(event, now);
 #endif
         float cost = 0;
@@ -459,7 +459,7 @@ bool configure(HMODULE runtime, HMODULE game, uint32_t gameThread) noexcept {
     processEvent = resolve<ProcessEvent>(runtime, "?SafeProcessEvent@Seh@RC@@YA_NPEAVUObject@Unreal@2@PEAVUFunction@42@PEAX@Z", 0x78efd0);
     if (!find || !value || !functionSlot || !flags || !parameters || !actorWorld || !name || !processEvent) return false;
     const auto base = reinterpret_cast<uintptr_t>(game);
-#if NWI_NATURAL_PREDICTION
+#if EWI_NORMAL_PREDICTION
     constexpr unsigned char projectBytes[24]{0x80,0x79,0x18,0x00,0x4d,0x8b,0xd1,0x0f,0x84,0xf9,0x00,0x00,0x00,0x0f,0xb6,0xc2,0x45,0x0f,0xb6,0xc0,0x41,0x8d,0x50,0xff};
     constexpr unsigned char connectedBytes[24]{0x80,0x79,0x18,0x00,0x0f,0x84,0xb7,0x00,0x00,0x00,0x0f,0xb6,0xc2,0x45,0x0f,0xb6,0xc0,0x41,0x8d,0x50,0xff,0x8d,0x14,0x50};
     constexpr unsigned char navPointsBytes[24]{0x48,0x89,0x5c,0x24,0x08,0x48,0x89,0x74,0x24,0x10,0x57,0x48,0x83,0xec,0x60,0x33,0xc0,0x0f,0x29,0x74,0x24,0x50,0x49,0x8b};
@@ -496,10 +496,10 @@ bool configure(HMODULE runtime, HMODULE game, uint32_t gameThread) noexcept {
     binding.spread = target(base, 0x19dc1b0, "4c8bdc53565741564881ec98000000803d22e0ab0405488d");
     binding.spreadCallback = target(base, 0x19dc470, "405355565741574881eca0000000803d63ddab0405498bf1");
     binding.center = target(base, 0x19db3d0, "40555356574154415541564157488dac2428ffffff4881ec");
-#if NWI_NATURAL_PREDICTION
-    binding.naturalCenter = target(base, 0x40079e0, "4883ec48488b442478f30f104424704889442430f30f1144");
-    binding.naturalCenterReturn = base + 0x16abde9;
-    binding.consumeNaturalOverride = &consumeNaturalOverride;
+#if EWI_NORMAL_PREDICTION
+    binding.normalCenter = target(base, 0x40079e0, "4883ec48488b442478f30f104424704889442430f30f1144");
+    binding.normalCenterReturn = base + 0x16abde9;
+    binding.consumeNormalOverride = &consumeNormalOverride;
 #endif
     binding.classifySource = &sourceClass;
     configured = capture::install(binding); return configured;
@@ -507,7 +507,7 @@ bool configure(HMODULE runtime, HMODULE game, uint32_t gameThread) noexcept {
 static bool prepareUnchecked() noexcept {
     if (!configured || GetCurrentThreadId() != thread) return false;
     try {
-        constexpr wchar_t path[] = L"/Game/EnemyWaveIndicator/BP_NwiAuto.BP_NwiAuto_C:NwiPoll";
+        constexpr wchar_t path[] = L"/Game/EnemyWaveIndicator/BP_EwiAuto.BP_EwiAuto_C:EwiPoll";
         const WideView view{path, std::size(path)-1};
         auto* function = find(&view);
         if (!function) return false;
@@ -526,4 +526,4 @@ bool prepareClass(void*) noexcept {
 }
 void stop() noexcept { retired.store(true); capture::stop(); }
 Stats stats() noexcept { return counters; }
-} // namespace nwi::automatic
+} // namespace ewi::automatic

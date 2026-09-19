@@ -1,7 +1,7 @@
 // Obtain the current World from the live game viewport; never infer activity from a loaded map asset.
 #pragma once
 #include <cstdint>
-namespace nwi {
+namespace ewi {
 struct WorldResult { void* world = nullptr; bool fault = false; };
 struct WorldApi {
     void* (*findViewport)(const wchar_t*) = nullptr;

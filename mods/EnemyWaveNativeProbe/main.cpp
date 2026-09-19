@@ -17,12 +17,12 @@ namespace {
 constexpr ULONGLONG kHeartbeatMs = 5000; // Summarize callbacks at most once per five seconds.
 HMODULE moduleHandle = nullptr;
 SRWLOCK stateLock = SRWLOCK_INIT;
-nwi::DispatchProbe dispatchProbe; // Static context is retained by pinning this DLL before enqueueing.
+ewi::DispatchProbe dispatchProbe; // Static context is retained by pinning this DLL before enqueueing.
 using ThreadPredicate = bool (*)();
 ThreadPredicate isInitialized = nullptr;
-nwi::EngineThreadIdentity engineIdentity;
-nwi::PresentationBootstrap presentation;
-nwi::ActiveWorld activeWorld;
+ewi::EngineThreadIdentity engineIdentity;
+ewi::PresentationBootstrap presentation;
+ewi::ActiveWorld activeWorld;
 using ObjectWorld = void* (*)(void*);
 ObjectWorld objectWorld = nullptr;
 using ObjectName = size_t (*)(void*, wchar_t*, size_t);
@@ -31,8 +31,8 @@ using FindFirst = void* (*)(const wchar_t*);
 using SafeProcessEvent = bool (*)(void*, void*, void*);
 using GetParmsSize = uint16_t* (*)(void*);
 using HasActorOfClass = bool (*)(void*, void*);
-decltype(nwi::PresentationApi::find) staticFind = nullptr;
-decltype(nwi::PresentationApi::valid) validObject = nullptr;
+decltype(ewi::PresentationApi::find) staticFind = nullptr;
+decltype(ewi::PresentationApi::valid) validObject = nullptr;
 FindFirst findFirst = nullptr;
 SafeProcessEvent safeProcessEvent = nullptr;
 GetParmsSize getParmsSize = nullptr;
@@ -50,35 +50,35 @@ template<typename T> T resolve(HMODULE module, const char* name, uintptr_t rva) 
 }
 
 // The engine owns the authoritative identity. The loader-private flag is retained as diagnostic data.
-nwi::ThreadSample sampleThread() noexcept {
+ewi::ThreadSample sampleThread() noexcept {
     return engineIdentity.sample(GetCurrentThreadId(), isInitialized());
 }
 uint64_t sampleClock() noexcept { return GetTickCount64(); }
 
 // Keep SEH separate from C++ unwinding; a bridge failure permanently disables this reader.
-nwi::WorldResult guardedWorld(void* viewport) {
+ewi::WorldResult guardedWorld(void* viewport) {
     __try { return {objectWorld(viewport), false}; }
     __except (GetExceptionCode() == 0xE06D7363 ? EXCEPTION_CONTINUE_SEARCH : EXCEPTION_EXECUTE_HANDLER) {
         return {nullptr, true};
     }
 }
-nwi::WorldResult readViewportWorld(void* viewport) noexcept {
+ewi::WorldResult readViewportWorld(void* viewport) noexcept {
     try { return guardedWorld(viewport); } catch (...) { return {nullptr, true}; }
 }
 void* currentWorld() noexcept { return activeWorld.read(); }
 // Audited host wrapper owns its temporary string and copies into our bounded caller-owned buffer.
-nwi::WorldKind worldKind(void* world) noexcept {
+ewi::WorldKind worldKind(void* world) noexcept {
     wchar_t name[256]{};
     const auto length = objectName(world, name, std::size(name));
-    if (length >= std::size(name)) return nwi::WorldKind::Excluded;
-    return nwi::classifyWorldName(name, length);
+    if (length >= std::size(name)) return ewi::WorldKind::Excluded;
+    return ewi::classifyWorldName(name, length);
 }
 
 // SearchForMods updates discovery; RefreshPages rebuilds the already-created visible UI.
 bool refreshModHubUnchecked(void* world) {
     void* hub = findFirst(L"Mod_ModHub_C");
     if (!validObject(hub) || objectWorld(hub) != world) return false;
-    return nwi::rescanAndRefreshModHub({staticFind, validObject, getParmsSize, safeProcessEvent}, hub);
+    return ewi::rescanAndRefreshModHub({staticFind, validObject, getParmsSize, safeProcessEvent}, hub);
 }
 bool guardedRefreshModHub(void* world) {
     __try { return refreshModHubUnchecked(world); }
@@ -89,7 +89,7 @@ bool refreshModHub(void* world) noexcept {
 }
 bool modHubReadyUnchecked(void* world) {
     constexpr wchar_t path[] = L"/Game/ModHub/Mod_ModHub.Mod_ModHub_C";
-    const nwi::WideView name{path, std::size(path) - 1};
+    const ewi::WideView name{path, std::size(path) - 1};
     void* cls = staticFind(&name);
     return validObject(cls) && hasActorOfClass(world, cls);
 }
@@ -102,8 +102,8 @@ bool modHubReady(void* world) noexcept {
 }
 // Reacquire the owned class each callback; actor presence distinguishes a reused UWorld address.
 bool controllerReadyUnchecked(void* world) {
-    constexpr wchar_t path[] = L"/Game/EnemyWaveIndicator/BP_NwiAuto.BP_NwiAuto_C";
-    const nwi::WideView name{path, std::size(path) - 1};
+    constexpr wchar_t path[] = L"/Game/EnemyWaveIndicator/BP_EwiAuto.BP_EwiAuto_C";
+    const ewi::WideView name{path, std::size(path) - 1};
     void* cls = staticFind(&name);
     return validObject(cls) && hasActorOfClass(world, cls);
 }
@@ -116,11 +116,11 @@ bool controllerReady(void* world) noexcept {
 }
 
 // Only DispatchProbe's per-callback engine identity gate can invoke this action.
-void showPresentation(nwi::ThreadSample& sample) noexcept {
+void showPresentation(ewi::ThreadSample& sample) noexcept {
     static bool automaticAttempted = false;
     if (!automaticAttempted) {
         automaticAttempted = true;
-        if (!nwi::automatic::configure(GetModuleHandleW(L"UE4SSL.dll"), GetModuleHandleW(L"FSD-Win64-Shipping.exe"), sample.tid)) presentation.status = 4;
+        if (!ewi::automatic::configure(GetModuleHandleW(L"UE4SSL.dll"), GetModuleHandleW(L"FSD-Win64-Shipping.exe"), sample.tid)) presentation.status = 4;
     }
     presentation.tick();
     if (activeWorld.disabled) presentation.status = 4;
@@ -137,7 +137,7 @@ void showPresentation(nwi::ThreadSample& sample) noexcept {
     sample.activeWorld = activeWorld.lastWorld;
     sample.worldKind = static_cast<uint32_t>(presentation.kind);
     sample.excludedWorlds = presentation.excluded;
-    const auto captured = nwi::capture::stats(); const auto automatic = nwi::automatic::stats();
+    const auto captured = ewi::capture::stats(); const auto automatic = ewi::automatic::stats();
     sample.nativeWaves = captured.waves; sample.tagged = captured.tagged; sample.spawnSuccesses = captured.successes;
     sample.delivered = captured.delivered; sample.deliveryMaxMs = captured.deliveryMaxMs;
     sample.deliveryMaxUs = captured.deliveryMaxUs;
@@ -161,8 +161,8 @@ void showPresentation(nwi::ThreadSample& sample) noexcept {
     sample.predictionOverride = {automatic.predictionLocksArmed, automatic.predictionMovementRejects,
         automatic.predictionValidationRejects, automatic.predictionOverrides,
         automatic.predictionFingerprintQueries, automatic.predictionFingerprintFailures,
-        captured.naturalCenterSamples, captured.naturalCenterCalls,
-        captured.naturalCenterOverrides, captured.naturalCenterFallbacks};
+        captured.normalCenterSamples, captured.normalCenterCalls,
+        captured.normalCenterOverrides, captured.normalCenterFallbacks};
     sample.predictionErrors = {automatic.predictionLastErrorCm, automatic.predictionMinErrorCm,
         automatic.predictionMaxErrorCm, automatic.predictionErrorTotalCm};
     sample.captureFault = captured.fault; sample.autoFault = automatic.fault; sample.hookStatus = captured.hookStatus;
@@ -174,7 +174,7 @@ void configureDispatch() noexcept {
     apiChecked = true;
     const HMODULE runtime = GetModuleHandleW(L"UE4SSL.dll");
     if (!runtime) return; // Standalone lifecycle tests intentionally have no runtime.
-    auto dispatch = resolve<decltype(nwi::ProbeApi::dispatch)>(runtime,
+    auto dispatch = resolve<decltype(ewi::ProbeApi::dispatch)>(runtime,
         "ue4ssl_host_dispatch_on_game_thread_v1", 0x769670);
     auto initialized = resolve<ThreadPredicate>(runtime, "?IsGameThreadInitialized@Unreal@RC@@YA_NXZ", 0x232a80);
     engineIdentity.configure(GetModuleHandleW(L"FSD-Win64-Shipping.exe"));
@@ -184,11 +184,11 @@ void configureDispatch() noexcept {
     if (!GetModuleHandleExW(flags, reinterpret_cast<LPCWSTR>(moduleHandle), &retained)
         || !GetModuleHandleExW(flags, reinterpret_cast<LPCWSTR>(runtime), &retained)) return;
     isInitialized = initialized;
-    auto find = resolve<decltype(nwi::PresentationApi::find)>(runtime, "ue4ssl_host_static_find_object_v1", 0x76a600);
-    auto load = resolve<decltype(nwi::PresentationApi::loadClass)>(runtime, "ue4ssl_host_load_class_asset_blocking_v1", 0x769cc0);
-    auto valid = resolve<decltype(nwi::PresentationApi::valid)>(runtime, "ue4ssl_host_is_valid_object_v1", 0x769cb0);
-    auto spawn = resolve<decltype(nwi::PresentationApi::spawn)>(runtime, "ue4ssl_host_spawn_actor_v1", 0x76a330);
-    auto findViewport = resolve<decltype(nwi::WorldApi::findViewport)>(runtime,
+    auto find = resolve<decltype(ewi::PresentationApi::find)>(runtime, "ue4ssl_host_static_find_object_v1", 0x76a600);
+    auto load = resolve<decltype(ewi::PresentationApi::loadClass)>(runtime, "ue4ssl_host_load_class_asset_blocking_v1", 0x769cc0);
+    auto valid = resolve<decltype(ewi::PresentationApi::valid)>(runtime, "ue4ssl_host_is_valid_object_v1", 0x769cb0);
+    auto spawn = resolve<decltype(ewi::PresentationApi::spawn)>(runtime, "ue4ssl_host_spawn_actor_v1", 0x76a330);
+    auto findViewport = resolve<decltype(ewi::WorldApi::findViewport)>(runtime,
         "?SafeFindFirstOf@Seh@RC@@YAPEAVUObject@Unreal@2@PEB_W@Z", 0x78efa0);
     objectWorld = resolve<ObjectWorld>(runtime, "?GetWorld@UObject@Unreal@RC@@QEBAPEAVUWorld@23@XZ", 0x20cbd0);
     objectName = resolve<ObjectName>(runtime, "ue4ssl_host_object_full_name_v1", 0x76a090);
@@ -201,7 +201,7 @@ void configureDispatch() noexcept {
         safeProcessEvent = process; getParmsSize = parms; hasActorOfClass = hasActor;
         activeWorld.configure({findViewport, valid, &readViewportWorld});
         presentation.configure({find, load, valid, spawn, &currentWorld, &worldKind,
-            &modHubReady, &controllerReady, &nwi::automatic::prepareClass, &refreshModHub});
+            &modHubReady, &controllerReady, &ewi::automatic::prepareClass, &refreshModHub});
     }
     dispatchProbe.configure({dispatch, &sampleThread, &sampleClock, &showPresentation});
 }
@@ -222,10 +222,10 @@ void record(const char* event) noexcept {
     const auto& probe = dispatchProbe.stats;
     char line[4096];
     const int size = sprintf_s(line,
-#if NWI_NATURAL_PREDICTION
+#if EWI_NORMAL_PREDICTION
         "{\"probe\":\"0.9.4-prediction-test.6\",\"prediction_test\":true,\"event\":\"%s\",\"utc\":\"%04u-%02u-%02uT%02u:%02u:%02u.%03uZ\","
 #else
-        "{\"probe\":\"0.9.5\",\"prediction_test\":false,\"event\":\"%s\",\"utc\":\"%04u-%02u-%02uT%02u:%02u:%02u.%03uZ\","
+        "{\"probe\":\"1.0.0\",\"prediction_test\":false,\"event\":\"%s\",\"utc\":\"%04u-%02u-%02uT%02u:%02u:%02u.%03uZ\","
 #endif
         "\"pid\":%lu,\"tid\":%lu,\"elapsed_ms\":%llu,\"updates\":%llu,\"thread_changes\":%llu,"
         "\"gap_min_ms\":%.6f,\"gap_max_ms\":%.6f,\"gap_mean_ms\":%.6f,"
@@ -397,7 +397,7 @@ extern "C" __declspec(dllexport) void ue4ssl_mod_uninstall_v1(void* instance) no
     AcquireSRWLockExclusive(&stateLock);
     if (state.active) {
         dispatchProbe.stop();
-        nwi::automatic::stop();
+        ewi::automatic::stop();
         record("uninstall");
         state.active = false;
         if (state.log != INVALID_HANDLE_VALUE) CloseHandle(state.log);

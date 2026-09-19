@@ -1,7 +1,7 @@
 // Editor-only generator. Cooked graphs use stock Engine and existing FSD reflection, never this module.
 #include "Modules/ModuleManager.h"
-#include "NwiValidation.h"
-#include "NwiWaveTypes.h"
+#include "EwiValidation.h"
+#include "EwiWaveTypes.h"
 #include "K2Node_AddDelegate.h"
 #include "K2Node_RemoveDelegate.h"
 #include "K2Node_CreateDelegate.h"
@@ -25,6 +25,7 @@
 #include "K2Node_IfThenElse.h"
 #include "K2Node_DynamicCast.h"
 #include "K2Node_LoadAsset.h"
+#include "K2Node_ExecutionSequence.h"
 #include "K2Node_InputKey.h"
 #include "K2Node_Self.h"
 #include "K2Node_FunctionResult.h"
@@ -59,6 +60,9 @@
 #include "Kismet/KismetStringLibrary.h"
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
+#include "Components/HorizontalBox.h"
+#include "Components/HorizontalBoxSlot.h"
+#include "Engine/Texture2D.h"
 #include "Engine/StaticMeshActor.h"
 #include "Components/StaticMeshComponent.h"
 #include "Materials/MaterialInstanceDynamic.h"
@@ -71,7 +75,7 @@
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/KismetSystemLibrary.h"
 
-namespace Nwi
+namespace Ewi
 {
 // Fail generation on a broken connection instead of saving a superficially valid graph.
 UEdGraphPin* Pin(UEdGraphNode* Node, const TCHAR* Name)
@@ -169,17 +173,17 @@ void Save(UBlueprint* BP)
 {
     const FString Filename = FPackageName::LongPackageNameToFilename(BP->GetOutermost()->GetName(), FPackageName::GetAssetPackageExtension());
     check(UPackage::SavePackage(BP->GetOutermost(), BP, RF_Public | RF_Standalone, *Filename, GError, nullptr, false, true, SAVE_NoError));
-    UE_LOG(LogTemp, Display, TEXT("NWI_ASSET_SAVED %s"), *BP->GetPathName());
+    UE_LOG(LogTemp, Display, TEXT("EWI_ASSET_SAVED %s"), *BP->GetPathName());
 }
 
-#include "NwiHudGraph.inl"
+#include "EwiHudGraph.inl"
 UK2Node_CustomEvent* Custom(UEdGraph* G, const TCHAR* Name);
 UK2Node_IfThenElse* Branch(UEdGraph* G, UEdGraphNode* Condition, const TCHAR* Output);
 UK2Node_CallFunction* Valid(UEdGraph* G, UEdGraphNode* Object, const TCHAR* Output);
 
 void BuildHud()
 {
-    auto* BP = CastChecked<UWidgetBlueprint>(Blueprint(TEXT("WBP_NwiMarker"), true));
+    auto* BP = CastChecked<UWidgetBlueprint>(Blueprint(TEXT("WBP_EwiMarker"), true));
     Variable(BP, TEXT("WorldLocation"), Type(UEdGraphSchema_K2::PC_Struct, TBaseStructure<FVector>::Get()));
     Variable(BP, TEXT("BaseLabel"), Type(UEdGraphSchema_K2::PC_Text));
     Variable(BP, TEXT("LastMeters"), Type(UEdGraphSchema_K2::PC_Int), TEXT("-1"));
@@ -187,18 +191,34 @@ void BuildHud()
     Variable(BP, TEXT("BlinkA"), Type(UEdGraphSchema_K2::PC_Struct, TBaseStructure<FLinearColor>::Get()), TEXT("(R=1,G=0,B=0,A=1)"));
     Variable(BP, TEXT("BlinkB"), Type(UEdGraphSchema_K2::PC_Struct, TBaseStructure<FLinearColor>::Get()), TEXT("(R=1,G=1,B=1,A=1)"));
     Variable(BP, TEXT("BlinkEnabled"), Type(UEdGraphSchema_K2::PC_Boolean), TEXT("true"));
+    Variable(BP, TEXT("WarningIconPath"), Type(UEdGraphSchema_K2::PC_String), EwiWarningIconObjectPath);
+    Variable(BP, TEXT("WarningIconAttempted"), Type(UEdGraphSchema_K2::PC_Boolean), TEXT("false"));
     auto* Text = BP->WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("MarkerText"));
-    Text->SetText(FText::FromString(TEXT("[+] NWI VISUAL TEST")));
+    Text->SetText(FText::FromString(TEXT("[+] EWI VISUAL TEST")));
     Text->SetColorAndOpacity(FSlateColor(FLinearColor(1.0f, 0.22f, 0.03f, 1.0f)));
-    Text->SetJustification(ETextJustify::Center);
+    Text->SetJustification(ETextJustify::Left);
     auto Font = Text->Font; Font.Size = 22; Text->SetFont(Font);
     Text->SetShadowColorAndOpacity(FLinearColor::Black); Text->SetShadowOffset(FVector2D(1.5f, 1.5f));
     Text->SetVisibility(ESlateVisibility::HitTestInvisible);
     Text->bIsVariable = true;
+    auto* Icon = BP->WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("WarningIcon"));
+    Icon->bIsVariable = true;
+    Icon->SetVisibility(ESlateVisibility::Collapsed);
+    Icon->SetColorAndOpacity(EwiWarningIconTint);
+    Icon->Brush.ImageSize = FVector2D(EwiMarkerWarningIconSize, EwiMarkerWarningIconSize);
+    Icon->Brush.TintColor = FSlateColor(EwiWarningIconTint);
+    auto* Row = BP->WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass(), TEXT("MarkerRow"));
+    Row->bIsVariable = true;
+    Row->SetVisibility(ESlateVisibility::HitTestInvisible);
+    auto* IconSlot = Row->AddChildToHorizontalBox(Icon);
+    IconSlot->SetVerticalAlignment(VAlign_Center);
+    IconSlot->SetPadding(FMargin(0.f, 0.f, 6.f, 0.f));
+    auto* TextSlot = Row->AddChildToHorizontalBox(Text);
+    TextSlot->SetVerticalAlignment(VAlign_Center);
     // Keep the root inside the viewport. Moving the whole widget offscreen can suspend Slate Tick.
     auto* Canvas = BP->WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(), TEXT("ViewportCanvas"));
     Canvas->SetVisibility(ESlateVisibility::HitTestInvisible);
-    auto* Slot = Canvas->AddChildToCanvas(Text);
+    auto* Slot = Canvas->AddChildToCanvas(Row);
     Slot->SetAutoSize(true); Slot->SetAlignment(FVector2D(0.5f, 0.5f));
     auto* Arrow = BP->WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("EdgeArrow"));
     Arrow->SetText(FText::FromString(TEXT(">"))); Arrow->SetFont(Font);
@@ -222,6 +242,8 @@ void BuildHud()
     BuildWarningTick(BP, G);
     BuildPlacement(BP, G);
     Compile(BP);
+    auto* Construct = Event(G, UUserWidget::StaticClass(), TEXT("Construct"));
+    StartWarningIconLoad(G, Construct, TEXT("then"), TEXT("WarningIcon"));
     ConnectHudTick(BP, G);
     Compile(BP);
     Save(BP);
@@ -230,8 +252,8 @@ void BuildHud()
 // Original cooked material has only Alpha, no tint parameter. Keep original curves with our own red surface.
 void BuildRedMaterial()
 {
-    auto* Package = CreatePackage(TEXT("/Game/EnemyWaveIndicator/M_NwiRedPulse"));
-    auto* Material = NewObject<UMaterial>(Package, TEXT("M_NwiRedPulse"), RF_Public | RF_Standalone);
+    auto* Package = CreatePackage(TEXT("/Game/EnemyWaveIndicator/M_EwiRedPulse"));
+    auto* Material = NewObject<UMaterial>(Package, TEXT("M_EwiRedPulse"), RF_Public | RF_Standalone);
     auto* Tint = NewObject<UMaterialExpressionVectorParameter>(Material);
     Tint->ParameterName = TEXT("Tint"); Tint->DefaultValue = FLinearColor(1.0f, 0.01f, 0.005f, 1.0f);
     auto* Alpha = NewObject<UMaterialExpressionScalarParameter>(Material);
@@ -255,7 +277,7 @@ void BuildRedMaterial()
 
 void BuildPulse()
 {
-    auto* BP = Blueprint(TEXT("BP_NwiPulse"), false);
+    auto* BP = Blueprint(TEXT("BP_EwiPulse"), false);
     const auto CurveType = Type(UEdGraphSchema_K2::PC_Object, UCurveFloat::StaticClass());
     Variable(BP, TEXT("ScaleCurve"), CurveType);
     Variable(BP, TEXT("AlphaCurve"), CurveType);
@@ -308,7 +330,7 @@ void BuildPulse()
     // Reuse an already prepared MID when a pooled marker is shown again.
     auto* Reactivate = Custom(G, TEXT("ReactivateVisual"));
     auto* PreparedMaterial = Get(G, TEXT("PulseMaterial")); auto* Prepared = Valid(G, PreparedMaterial, TEXT("PulseMaterial"));
-    auto* PreparedGate = Nwi::Branch(G, Prepared, TEXT("ReturnValue")); Link(Reactivate, TEXT("then"), PreparedGate, TEXT("execute"));
+    auto* PreparedGate = Ewi::Branch(G, Prepared, TEXT("ReturnValue")); Link(Reactivate, TEXT("then"), PreparedGate, TEXT("execute"));
     auto* ResetTime = Set(G, TEXT("StartedAt")); Link(InitialAge, TEXT("ReturnValue"), ResetTime, TEXT("StartedAt")); Link(PreparedGate, TEXT("then"), ResetTime, TEXT("execute"));
     auto* Reenable = Call(G, AActor::StaticClass(), TEXT("SetActorTickEnabled")); Value(Reenable, TEXT("bEnabled"), TEXT("true")); Link(ResetTime, TEXT("then"), Reenable, TEXT("execute"));
     auto* Reshow = Call(G, AActor::StaticClass(), TEXT("SetActorHiddenInGame")); Value(Reshow, TEXT("bNewHidden"), TEXT("false")); Link(Reenable, TEXT("then"), Reshow, TEXT("execute"));
@@ -363,10 +385,10 @@ void BuildPulse()
 // One explicit asynchronous preparation per world; strong properties retain loaded visual resources.
 void BuildResources()
 {
-    auto* BP = Blueprint(TEXT("BP_NwiResources"), false, AActor::StaticClass());
+    auto* BP = Blueprint(TEXT("BP_EwiResources"), false, AActor::StaticClass());
     const TCHAR* Names[] = { TEXT("Material"), TEXT("Scale"), TEXT("Alpha") };
     const TCHAR* Paths[] = {
-        TEXT("/Game/EnemyWaveIndicator/M_NwiRedPulse.M_NwiRedPulse"),
+        TEXT("/Game/EnemyWaveIndicator/M_EwiRedPulse.M_EwiRedPulse"),
         TEXT("/Game/GameElements/Objectives/Salvage/BP_MiniMule_Salvage.BP_MiniMule_Salvage_C:CurveFloat_0"),
         TEXT("/Game/GameElements/Objectives/Salvage/BP_MiniMule_Salvage.BP_MiniMule_Salvage_C:CurveFloat_1") };
     UClass* Classes[] = { UMaterialInterface::StaticClass(), UCurveFloat::StaticClass(), UCurveFloat::StaticClass() };
@@ -439,14 +461,14 @@ UK2Node_CallFunction* Valid(UEdGraph* G, UEdGraphNode* Object, const TCHAR* Outp
     auto* V = Call(G, UKismetSystemLibrary::StaticClass(), TEXT("IsValid")); Link(Object, Output, V, TEXT("Object")); return V;
 }
 
-// F5 only: one cached pulse/widget pair, no manager Tick, no gameplay Actor and no natural-wave claim.
+// F5 only: one cached pulse/widget pair, no manager Tick, no gameplay Actor and no normal-wave claim.
 void BuildVisualTest()
 {
-    auto* Parent = LoadClass<AActor>(nullptr, TEXT("/Game/EnemyWaveIndicator/BP_NwiResources.BP_NwiResources_C"));
-    auto* PulseClass = LoadClass<AActor>(nullptr, TEXT("/Game/EnemyWaveIndicator/BP_NwiPulse.BP_NwiPulse_C"));
-    auto* HudClass = LoadClass<UUserWidget>(nullptr, TEXT("/Game/EnemyWaveIndicator/WBP_NwiMarker.WBP_NwiMarker_C"));
+    auto* Parent = LoadClass<AActor>(nullptr, TEXT("/Game/EnemyWaveIndicator/BP_EwiResources.BP_EwiResources_C"));
+    auto* PulseClass = LoadClass<AActor>(nullptr, TEXT("/Game/EnemyWaveIndicator/BP_EwiPulse.BP_EwiPulse_C"));
+    auto* HudClass = LoadClass<UUserWidget>(nullptr, TEXT("/Game/EnemyWaveIndicator/WBP_EwiMarker.WBP_EwiMarker_C"));
     check(Parent && PulseClass && HudClass);
-    auto* BP = Blueprint(TEXT("BP_NwiVisualTest"), false, Parent);
+    auto* BP = Blueprint(TEXT("BP_EwiVisualTest"), false, Parent);
     Variable(BP, TEXT("Pulse"), Type(UEdGraphSchema_K2::PC_Object, PulseClass));
     Variable(BP, TEXT("Hud"), Type(UEdGraphSchema_K2::PC_Object, HudClass));
     Variable(BP, TEXT("SetupAttempted"), Type(UEdGraphSchema_K2::PC_Boolean), TEXT("false"));
@@ -478,14 +500,14 @@ void BuildVisualTest()
     Link(BeginGate, TEXT("then"), Input, TEXT("execute"));
     auto* Prepare = Call(G, Parent, TEXT("PrepareResources")); Link(Input, TEXT("then"), Prepare, TEXT("execute"));
     auto* Notice = Call(G, UKismetSystemLibrary::StaticClass(), TEXT("PrintString"));
-    Value(Notice, TEXT("InString"), TEXT("NWI visual test loaded. F5: place an 8-second test marker."));
+    Value(Notice, TEXT("InString"), TEXT("EWI visual test loaded. F5: place an 8-second test marker."));
     Value(Notice, TEXT("Duration"), TEXT("8")); Link(Prepare, TEXT("then"), Notice, TEXT("execute"));
     auto* Key = Node<UK2Node_InputKey>(G); Key->InputKey = EKeys::F5; Key->bConsumeInput = false; Key->AllocateDefaultPins();
     auto* CallRun = Call(G, BP->GeneratedClass, TEXT("RunVisualTest")); Link(Key, TEXT("Pressed"), CallRun, TEXT("execute"));
     auto* Ready = Get(G, TEXT("Ready"));
     auto* ReadyGate = Branch(G, LocalHost, TEXT("ReturnValue")); Link(Run, TEXT("then"), ReadyGate, TEXT("execute"));
     auto* NotReady = Call(G, UKismetSystemLibrary::StaticClass(), TEXT("PrintString"));
-    Value(NotReady, TEXT("InString"), TEXT("NWI visual resources not ready. Check resource-loading logs."));
+    Value(NotReady, TEXT("InString"), TEXT("EWI visual resources not ready. Check resource-loading logs."));
     Link(ReadyGate, TEXT("else"), NotReady, TEXT("execute"));
     auto* Pulse = Get(G, TEXT("Pulse")); auto* Hud = Get(G, TEXT("Hud"));
     auto* PulseValid = Valid(G, Pulse, TEXT("Pulse")); auto* HudValid = Valid(G, Hud, TEXT("Hud"));
@@ -517,7 +539,7 @@ void BuildVisualTest()
     Link(CreatedGate, TEXT("then"), Add, TEXT("execute"));
     auto* FirstShow = Call(G, BP->GeneratedClass, TEXT("ShowCached")); Link(Add, TEXT("then"), FirstShow, TEXT("execute"));
     auto* Failed = Call(G, UKismetSystemLibrary::StaticClass(), TEXT("PrintString"));
-    Value(Failed, TEXT("InString"), TEXT("NWI visual pair creation failed; no automatic retry.")); Link(CreatedGate, TEXT("else"), Failed, TEXT("execute"));
+    Value(Failed, TEXT("InString"), TEXT("EWI visual pair creation failed; no automatic retry.")); Link(CreatedGate, TEXT("else"), Failed, TEXT("execute"));
 
     auto* Camera = Call(G, UGameplayStatics::StaticClass(), TEXT("GetPlayerCameraManager"));
     auto* CameraValid = Valid(G, Camera, TEXT("ReturnValue"));
@@ -541,7 +563,7 @@ void BuildVisualTest()
     auto* Visible = Call(G, UWidget::StaticClass(), TEXT("SetVisibility")); Link(Hud, TEXT("Hud"), Visible, TEXT("self")); Value(Visible, TEXT("InVisibility"), TEXT("HitTestInvisible"));
     auto* Finished = Get(G, TEXT("Finished"));
     auto* FailureLabel = Call(G, UKismetMathLibrary::StaticClass(), TEXT("SelectString"));
-    Value(FailureLabel, TEXT("A"), TEXT("NWI: RESOURCE LOAD FAILED")); Value(FailureLabel, TEXT("B"), TEXT("NWI: RESOURCES LOADING")); Link(Finished, TEXT("Finished"), FailureLabel, TEXT("bPickA"));
+    Value(FailureLabel, TEXT("A"), TEXT("EWI: RESOURCE LOAD FAILED")); Value(FailureLabel, TEXT("B"), TEXT("EWI: RESOURCES LOADING")); Link(Finished, TEXT("Finished"), FailureLabel, TEXT("bPickA"));
     auto* StatusLabel = Call(G, UKismetMathLibrary::StaticClass(), TEXT("SelectString"));
     Value(StatusLabel, TEXT("A"), TEXT("NW TEST 0.4.1")); Link(FailureLabel, TEXT("ReturnValue"), StatusLabel, TEXT("B")); Link(Ready, TEXT("Ready"), StatusLabel, TEXT("bPickA"));
     auto* AsText = Call(G, UKismetTextLibrary::StaticClass(), TEXT("Conv_StringToText")); Link(StatusLabel, TEXT("ReturnValue"), AsText, TEXT("InString"));
@@ -568,22 +590,22 @@ void BuildVisualTest()
     Save(BP);
 }
 
-#include "NwiSettings.inl"
-#include "NwiCapture.inl"
-#include "NwiAutomatic.inl"
+#include "EwiSettings.inl"
+#include "EwiCapture.inl"
+#include "EwiAutomatic.inl"
 
 void BuildValidationFixtures()
 {
     // Synthetic constants test the generated graph without loading or distributing game assets.
     for (const auto* Name : { TEXT("CF_TestScale"), TEXT("CF_TestAlpha") })
     {
-        auto* Package = CreatePackage(*(FString(TEXT("/Game/NwiValidation/")) + Name));
+        auto* Package = CreatePackage(*(FString(TEXT("/Game/EwiValidation/")) + Name));
         auto* Curve = NewObject<UCurveFloat>(Package, FName(Name), RF_Public | RF_Standalone);
         Curve->FloatCurve.AddKey(0.0f, FString(Name).Contains(TEXT("Scale")) ? 0.5f : 0.25f);
         const FString Filename = FPackageName::LongPackageNameToFilename(Package->GetName(), FPackageName::GetAssetPackageExtension());
         check(UPackage::SavePackage(Package, Curve, RF_Public | RF_Standalone, *Filename, GError, nullptr, false, true, SAVE_NoError));
     }
-    auto* Package = CreatePackage(TEXT("/Game/NwiValidation/M_TestAlpha"));
+    auto* Package = CreatePackage(TEXT("/Game/EwiValidation/M_TestAlpha"));
     auto* Material = NewObject<UMaterial>(Package, TEXT("M_TestAlpha"), RF_Public | RF_Standalone);
     auto* Alpha = NewObject<UMaterialExpressionScalarParameter>(Material);
     Alpha->ParameterName = TEXT("Alpha"); Alpha->DefaultValue = 1.0f;
@@ -594,7 +616,7 @@ void BuildValidationFixtures()
     const FString Filename = FPackageName::LongPackageNameToFilename(Package->GetName(), FPackageName::GetAssetPackageExtension());
     check(UPackage::SavePackage(Package, Material, RF_Public | RF_Standalone, *Filename, GError, nullptr, false, true, SAVE_NoError));
     // Embedded subobjects exercise the same soft-path syntax as the game's generated-class curves.
-    auto* CurvePackage = CreatePackage(TEXT("/Game/NwiValidation/CurveContainer"));
+    auto* CurvePackage = CreatePackage(TEXT("/Game/EwiValidation/CurveContainer"));
     auto* Container = NewObject<UCurveFloat>(CurvePackage, TEXT("CurveContainer"), RF_Public | RF_Standalone);
     for (int32 Index = 0; Index < 2; ++Index)
     {
@@ -606,14 +628,14 @@ void BuildValidationFixtures()
 }
 }
 
-class FNwiAuthoringModule final : public IModuleInterface
+class FEwiAuthoringModule final : public IModuleInterface
 {
 public:
     virtual void StartupModule() override
     {
-        UE_LOG(LogTemp, Display, TEXT("NWI authoring module loaded (editor only)."));
+        UE_LOG(LogTemp, Display, TEXT("EWI authoring module loaded (editor only)."));
         // Read dependency signatures without executing their gameplay graphs.
-        if (FParse::Param(FCommandLine::Get(), TEXT("NwiInspectHub")))
+        if (FParse::Param(FCommandLine::Get(), TEXT("EwiInspectHub")))
         {
             for (const TCHAR* Name : {TEXT("IHub"), TEXT("IHubMod"), TEXT("IHubPageWidget")})
             {
@@ -627,34 +649,34 @@ public:
                 }
             }
         }
-        if (FParse::Param(FCommandLine::Get(), TEXT("NwiAuthorAssets")))
+        if (FParse::Param(FCommandLine::Get(), TEXT("EwiAuthorAssets")))
         {
-            Nwi::BuildRedMaterial();
-            Nwi::BuildHud();
-            Nwi::BuildPulse();
-            Nwi::BuildResources();
-            Nwi::BuildVisualTest();
-            Nwi::BuildSettings();
-            Nwi::BuildAutomatic();
-            Nwi::BuildNativeInitializers();
-            Nwi::BuildValidationFixtures();
-            UE_LOG(LogTemp, Display, TEXT("NWI_AUTHORING_SUCCESS"));
+            Ewi::BuildRedMaterial();
+            Ewi::BuildHud();
+            Ewi::BuildPulse();
+            Ewi::BuildResources();
+            Ewi::BuildVisualTest();
+            Ewi::BuildSettings();
+            Ewi::BuildAutomatic();
+            Ewi::BuildNativeInitializers();
+            Ewi::BuildValidationFixtures();
+            UE_LOG(LogTemp, Display, TEXT("EWI_AUTHORING_SUCCESS"));
         }
-        if (FParse::Param(FCommandLine::Get(), TEXT("NwiValidateAssets")))
+        if (FParse::Param(FCommandLine::Get(), TEXT("EwiValidateAssets")))
         {
-            const bool Passed = ValidateNwiPresentation();
+            const bool Passed = ValidateEwiPresentation();
             FString ResultFile;
-            if (FParse::Value(FCommandLine::Get(), TEXT("NwiValidationResult="), ResultFile))
+            if (FParse::Value(FCommandLine::Get(), TEXT("EwiValidationResult="), ResultFile))
             {
                 FFileHelper::SaveStringToFile(Passed
                     ? TEXT("{\"success\":true,\"capture_test\":true,\"native_contract_test\":true,\"replication_metadata_test\":true,\"listen_host_local_first_join_test\":true,\"listen_host_remote_first_recovery_test\":true,\"pool_retry_state_test\":true,\"content_only\":false,\"automatic_pool_test\":true,\"settings_test\":true,\"async_resource_tests\":true,\"visual_no_controller_test\":true,\"edge_cases\":1452,\"red_material_test\":true,\"gpu_tested\":false,\"game_integration_tested\":false}")
                     : TEXT("{\"success\":false}"), *ResultFile);
             }
-            UE_LOG(LogTemp, Display, TEXT("NWI_VALIDATION_RESULT %s"), Passed ? TEXT("PASS") : TEXT("FAIL"));
+            UE_LOG(LogTemp, Display, TEXT("EWI_VALIDATION_RESULT %s"), Passed ? TEXT("PASS") : TEXT("FAIL"));
         }
     }
 };
 
-IMPLEMENT_MODULE(FNwiAuthoringModule, NwiAuthoring)
+IMPLEMENT_MODULE(FEwiAuthoringModule, EwiAuthoring)
 
 

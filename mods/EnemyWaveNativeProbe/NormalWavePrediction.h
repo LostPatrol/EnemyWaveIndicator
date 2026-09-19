@@ -1,13 +1,13 @@
-// Engine-independent geometry and one-shot countdown gate for the opt-in natural-wave prediction test.
+// Engine-independent geometry and one-shot countdown gate for the opt-in normal-wave prediction test.
 #pragma once
 #include <cmath>
 #include <cstdint>
 
-namespace nwi::prediction {
+namespace ewi::prediction {
 inline constexpr uint32_t RegionType = 255; // Reserved test-only handoff value; stock wave IDs occupy 0..46.
 inline constexpr float LeadSeconds = 5.0f;
-inline constexpr float ProjectionPaddingCm = 300.0f; // Matches the game's current natural-wave projection padding.
-inline constexpr float SpawnDistanceCm = 3000.0f; // Matches the game's current natural-wave search extension.
+inline constexpr float ProjectionPaddingCm = 300.0f; // Matches the game's current normal-wave projection padding.
+inline constexpr float SpawnDistanceCm = 3000.0f; // Matches the game's current normal-wave search extension.
 inline constexpr float ShellDepthCm = 1000.0f; // Prefer the outer 10 m of the stock search radius.
 inline constexpr float MovementToleranceCm = 5.0f; // Allow tiny idle/root jitter while rejecting meaningful movement.
 inline constexpr float InputToleranceCm = 25.0f; // Projected selector input may vary slightly between adjacent frames.
@@ -88,7 +88,7 @@ inline uint32_t selectShellCandidates(const Position* points, uint32_t count, co
     return selected;
 }
 
-// Reproduce the deterministic player-sphere portion of the game's natural-wave selector.
+// Reproduce the deterministic player-sphere portion of the game's normal-wave selector.
 inline Geometry playerSphere(const Position* players, uint32_t count) noexcept {
     Geometry result;
     if (!players || !count || count > 4) return result;
@@ -124,4 +124,4 @@ public:
 private:
     bool armed_ = true;
 };
-} // namespace nwi::prediction
+} // namespace ewi::prediction

@@ -1,10 +1,10 @@
 // Stable stock wave IDs shared by the DLL and editor generator. Append entries; never reorder saved IDs.
 #pragma once
 #include <cstdint>
-namespace nwi {
+namespace ewi {
 struct WaveType { const wchar_t* key; const wchar_t* title; const wchar_t* classPath; };
 static constexpr WaveType WaveTypes[] = {
-    {L"Natural", L"Natural wave", L""},
+    {L"Normal", L"Normal wave", L""},
     {L"EWC_DeepScan_Drillevator", L"Drillevator", L"/Game/Enemies/Waves/WaveControllers/EWC_DeepScan_Drillevator.EWC_DeepScan_Drillevator_C"},
     {L"EWC_EggHunt_Ambush", L"Egg hunt ambush", L"/Game/Enemies/Waves/WaveControllers/EWC_EggHunt_Ambush.EWC_EggHunt_Ambush_C"},
     {L"EWC_EndMission", L"Extraction", L"/Game/Enemies/Waves/WaveControllers/EWC_EndMission.EWC_EndMission_C"},

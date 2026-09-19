@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <array>
 
-namespace nwi {
+namespace ewi {
 struct ThreadSample {
     uint32_t tid = 0;
     bool initialized = false, gameThread = false;
@@ -195,4 +195,4 @@ private:
     uint64_t nextAt_ = 0, queuedAt_ = 0, finishedAt_ = 0, requestGeneration_ = 0;
     ThreadSample result_{};
 };
-} // namespace nwi
+} // namespace ewi

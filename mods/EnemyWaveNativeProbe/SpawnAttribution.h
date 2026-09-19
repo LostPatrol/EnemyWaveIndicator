@@ -4,7 +4,7 @@
 #include <cmath>
 #include <cstdint>
 
-namespace nwi {
+namespace ewi {
 struct SpawnKey {
     uint64_t descriptor = 0; // Opaque identity only; never dereferenced or owned.
     float x = 0, y = 0, z = 0;
@@ -123,4 +123,4 @@ private:
     AttributionFault fault_ = AttributionFault::Context;
 };
 static_assert(sizeof(SpawnAttribution) < 96 * 1024, "Tracking must stay below a fixed 96 KiB budget.");
-} // namespace nwi
+} // namespace ewi

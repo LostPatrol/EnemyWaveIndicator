@@ -3,10 +3,10 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
-#include "NwiValidationPlayerController.generated.h"
+#include "EwiValidationPlayerController.generated.h"
 
 UCLASS(Transient)
-class ANwiValidationPlayerController final : public APlayerController
+class AEwiValidationPlayerController final : public APlayerController
 {
     GENERATED_BODY()
 

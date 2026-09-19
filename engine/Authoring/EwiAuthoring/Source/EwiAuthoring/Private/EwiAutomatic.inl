@@ -1,11 +1,11 @@
 // Generate a replicated controller with reusable visual pairs and local HUD attachment recovery.
 void BuildAutomatic()
 {
-    auto* Parent = LoadClass<AActor>(nullptr, TEXT("/Game/EnemyWaveIndicator/BP_NwiResources.BP_NwiResources_C"));
-    auto* PulseClass = LoadClass<AActor>(nullptr, TEXT("/Game/EnemyWaveIndicator/BP_NwiPulse.BP_NwiPulse_C"));
-    auto* HudClass = LoadClass<UUserWidget>(nullptr, TEXT("/Game/EnemyWaveIndicator/WBP_NwiMarker.WBP_NwiMarker_C"));
+    auto* Parent = LoadClass<AActor>(nullptr, TEXT("/Game/EnemyWaveIndicator/BP_EwiResources.BP_EwiResources_C"));
+    auto* PulseClass = LoadClass<AActor>(nullptr, TEXT("/Game/EnemyWaveIndicator/BP_EwiPulse.BP_EwiPulse_C"));
+    auto* HudClass = LoadClass<UUserWidget>(nullptr, TEXT("/Game/EnemyWaveIndicator/WBP_EwiMarker.WBP_EwiMarker_C"));
     check(Parent && PulseClass && HudClass);
-    auto* BP = Blueprint(TEXT("BP_NwiAuto"), false, Parent);
+    auto* BP = Blueprint(TEXT("BP_EwiAuto"), false, Parent);
     AddControllerSettings(BP);
     Variable(BP, TEXT("PoolAttempted"), Type(UEdGraphSchema_K2::PC_Boolean), TEXT("false"));
     Variable(BP, TEXT("PoolReady"), Type(UEdGraphSchema_K2::PC_Boolean), TEXT("false"));
@@ -46,7 +46,7 @@ void BuildAutomatic()
     auto* TickGate = Branch(G, CanRun, TEXT("ReturnValue"));
     auto* Authority = Branch(G, Host, TEXT("ReturnValue")); Link(Tick,TEXT("then"),Authority,TEXT("execute"));
     auto* Time = Set(G,TEXT("NativeTime")); Link(Call(G,UGameplayStatics::StaticClass(),TEXT("GetTimeSeconds")),TEXT("ReturnValue"),Time,TEXT("NativeTime")); Link(Authority,TEXT("then"),Time,TEXT("execute"));
-    auto* Poll = Call(G,BP->GeneratedClass,TEXT("NwiPoll")); Link(Time,TEXT("then"),Poll,TEXT("execute")); Link(Poll,TEXT("then"),TickGate,TEXT("execute")); Link(Authority,TEXT("else"),TickGate,TEXT("execute"));
+    auto* Poll = Call(G,BP->GeneratedClass,TEXT("EwiPoll")); Link(Time,TEXT("then"),Poll,TEXT("execute")); Link(Poll,TEXT("then"),TickGate,TEXT("execute")); Link(Authority,TEXT("else"),TickGate,TEXT("execute"));
     auto* CallSetup = Call(G, BP->GeneratedClass, TEXT("InitializePool")); Link(TickGate, TEXT("then"), CallSetup, TEXT("execute"));
     auto* Pool = Get(G, TEXT("PoolReady")); auto* PoolGate = Branch(G, Pool, TEXT("PoolReady")); Link(CallSetup, TEXT("then"), PoolGate, TEXT("execute"));
     auto* Refresh = Call(G, BP->GeneratedClass, TEXT("RefreshSettings")); Link(PoolGate, TEXT("then"), Refresh, TEXT("execute"));
@@ -90,7 +90,7 @@ void BuildAutomatic()
         auto* Add = Call(G, UUserWidget::StaticClass(), TEXT("AddToViewport")); Link(Hud, *HudName, Add, TEXT("self")); Link(Deactivate, TEXT("then"), Add, TEXT("execute"));
         Value(Add, TEXT("ZOrder"), TEXT("10")); // Above the default HUD layer; independent of initializer load order.
         auto* Label = Call(G, HudClass, TEXT("SetMarkerLabel")); Link(Hud, *HudName, Label, TEXT("self"));
-        GetDefault<UEdGraphSchema_K2>()->TrySetDefaultText(*Pin(Label, TEXT("Label")), FText::FromString(TEXT("[!] SPAWN AREA")));
+        GetDefault<UEdGraphSchema_K2>()->TrySetDefaultText(*Pin(Label, TEXT("Label")), FText::FromString(TEXT("SPAWN AREA")));
         Link(Add, TEXT("then"), Label, TEXT("execute"));
         auto* Collapse = Call(G, UWidget::StaticClass(), TEXT("SetVisibility")); Link(Hud, *HudName, Collapse, TEXT("self")); Value(Collapse, TEXT("InVisibility"), TEXT("Collapsed")); Link(Label, TEXT("then"), Collapse, TEXT("execute"));
         BuildExec = Collapse;

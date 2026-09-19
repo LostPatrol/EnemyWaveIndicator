@@ -1,4 +1,4 @@
-# Package the opt-in natural-wave prediction experiment under agent/codex; never publish, install, or write dist.
+# Package the opt-in normal-wave prediction experiment under agent/codex; never publish, install, or write dist.
 [CmdletBinding()]
 param([Parameter(Mandatory)][string]$BuildDirectory, [Parameter(Mandatory)][string]$PresentationCook)
 $ErrorActionPreference = 'Stop'
@@ -25,9 +25,9 @@ $licensePath = Join-Path $output 'LICENSES.txt'
 Set-Content -LiteralPath $licensePath -Value $licenses -Encoding utf8
 @{
     Version = '0.9.4-prediction-test.6'; Experimental = $true; Published = $false; Installed = $false
-    Behavior = 'One stock center-selector call at T-5; reuse that result at the exact natural-wave call only when players remain still and the relevant navigation fingerprint is unchanged; otherwise fall through.'
+    Behavior = 'One stock center-selector call at T-5; reuse that result at the exact normal-wave call only when players remain still and the relevant navigation fingerprint is unchanged; otherwise fall through.'
     Risk = 'Controlled gameplay mutation: selector RNG/state is consumed early; a later rejected lock requires a second selector call.'
-    Marker = '[?] PREDICTED NATURAL (~5s)'; PredictionRegionType = 255
+    Marker = '[?] PREDICTED NORMAL (~5s)'; PredictionRegionType = 255
     OutputScope = 'agent/codex only'; DistModified = $false
     NativeBuild = $BuildDirectory; PresentationCook = $PresentationCook
     Files = @{'main.dll'=(Get-FileHash $dll).Hash;'EnemyWaveIndicator_P.pak'=(Get-FileHash $pak).Hash;'LICENSES.txt'=(Get-FileHash $licensePath).Hash}

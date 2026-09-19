@@ -7,8 +7,8 @@ $environment = & (Join-Path $PSScriptRoot 'Test-RenderingEnvironment.ps1') -Engi
 if (!$environment.CompatibleEditors.Count) { throw 'UE4.27.2 editor is missing.' }
 if (!$environment.NetFrameworkSdks.Count) { throw 'Missing .NET Framework SDK (NETFXSDK). Install the .NET Framework 4.8 SDK in Visual Studio Installer.' }
 if (!$EngineRoot) { $EngineRoot = $environment.CompatibleEditors[0].Root }
-$buildRoot = Join-Path $projectRoot ('agent\codex\nwi-authoring-build-' + (Get-Date -Format 'yyyyMMdd-HHmmss-fff'))
-$plugin = Join-Path $projectRoot 'engine\Authoring\NwiAuthoring\NwiAuthoring.uplugin'
+$buildRoot = Join-Path $projectRoot ('agent\codex\ewi-authoring-build-' + (Get-Date -Format 'yyyyMMdd-HHmmss-fff'))
+$plugin = Join-Path $projectRoot 'engine\Authoring\EwiAuthoring\EwiAuthoring.uplugin'
 $uat = Join-Path $EngineRoot 'Engine\Build\BatchFiles\RunUAT.bat'
 $logPath = $buildRoot + '.log'
 $sourceFiles = @(Get-ChildItem -LiteralPath (Split-Path $plugin) -Recurse -File | Get-FileHash)

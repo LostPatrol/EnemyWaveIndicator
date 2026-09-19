@@ -1,29 +1,29 @@
-// Versioned native handoff; the DLL alone supplies proven natural-wave records.
+// Versioned native handoff; the DLL alone supplies proven normal-wave records.
 void DeclareCapture(UBlueprint* BP)
 {
-    Variable(BP, TEXT("NativeAbi"), Type(UEdGraphSchema_K2::PC_Int), TEXT("591104"));
+    Variable(BP, TEXT("NativeAbi"), Type(UEdGraphSchema_K2::PC_Int), TEXT("65536")); // 1.0.0 packed as 0x10000.
     Variable(BP, TEXT("NativeCookie"), Type(UEdGraphSchema_K2::PC_Int));
     Variable(BP, TEXT("NativeTime"), Type(UEdGraphSchema_K2::PC_Float));
     Variable(BP, TEXT("NativeEnabled"), Type(UEdGraphSchema_K2::PC_Int), TEXT("1"));
-    for (uint32 I=1; I<nwi::WaveTypeCount; ++I) Variable(BP,*FString::Printf(TEXT("NativeEnabled%u"),I),Type(UEdGraphSchema_K2::PC_Int),TEXT("0"));
+    for (uint32 I=1; I<ewi::WaveTypeCount; ++I) Variable(BP,*FString::Printf(TEXT("NativeEnabled%u"),I),Type(UEdGraphSchema_K2::PC_Int),TEXT("0"));
     for (int32 I=0; I<8; ++I) {
         Variable(BP, *FString::Printf(TEXT("RegionExpires%d"), I), Type(UEdGraphSchema_K2::PC_Float));
         Variable(BP, *FString::Printf(TEXT("RegionScale%d"), I), Type(UEdGraphSchema_K2::PC_Float), TEXT("1"));
     }
     // Only our zero-argument no-op is replaced; no game-wide Blueprint interception.
-    auto* F = FBlueprintEditorUtils::CreateNewGraph(BP, TEXT("NwiPoll"), UEdGraph::StaticClass(), UEdGraphSchema_K2::StaticClass());
+    auto* F = FBlueprintEditorUtils::CreateNewGraph(BP, TEXT("EwiPoll"), UEdGraph::StaticClass(), UEdGraphSchema_K2::StaticClass());
     FBlueprintEditorUtils::AddFunctionGraph(BP, F, true, static_cast<UClass*>(nullptr));
 }
 // Each display peer selects its own label/visibility from the replicated source ID.
 UK2Node_CallFunction* RegionSetting(UEdGraph* G, int32 I, bool Enabled)
 {
-    auto* SaveClass=LoadClass<USaveGame>(nullptr,TEXT("/Game/EnemyWaveIndicator/SG_NwiSettings.SG_NwiSettings_C"));
+    auto* SaveClass=LoadClass<USaveGame>(nullptr,TEXT("/Game/EnemyWaveIndicator/SG_EwiSettings.SG_EwiSettings_C"));
     const auto Region=FString::Printf(TEXT("RegionType%d"),I);
     auto* Config=Get(G,TEXT("Settings"));
-    const TCHAR* NaturalField=Enabled?TEXT("NaturalEnabled"):TEXT("Label");
-    UEdGraphNode* Current=Field(G,SaveClass,NaturalField,Config,TEXT("Settings"));
-    const TCHAR* Output=NaturalField; UK2Node_CallFunction* Select=nullptr;
-    for (uint32 J=1; J<nwi::WaveTypeCount; ++J) {
+    const TCHAR* NormalField=Enabled?TEXT("NormalEnabled"):TEXT("Label");
+    UEdGraphNode* Current=Field(G,SaveClass,NormalField,Config,TEXT("Settings"));
+    const TCHAR* Output=NormalField; UK2Node_CallFunction* Select=nullptr;
+    for (uint32 J=1; J<ewi::WaveTypeCount; ++J) {
         const auto FieldName=Enabled?FString::Printf(TEXT("EnabledType%u"),J):FString::Printf(TEXT("LabelType%u"),J);
         auto* Match=Call(G,UKismetMathLibrary::StaticClass(),TEXT("EqualEqual_IntInt"));Link(Get(G,*Region),*Region,Match,TEXT("A"));Value(Match,TEXT("B"),*FString::FromInt(J));
         if (Enabled) {
@@ -41,7 +41,7 @@ UK2Node_CallFunction* RegionSetting(UEdGraph* G, int32 I, bool Enabled)
         // 255 is emitted only by the isolated prediction-test DLL and is never a stock wave ID.
         auto* Prediction=Call(G,UKismetMathLibrary::StaticClass(),TEXT("EqualEqual_IntInt"));Link(Get(G,*Region),*Region,Prediction,TEXT("A"));Value(Prediction,TEXT("B"),TEXT("255"));
         auto* PredictionLabel=Call(G,UKismetMathLibrary::StaticClass(),TEXT("SelectString"));Link(Prediction,TEXT("ReturnValue"),PredictionLabel,TEXT("bPickA"));
-        Value(PredictionLabel,TEXT("A"),TEXT("[?] PREDICTED NATURAL WAVE (~5s)"));Link(Current,Output,PredictionLabel,TEXT("B"));Select=PredictionLabel;
+        Value(PredictionLabel,TEXT("A"),TEXT("[?] PREDICTED NORMAL WAVE (~5s)"));Link(Current,Output,PredictionLabel,TEXT("B"));Select=PredictionLabel;
     }
     return Select;
 }
@@ -55,7 +55,7 @@ UK2Node_CallFunction* UpdateRegionLabel(UEdGraph* G, UClass* HudClass, int32 I)
 // The host owns the replicated controller. Clients render the host-created instance.
 void BuildNativeInitializers()
 {
-    auto* Controller = LoadClass<AActor>(nullptr, TEXT("/Game/EnemyWaveIndicator/BP_NwiAuto.BP_NwiAuto_C")); check(Controller);
+    auto* Controller = LoadClass<AActor>(nullptr, TEXT("/Game/EnemyWaveIndicator/BP_EwiAuto.BP_EwiAuto_C")); check(Controller);
     for (const TCHAR* Name : {TEXT("InitCave"), TEXT("InitSpacerig")}) {
         auto* BP = Blueprint(Name, false, AActor::StaticClass());
         Variable(BP, TEXT("OwnedController"), Type(UEdGraphSchema_K2::PC_Object, Controller)); Compile(BP);

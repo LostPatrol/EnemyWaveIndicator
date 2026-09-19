@@ -2,7 +2,7 @@
 #pragma once
 #include "SpawnAttribution.h"
 #include <array>
-namespace nwi {
+namespace ewi {
 class OriginRegions {
 public:
     static constexpr uint32_t Capacity = 8;
@@ -40,4 +40,4 @@ public:
         ++overflow; return false; // Explicit telemetry loss, never additional gameplay work or hidden allocation.
     }
 };
-} // namespace nwi
+} // namespace ewi

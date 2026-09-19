@@ -1,7 +1,7 @@
 // Read-only views of the game's counting buckets; no enemy names or descriptor significance heuristics.
 #pragma once
 #include <cstdint>
-namespace nwi {
+namespace ewi {
 struct EnemyBucket {
     void** data = nullptr; int32_t count = 0, capacity = 0;
     bool valid() const noexcept { return count >= 0 && capacity >= count && count <= 65536 && (!count || data); }
@@ -14,7 +14,7 @@ inline bool eligibleEnemy(uint64_t pawn, const EnemyBucket& regular, const Enemy
     return pawn && regular.valid() && small.valid() && critters.valid()
         && regular.contains(pawn) && !small.contains(pawn) && !critters.contains(pawn);
 }
-// Explicit scripted swarm types may consist of small enemies; the natural filter stays strict.
+// Explicit scripted swarm types may consist of small enemies; the normal-wave filter stays strict.
 inline bool eligibleScriptedEnemy(uint64_t pawn, const EnemyBucket& regular, const EnemyBucket& small, const EnemyBucket& critters) noexcept {
     return pawn && regular.valid() && small.valid() && critters.valid()
         && (regular.contains(pawn) || small.contains(pawn)) && !critters.contains(pawn);

@@ -6,6 +6,6 @@
     "Plugins": [
         { "Name": "PythonScriptPlugin", "Enabled": true },
         { "Name": "EditorScriptingUtilities", "Enabled": true },
-        { "Name": "NwiAuthoring", "Enabled": true }
+        { "Name": "EwiAuthoring", "Enabled": true }
     ]
 }

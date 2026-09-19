@@ -4,7 +4,7 @@
 #include <cstring>
 #include "DispatchProbe.h"
 
-namespace nwi {
+namespace ewi {
 class EngineThreadIdentity {
 public:
     static constexpr uintptr_t InitCodeRva = 0x864655;
@@ -48,4 +48,4 @@ public:
 private:
     uintptr_t address_ = 0;
 };
-} // namespace nwi
+} // namespace ewi

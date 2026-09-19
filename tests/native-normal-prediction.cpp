@@ -1,5 +1,5 @@
 // Offline tests for prediction geometry and countdown gating; no game process or Unreal object is used.
-#include "../mods/EnemyWaveNativeProbe/NaturalWavePrediction.h"
+#include "../mods/EnemyWaveNativeProbe/NormalWavePrediction.h"
 #include <cstring>
 #include <cmath>
 #include <cstdio>
@@ -7,7 +7,7 @@
 #define REQUIRE(x) do { if (!(x)) { std::printf("FAIL line %d: %s\n", __LINE__, #x); return 1; } } while (0)
 
 int main() {
-    using namespace nwi::prediction;
+    using namespace ewi::prediction;
     const Position grouped[]{{0,0,0},{100,0,0},{50,20,0},{50,-20,0}};
     const auto group = playerSphere(grouped, 4);
     REQUIRE(group.valid && group.center.x == 50 && group.center.y == 0 && group.radius == 50);

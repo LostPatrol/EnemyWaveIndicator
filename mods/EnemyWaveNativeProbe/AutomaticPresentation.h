@@ -2,7 +2,7 @@
 #pragma once
 #include <cstdint>
 #include <windows.h>
-namespace nwi::automatic {
+namespace ewi::automatic {
 bool configure(HMODULE runtime, HMODULE game, uint32_t gameThread) noexcept;
 bool prepareClass(void* cls) noexcept;
 void stop() noexcept;

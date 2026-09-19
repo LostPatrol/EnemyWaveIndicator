@@ -29,12 +29,12 @@ UK2Node_VariableSet* WriteField(UEdGraph* G, UClass* Owner, const TCHAR* Name, U
     Link(Object, Output, N, TEXT("self")); return N;
 }
 
-const TCHAR* SettingNames[] = {TEXT("Label"), TEXT("Duration"), TEXT("Radius"), TEXT("Red"), TEXT("Green"), TEXT("Blue"), TEXT("Blink"), TEXT("Opacity"), TEXT("BlinkHz"), TEXT("TextAR"), TEXT("TextAG"), TEXT("TextAB"), TEXT("TextBR"), TEXT("TextBG"), TEXT("TextBB"), TEXT("NaturalEnabled")};
+const TCHAR* SettingNames[] = {TEXT("Label"), TEXT("Duration"), TEXT("Radius"), TEXT("Red"), TEXT("Green"), TEXT("Blue"), TEXT("Blink"), TEXT("Opacity"), TEXT("BlinkHz"), TEXT("TextAR"), TEXT("TextAG"), TEXT("TextAB"), TEXT("TextBR"), TEXT("TextBG"), TEXT("TextBB"), TEXT("NormalEnabled")};
 // Marker defaults are deliberately English in every culture; only their settings captions are localized.
-const TCHAR* SettingDefaults[] = {TEXT("[!] NATURAL WAVE"), TEXT("8"), TEXT("3.75"), TEXT("1"), TEXT("0.01"), TEXT("0.005"), TEXT("true"), TEXT("0.4"), TEXT("2"), TEXT("1"), TEXT("1"), TEXT("0"), TEXT("1"), TEXT("0"), TEXT("0"), TEXT("true")};
+const TCHAR* SettingDefaults[] = {TEXT("NORMAL WAVE"), TEXT("8"), TEXT("3.75"), TEXT("1"), TEXT("0.01"), TEXT("0.005"), TEXT("true"), TEXT("0.4"), TEXT("2"), TEXT("1"), TEXT("1"), TEXT("0"), TEXT("1"), TEXT("0"), TEXT("0"), TEXT("true")};
 const TCHAR* SettingLabelsEn[] = {
-    TEXT("Natural marker text"), TEXT("Duration (s)"), TEXT("Size"), TEXT("Sphere R"), TEXT("Sphere G"), TEXT("Sphere B"), TEXT("Flash A / B"),
-    TEXT("Opacity"), TEXT("Flash rate (Hz)"), TEXT("Text A · R"), TEXT("Text A · G"), TEXT("Text A · B"), TEXT("Text B · R"), TEXT("Text B · G"), TEXT("Text B · B"), TEXT("Natural waves")
+    TEXT("Normal marker text"), TEXT("Duration (s)"), TEXT("Size"), TEXT("Sphere R"), TEXT("Sphere G"), TEXT("Sphere B"), TEXT("Flash A / B"),
+    TEXT("Opacity"), TEXT("Flash rate (Hz)"), TEXT("Text A · R"), TEXT("Text A · G"), TEXT("Text A · B"), TEXT("Text B · R"), TEXT("Text B · G"), TEXT("Text B · B"), TEXT("Normal waves")
 };
 const TCHAR* SettingLabelsZhCn[] = {
     TEXT("自然潮标记文字"), TEXT("显示时长（秒）"), TEXT("尺寸"), TEXT("球体 R"), TEXT("球体 G"), TEXT("球体 B"), TEXT("闪烁 A / B"),
@@ -54,8 +54,8 @@ const TCHAR* WaveTitlesZhCn[] = {
 };
 static_assert(sizeof(SettingLabelsEn) / sizeof(SettingLabelsEn[0]) == 16, "English settings caption count changed");
 static_assert(sizeof(SettingLabelsZhCn) / sizeof(SettingLabelsZhCn[0]) == 16, "Chinese settings caption count changed");
-static_assert(sizeof(WaveTitlesZhCn) / sizeof(WaveTitlesZhCn[0]) == nwi::WaveTypeCount, "Chinese wave title count changed");
-constexpr int32 SettingCount = 16 + 2 * (nwi::WaveTypeCount - 1);
+static_assert(sizeof(WaveTitlesZhCn) / sizeof(WaveTitlesZhCn[0]) == ewi::WaveTypeCount, "Chinese wave title count changed");
+constexpr int32 SettingCount = 16 + 2 * (ewi::WaveTypeCount - 1);
 // Explicit typography avoids UMG's large default font reversing the visual hierarchy in game.
 constexpr int32 PageTitleFontSize = 21;
 constexpr int32 SectionTitleFontSize = 19;
@@ -63,9 +63,9 @@ constexpr int32 BodyFontSize = 13;
 constexpr int32 PreviewFontSize = 18;
 constexpr int32 ButtonFontSize = 16;
 FString SettingName(int32 I) { return I < 16 ? FString(SettingNames[I]) : (I % 2 == 0 ? FString::Printf(TEXT("EnabledType%d"), (I-16)/2+1) : FString::Printf(TEXT("LabelType%d"), (I-16)/2+1)); }
-// 0.9.5 reports every catalogued source except the two drilling phases, both Core sources, and Haunted Cave.
+// 1.0.0 reports every catalogued source except the two drilling phases, both Core sources, and Haunted Cave.
 bool DefaultWaveEnabled(int32 Type) { return Type != 1 && Type != 6 && Type != 32 && Type != 34 && Type != 46; }
-FString SettingDefault(int32 I) { return I < 16 ? FString(SettingDefaults[I]) : I % 2 == 0 ? FString(DefaultWaveEnabled((I-16)/2+1) ? TEXT("true") : TEXT("false")) : FString(TEXT("[!] ")) + nwi::WaveTypes[(I-16)/2+1].title; }
+FString SettingDefault(int32 I) { return I < 16 ? FString(SettingDefaults[I]) : I % 2 == 0 ? FString(DefaultWaveEnabled((I-16)/2+1) ? TEXT("true") : TEXT("false")) : FString(ewi::WaveTypes[(I-16)/2+1].title); }
 bool IsTextSetting(int32 I) { return I == 0 || (I >= 16 && I % 2 == 1); }
 bool IsBoolSetting(int32 I) { return I == 6 || I == 15 || (I >= 16 && I % 2 == 0); }
 float NumericMinimum(int32 I) { return I == 1 ? 1.f : I == 2 ? .5f : I == 8 ? .1f : 0.f; }
@@ -83,7 +83,7 @@ FString SettingCaption(int32 I, bool Chinese)
     if (I < 16) return Chinese ? FString(SettingLabelsZhCn[I]) : FString(SettingLabelsEn[I]);
     const int32 Type = (I - 16) / 2 + 1;
     if (Chinese) return I % 2 == 0 ? FString(TEXT("显示")) + WaveTitlesZhCn[Type] : FString(WaveTitlesZhCn[Type]) + TEXT("提示文字（最多 64 个字符）");
-    return I % 2 == 0 ? FString(TEXT("Show ")) + nwi::WaveTypes[Type].title : FString(nwi::WaveTypes[Type].title) + TEXT(" text (up to 64 characters)");
+    return I % 2 == 0 ? FString(TEXT("Show ")) + ewi::WaveTypes[Type].title : FString(ewi::WaveTypes[Type].title) + TEXT(" text (up to 64 characters)");
 }
 
 // DRG's Simplified Chinese localization currently reports zh-CN; zh-Hans covers canonical aliases.
@@ -119,10 +119,12 @@ void AddSettings(UBlueprint* BP)
 
 void BuildSettings()
 {
-    auto* SaveBP = Blueprint(TEXT("SG_NwiSettings"), false, USaveGame::StaticClass()); AddSettings(SaveBP); Compile(SaveBP); Save(SaveBP);
-    auto* BP = CastChecked<UWidgetBlueprint>(Blueprint(TEXT("WBP_NwiSettings"), true));
+    auto* SaveBP = Blueprint(TEXT("SG_EwiSettings"), false, USaveGame::StaticClass()); AddSettings(SaveBP); Compile(SaveBP); Save(SaveBP);
+    auto* BP = CastChecked<UWidgetBlueprint>(Blueprint(TEXT("WBP_EwiSettings"), true));
     Variable(BP, TEXT("Settings"), Type(UEdGraphSchema_K2::PC_Object, SaveBP->GeneratedClass));
     Variable(BP, TEXT("SaveSlot"), Type(UEdGraphSchema_K2::PC_String), TEXT("EnemyWaveIndicator_v1"));
+    Variable(BP, TEXT("WarningIconPath"), Type(UEdGraphSchema_K2::PC_String), EwiWarningIconObjectPath);
+    Variable(BP, TEXT("WarningIconAttempted"), Type(UEdGraphSchema_K2::PC_Boolean), TEXT("false"));
     check(FBlueprintEditorUtils::ImplementNewInterface(BP, HubInterface(TEXT("IHubPageWidget"))->GetFName()));
     auto* Info = HubResult(BP, TEXT("GetPageInfo"));
     // Mod Hub consumes page metadata during discovery; keep this pure interface output constant.
@@ -152,17 +154,17 @@ void BuildSettings()
         auto* Slot = Grid->AddChildToGrid(Widget, Row, Column); Slot->SetPadding(FMargin(4.f, 2.f));
         Slot->SetVerticalAlignment(VAlign_Center); Slot->SetHorizontalAlignment(Fill ? HAlign_Fill : HAlign_Left);
     };
-    AddText(TEXT("Title"), TEXT("Enemy Wave Indicator  |  0.9.5"), nullptr, PageTitleFontSize);
+    AddText(TEXT("Title"), TEXT("Enemy Wave Indicator  |  1.0.0"), nullptr, PageTitleFontSize);
     AddText(TEXT("WaveSection"), TEXT("Wave broadcasts"), nullptr, SectionTitleFontSize);
     auto* WaveGrid = BP->WidgetTree->ConstructWidget<UGridPanel>(UGridPanel::StaticClass(), TEXT("WaveGrid")); WaveGrid->bIsVariable = true; Root->AddChildToVerticalBox(WaveGrid);
     WaveGrid->SetColumnFill(2, 1.f); WaveGrid->SetColumnFill(5, 1.f);
     // Two columns keep every independent switch and marker text visible without wasting a full row per control.
-    constexpr int32 RowsPerColumn = (nwi::WaveTypeCount + 1) / 2;
-    for (int32 Wave = 0; Wave < nwi::WaveTypeCount; ++Wave) {
+    constexpr int32 RowsPerColumn = (ewi::WaveTypeCount + 1) / 2;
+    for (int32 Wave = 0; Wave < ewi::WaveTypeCount; ++Wave) {
         const int32 Enable = Wave == 0 ? 15 : 16 + 2 * (Wave - 1); const int32 Label = Wave == 0 ? 0 : Enable + 1;
         const int32 Row = Wave % RowsPerColumn; const int32 Column = (Wave / RowsPerColumn) * 3;
         GridAdd(WaveGrid, AddInput(Enable), Row, Column);
-        auto* Name = BP->WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), *FString::Printf(TEXT("WaveName%d"), Wave)); Name->bIsVariable = true; Name->SetText(FText::FromString(nwi::WaveTypes[Wave].title)); SetFontSize(Name, BodyFontSize); GridAdd(WaveGrid, Name, Row, Column + 1);
+        auto* Name = BP->WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), *FString::Printf(TEXT("WaveName%d"), Wave)); Name->bIsVariable = true; Name->SetText(FText::FromString(ewi::WaveTypes[Wave].title)); SetFontSize(Name, BodyFontSize); GridAdd(WaveGrid, Name, Row, Column + 1);
         GridAdd(WaveGrid, AddInput(Label), Row, Column + 2, true);
     }
     auto AddControl = [&](UGridPanel* Grid, int32 I, int32 Row, int32 Pair) {
@@ -175,7 +177,16 @@ void BuildSettings()
     AddControl(TextGrid,9,1,0); AddControl(TextGrid,10,1,1); AddControl(TextGrid,11,1,2);
     AddControl(TextGrid,12,2,0); AddControl(TextGrid,13,2,1); AddControl(TextGrid,14,2,2);
     AddText(TEXT("PreviewCaption"),TEXT("Live text preview"));
-    auto* Preview=BP->WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(),TEXT("TextPreview"));Preview->SetText(FText::FromString(TEXT("[!] NATURAL WAVE")));Preview->bIsVariable=true;SetFontSize(Preview,PreviewFontSize);Root->AddChildToVerticalBox(Preview);
+    auto* PreviewIcon=BP->WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(),TEXT("PreviewIcon"));
+    PreviewIcon->bIsVariable=true;PreviewIcon->SetVisibility(ESlateVisibility::Collapsed);
+    PreviewIcon->SetColorAndOpacity(EwiWarningIconTint);
+    PreviewIcon->Brush.ImageSize=FVector2D(EwiPreviewWarningIconSize,EwiPreviewWarningIconSize);
+    PreviewIcon->Brush.TintColor=FSlateColor(EwiWarningIconTint);
+    auto* Preview=BP->WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(),TEXT("TextPreview"));Preview->SetText(FText::FromString(TEXT("NORMAL WAVE")));Preview->bIsVariable=true;SetFontSize(Preview,PreviewFontSize);
+    auto* PreviewRow=BP->WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass(),TEXT("PreviewRow"));PreviewRow->bIsVariable=true;
+    auto* PreviewIconSlot=PreviewRow->AddChildToHorizontalBox(PreviewIcon);PreviewIconSlot->SetVerticalAlignment(VAlign_Center);PreviewIconSlot->SetPadding(FMargin(0.f,0.f,6.f,0.f));
+    auto* PreviewTextSlot=PreviewRow->AddChildToHorizontalBox(Preview);PreviewTextSlot->SetVerticalAlignment(VAlign_Center);
+    Root->AddChildToVerticalBox(PreviewRow);
     AddText(TEXT("SphereSection"), TEXT("Warning sphere"), nullptr, SectionTitleFontSize);
     auto* SphereGrid = BP->WidgetTree->ConstructWidget<UGridPanel>(UGridPanel::StaticClass(), TEXT("SphereGrid")); SphereGrid->bIsVariable = true; Root->AddChildToVerticalBox(SphereGrid);
     AddControl(SphereGrid,1,0,0); AddControl(SphereGrid,2,0,1);
@@ -187,15 +198,17 @@ void BuildSettings()
     auto* Status = AddText(TEXT("SaveStatus"), TEXT("")); Status->bIsVariable = true;
     Compile(BP); auto* G = Graph(BP);
     auto* Config = Get(G, TEXT("Settings"));
-    auto* Construct = Event(G, UUserWidget::StaticClass(), TEXT("Construct")); auto* Gate = Branch(G, Valid(G, Config, TEXT("Settings")), TEXT("ReturnValue")); Link(Construct, TEXT("then"), Gate, TEXT("execute"));
+    auto* Construct = Event(G, UUserWidget::StaticClass(), TEXT("Construct"));
+    auto* LoadIcon = StartWarningIconLoad(G, Construct, TEXT("then"), TEXT("PreviewIcon"));
+    auto* Gate = Branch(G, Valid(G, Config, TEXT("Settings")), TEXT("ReturnValue")); Link(LoadIcon, TEXT("then_1"), Gate, TEXT("execute"));
     UEdGraphNode* Exec = Gate;
     auto* Chinese = IsSimplifiedChinese(G);
     auto Localize = [&](const TCHAR* Widget, const FString& English, const FString& ZhCn) {
         auto* SetText = SetLocalizedWidgetText(G, Chinese, Widget, English, ZhCn); Link(Exec, TEXT("then"), SetText, TEXT("execute")); Exec = SetText;
     };
-    Localize(TEXT("Title"), TEXT("Enemy Wave Indicator  |  0.9.5"), TEXT("敌潮指示器  |  0.9.5"));
+    Localize(TEXT("Title"), TEXT("Enemy Wave Indicator  |  1.0.0"), TEXT("敌潮指示器  |  1.0.0"));
     Localize(TEXT("WaveSection"), TEXT("Wave broadcasts"), TEXT("虫潮播报"));
-    for (int32 Wave = 0; Wave < nwi::WaveTypeCount; ++Wave) Localize(*FString::Printf(TEXT("WaveName%d"), Wave), nwi::WaveTypes[Wave].title, WaveTitlesZhCn[Wave]);
+    for (int32 Wave = 0; Wave < ewi::WaveTypeCount; ++Wave) Localize(*FString::Printf(TEXT("WaveName%d"), Wave), ewi::WaveTypes[Wave].title, WaveTitlesZhCn[Wave]);
     Localize(TEXT("TextSection"), TEXT("Warning text"), TEXT("播报警示文本"));
     for (int32 I : {6,8,9,10,11,12,13,14}) Localize(*FString::Printf(TEXT("Caption%d"), I), SettingCaption(I, false), SettingCaption(I, true));
     Localize(TEXT("PreviewCaption"), TEXT("Live text preview"), TEXT("实时文字预览"));
@@ -216,8 +229,9 @@ void BuildSettings()
     auto Draft=[&](int32 I) { auto* R=Call(G,USpinBox::StaticClass(),TEXT("GetValue"));const auto N=FString::Printf(TEXT("Input%s"),*SettingName(I));Link(Get(G,*N),*N,R,TEXT("self"));return R; };
     auto DraftColor=[&](int32 First) { auto* C=Call(G,UKismetMathLibrary::StaticClass(),TEXT("MakeColor"));for(int32 J=0;J<3;++J)Link(Draft(First+J),TEXT("ReturnValue"),C,J==0?TEXT("R"):J==1?TEXT("G"):TEXT("B"));Value(C,TEXT("A"),TEXT("1"));return C; };
     auto* Tick=Event(G,UUserWidget::StaticClass(),TEXT("Tick"));
+    auto* TickLoad=StartWarningIconLoad(G,Tick,TEXT("then"),TEXT("PreviewIcon"));
     auto* DraftTint=DraftColor(3);Link(Draft(7),TEXT("ReturnValue"),DraftTint,TEXT("A"));
-    auto* SwatchColor=Call(G,UImage::StaticClass(),TEXT("SetColorAndOpacity"));Link(Get(G,TEXT("SpherePreview")),TEXT("SpherePreview"),SwatchColor,TEXT("self"));Link(DraftTint,TEXT("ReturnValue"),SwatchColor,TEXT("InColorAndOpacity"));Link(Tick,TEXT("then"),SwatchColor,TEXT("execute"));
+    auto* SwatchColor=Call(G,UImage::StaticClass(),TEXT("SetColorAndOpacity"));Link(Get(G,TEXT("SpherePreview")),TEXT("SpherePreview"),SwatchColor,TEXT("self"));Link(DraftTint,TEXT("ReturnValue"),SwatchColor,TEXT("InColorAndOpacity"));Link(TickLoad,TEXT("then_1"),SwatchColor,TEXT("execute"));
     auto* DraftBlink=Call(G,UCheckBox::StaticClass(),TEXT("IsChecked"));Link(Get(G,TEXT("InputBlink")),TEXT("InputBlink"),DraftBlink,TEXT("self"));
     auto* Paint=PaintWarning(G,Get(G,TEXT("TextPreview")),TEXT("TextPreview"),DraftColor(9),TEXT("ReturnValue"),DraftColor(12),TEXT("ReturnValue"),Draft(8),TEXT("ReturnValue"),DraftBlink,TEXT("ReturnValue"));Link(SwatchColor,TEXT("then"),Paint,TEXT("execute"));
     auto* Click = Node<UK2Node_ComponentBoundEvent>(G);
@@ -248,8 +262,8 @@ void BuildSettings()
 
 void AddControllerSettings(UBlueprint* BP)
 {
-    auto* SaveClass = LoadClass<USaveGame>(nullptr, TEXT("/Game/EnemyWaveIndicator/SG_NwiSettings.SG_NwiSettings_C"));
-    auto* PageClass = LoadClass<UUserWidget>(nullptr, TEXT("/Game/EnemyWaveIndicator/WBP_NwiSettings.WBP_NwiSettings_C"));
+    auto* SaveClass = LoadClass<USaveGame>(nullptr, TEXT("/Game/EnemyWaveIndicator/SG_EwiSettings.SG_EwiSettings_C"));
+    auto* PageClass = LoadClass<UUserWidget>(nullptr, TEXT("/Game/EnemyWaveIndicator/WBP_EwiSettings.WBP_EwiSettings_C"));
     Variable(BP, TEXT("Settings"), Type(UEdGraphSchema_K2::PC_Object, SaveClass));
     Variable(BP, TEXT("SettingsPage"), Type(UEdGraphSchema_K2::PC_Object, PageClass));
     Variable(BP, TEXT("AppliedSettingsRevision"), Type(UEdGraphSchema_K2::PC_Int));
@@ -258,15 +272,15 @@ void AddControllerSettings(UBlueprint* BP)
     auto* Info = HubResult(BP, TEXT("GetModInfo"));
     // Match the last working registration contract: no runtime calls inside GetModInfo.
     const TCHAR* Names[] = {TEXT("ModName"), TEXT("ModAuthor"), TEXT("ModVersion")};
-    const TCHAR* Values[] = {TEXT("Enemy Wave Indicator"), TEXT("LostPatrol"), TEXT("0.9.5")};
+    const TCHAR* Values[] = {TEXT("Enemy Wave Indicator"), TEXT("LostPatrol"), TEXT("1.0.0")};
     for (int32 I = 0; I < 3; ++I)
         GetDefault<UEdGraphSchema_K2>()->TrySetDefaultText(*Pin(Info, Names[I]), FText::FromString(Values[I]));
 }
 
 void BuildControllerSettings(UBlueprint* BP, UEdGraph* G, UClass* PulseClass, UClass* HudClass)
 {
-    auto* SaveClass = LoadClass<USaveGame>(nullptr, TEXT("/Game/EnemyWaveIndicator/SG_NwiSettings.SG_NwiSettings_C"));
-    auto* PageClass = LoadClass<UUserWidget>(nullptr, TEXT("/Game/EnemyWaveIndicator/WBP_NwiSettings.WBP_NwiSettings_C"));
+    auto* SaveClass = LoadClass<USaveGame>(nullptr, TEXT("/Game/EnemyWaveIndicator/SG_EwiSettings.SG_EwiSettings_C"));
+    auto* PageClass = LoadClass<UUserWidget>(nullptr, TEXT("/Game/EnemyWaveIndicator/WBP_EwiSettings.WBP_EwiSettings_C"));
     auto* Config = Get(G, TEXT("Settings"));
     // One tiny settings file read during world startup, never in spawn or frame callbacks.
     auto* Begin = Event(G, AActor::StaticClass(), TEXT("ReceiveBeginPlay"));
@@ -311,9 +325,9 @@ void BuildControllerSettings(UBlueprint* BP, UEdGraph* G, UClass* PulseClass, UC
         auto* Channel = Field(G, SaveClass, *SettingName(I), Config, TEXT("Settings")); auto* Clamp = Call(G, UKismetMathLibrary::StaticClass(), TEXT("FClamp")); Link(Channel, *SettingName(I), Clamp, TEXT("Value")); Value(Clamp, TEXT("Max"), TEXT("1")); Link(Clamp, TEXT("ReturnValue"), Tint, I == 3 ? TEXT("R") : I == 4 ? TEXT("G") : TEXT("B"));
     }
     Value(Tint, TEXT("A"), TEXT("1"));
-    auto* Natural=Call(G,UKismetMathLibrary::StaticClass(),TEXT("SelectInt"));Value(Natural,TEXT("A"),TEXT("1"));Value(Natural,TEXT("B"),TEXT("0"));Link(Field(G,SaveClass,TEXT("NaturalEnabled"),Config,TEXT("Settings")),TEXT("NaturalEnabled"),Natural,TEXT("bPickA"));
-    auto* Enabled=Set(G,TEXT("NativeEnabled"));Link(Natural,TEXT("ReturnValue"),Enabled,TEXT("NativeEnabled"));Link(Exec,TEXT("then"),Enabled,TEXT("execute"));Exec=Enabled;
-    for (uint32 I=1; I<nwi::WaveTypeCount; ++I) {
+    auto* Normal=Call(G,UKismetMathLibrary::StaticClass(),TEXT("SelectInt"));Value(Normal,TEXT("A"),TEXT("1"));Value(Normal,TEXT("B"),TEXT("0"));Link(Field(G,SaveClass,TEXT("NormalEnabled"),Config,TEXT("Settings")),TEXT("NormalEnabled"),Normal,TEXT("bPickA"));
+    auto* Enabled=Set(G,TEXT("NativeEnabled"));Link(Normal,TEXT("ReturnValue"),Enabled,TEXT("NativeEnabled"));Link(Exec,TEXT("then"),Enabled,TEXT("execute"));Exec=Enabled;
+    for (uint32 I=1; I<ewi::WaveTypeCount; ++I) {
         const auto FieldName=FString::Printf(TEXT("EnabledType%u"),I), NativeName=FString::Printf(TEXT("NativeEnabled%u"),I);
         auto* Number=Call(G,UKismetMathLibrary::StaticClass(),TEXT("SelectInt"));Value(Number,TEXT("A"),TEXT("1"));Value(Number,TEXT("B"),TEXT("0"));Link(Field(G,SaveClass,*FieldName,Config,TEXT("Settings")),*FieldName,Number,TEXT("bPickA"));
         auto* StoreType=Set(G,*NativeName);Link(Number,TEXT("ReturnValue"),StoreType,*NativeName);Link(Exec,TEXT("then"),StoreType,TEXT("execute"));Exec=StoreType;

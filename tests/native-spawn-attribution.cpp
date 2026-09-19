@@ -6,7 +6,7 @@
 
 #define REQUIRE(x) do { if (!(x)) { std::printf("FAIL line %d: %s\n", __LINE__, #x); return 1; } } while (0)
 int main() {
-    using namespace nwi;
+    using namespace ewi;
     const SpawnKey a{10, 1, 2, 3}, b{20, 4, 5, 6};
     SpawnAttribution ledger; SpawnEvent event;
     REQUIRE(ledger.begin(1, 99, 0));

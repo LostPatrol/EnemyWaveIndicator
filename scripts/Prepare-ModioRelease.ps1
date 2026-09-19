@@ -4,7 +4,7 @@ param([Parameter(Mandatory)][string]$BuildDirectory, [Parameter(Mandatory)][stri
 $ErrorActionPreference='Stop'
 $root=Split-Path $PSScriptRoot -Parent
 # Public release identity; legacy names below are runtime compatibility identifiers only.
-$version='0.9.5'
+$version='1.0.0'
 $archiveName="EnemyWaveIndicator-$version.zip"
 $native=Get-Content -LiteralPath (Join-Path $BuildDirectory 'verification.json') -Raw | ConvertFrom-Json
 $cook=Get-Content -LiteralPath (Join-Path $PresentationCook 'verification.json') -Raw | ConvertFrom-Json
@@ -18,11 +18,11 @@ foreach ($file in @($native.SourceFiles)+@($assets.SourceFiles)+@($assets.Assets
 }
 $dll=Join-Path $BuildDirectory 'main.dll'
 if ((Get-FileHash -LiteralPath $dll).Hash -ne $native.SHA256) { throw 'Native DLL changed.' }
-$expected=@('BP_NwiAuto','BP_NwiResources','BP_NwiPulse','WBP_NwiMarker','SG_NwiSettings','WBP_NwiSettings','M_NwiRedPulse','InitCave','InitSpacerig') | ForEach-Object { "$_.uasset"; "$_.uexp" }
+$expected=@('BP_EwiAuto','BP_EwiResources','BP_EwiPulse','WBP_EwiMarker','SG_EwiSettings','WBP_EwiSettings','M_EwiRedPulse','InitCave','InitSpacerig') | ForEach-Object { "$_.uasset"; "$_.uexp" }
 $actual=@($cook.Files | ForEach-Object { Split-Path $_.Path -Leaf })
 if (@(Compare-Object ($expected | Sort-Object) ($actual | Sort-Object)).Count) { throw 'Unexpected package entries.' }
 $audit=Get-Content -LiteralPath $cook.DependencyAudit.Path -Raw | ConvertFrom-Json
-if (!$audit.passed -or $audit.contentOnly -or $audit.nativeAbi -ne 591104 -or $audit.assets -ne 9) { throw 'Invalid dependency audit.' }
+if (!$audit.passed -or $audit.contentOnly -or $audit.nativeAbi -ne 65536 -or $audit.assets -ne 9) { throw 'Invalid dependency audit.' }
 $output=Join-Path $root ("agent\codex\EnemyWaveIndicator-$version-"+(Get-Date -Format 'yyyyMMdd-HHmmss-fff'))
 New-Item -ItemType Directory -Path $output | Out-Null
 $pak=Join-Path $output 'EnemyWaveIndicator_P.pak'
@@ -30,20 +30,20 @@ Copy-Item -LiteralPath $dll -Destination $output
 Copy-Item -LiteralPath $cook.Pak.Path -Destination $pak
 # Include redistributed MinHook's license, even though the loader only consumes the two binary entries.
 $licenses=(Get-Content -LiteralPath (Join-Path $root 'LICENSE') -Raw)+"`r`n`r`nMinHook:`r`n"+(Get-Content -LiteralPath (Join-Path $root 'third_party\MinHook\LICENSE.txt') -Raw)
-$catalog=Get-Content -LiteralPath (Join-Path $root 'engine\Authoring\NwiAuthoring\Source\NwiAuthoring\Public\NwiWaveTypes.h') -Raw
+$catalog=Get-Content -LiteralPath (Join-Path $root 'engine\Authoring\EwiAuthoring\Source\EwiAuthoring\Public\EwiWaveTypes.h') -Raw
 $sourceNames=@([regex]::Matches($catalog,'\{L"([^"]+)", L"') | ForEach-Object { $_.Groups[1].Value })
 if ($sourceNames.Count -ne 47) { throw 'Unexpected wave catalog.' }
 $licensePath=Join-Path $output 'LICENSES.txt'; Set-Content -LiteralPath $licensePath -Value $licenses -Encoding utf8
 @{
     Version=$version; ArchiveName=$archiveName; DistributionTarget='MintCat'; Status='47 stock wave types test candidate; real-game and network validation pending'
     RuntimeDllRequired=$true; ModioSubscriptionOnly=$false; MintCatInstallTested=$false; NetworkTested=$false; ReleaseReady=$false
-    Capture='strict natural scheduler chain; exact initiating scripted-controller/event class; per-request queue provenance; successful registered regular enemies'
+    Capture='strict normal scheduler chain; exact initiating scripted-controller/event class; per-request queue provenance; successful registered regular enemies'
     Position='source center when available; queued spawn origin otherwise'; Weight='successful count times descriptor base DifficultyRating'
     ExcludedBuckets=@('ActiveSwarmerEnemies','ActiveCritters'); UnregisteredExcluded=$true
     SupportedSources=$sourceNames; PerTypeEnableAndText=$true; UnsupportedRequestedFeatures=@('independent non-wave-controller boss/direct summons','multi-second exact prediction')
     Localization=@{Languages=@('en','zh-CN');Automatic=$true;MarkerDefaults='English in every language; user editable'}
     ClientRequiresPak=$true; HostRequiresDll=$true; MaximumRegions=8
-    Requires=@('MintCat with UE4SSL.JavaScript stable 0.31.0 audited runtime','Mod Hub','matching 0.9.5 Pak on participating clients')
+    Requires=@('MintCat with UE4SSL.JavaScript stable 0.31.0 audited runtime','Mod Hub','matching 1.0.0 Pak on participating clients')
     GameSHA256='9B005BB6E1072F3CD98FCFAA75698316DC47B808D83A99DDF96DE529D00BAC13'
     RuntimeSHA256='D1AC7156B8C8C16E46CE5CE06667457274816358329C5641CE1D2F80B53B4EB7'
     Files=@{'main.dll'=$native.SHA256;'EnemyWaveIndicator_P.pak'=(Get-FileHash $pak).Hash;'LICENSES.txt'=(Get-FileHash $licensePath).Hash}

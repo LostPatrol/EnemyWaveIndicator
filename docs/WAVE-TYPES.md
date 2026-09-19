@@ -1,16 +1,16 @@
-<!-- Bilingual player reference for every wave type available in Enemy Wave Indicator 0.9.5. -->
+<!-- Bilingual player reference for every wave type available in Enemy Wave Indicator 1.0.0. -->
 
 # Wave Types / 虫潮类型
 
-Enemy Wave Indicator 0.9.5 provides separate switches and labels for one natural-wave source and 46 stock scripted wave types: 35 wave controllers, three direct machine-event sources, and eight mission-warning or anomaly sources. Every type is enabled by default except IDs **1, 6, 32, 34, and 46**. After changing a setting in Mod Hub, select **Apply and save**. The settings UI follows the game language in English or Simplified Chinese, while editable marker defaults remain English.
+Normal-wave source and 46 stock scripted wave types: 35 wave controllers, three direct machine-event sources, and eight mission-warning or anomaly sources. 
 
-Enemy Wave Indicator 0.9.5 为自然潮和 46 种游戏自带的脚本虫潮类型提供独立开关与提示文字，其中包括 35 种虫潮控制器、3 种直接刷怪的机械事件，以及 8 种任务警告或异变来源。除 ID **1、6、32、34、46** 外，其余类型默认全部开启；在 Mod Hub 中修改设置后，请点击**应用并保存**。设置界面会随游戏语言显示英文或简体中文，但可编辑的标记默认内容始终保留英文。
+包括 35 种虫潮控制器、3 种直接刷怪的机械事件，以及 8 种任务警告或异常来源。
 
 ## Main settings / 主要设置
 
 | ID | Setting / 设置项 | Game source / 游戏来源 | Notes / 备注 |
 |---:|---|---|---|
-| 0 | Natural wave<br>自然潮 | `Natural` | Regular unannounced enemy pressure generated during a mission.<br>任务过程中自然生成、不被任务中心播报的虫潮。 |
+| 0 | Normal wave<br>自然潮 | `Normal` | Regular unannounced enemy pressure generated during a mission.<br>任务过程中自然生成、不被任务中心播报的虫潮。 |
 | 1 | Drillevator<br>深掘钻梯 | `EWC_DeepScan_Drillevator` | Waves attacking the team during the Drillevator descent in Deep Scan.<br>深层采掘任务中，深掘钻梯向下钻进时出现的虫潮。 |
 | 2 | Egg hunt ambush<br>虫蛋伏击 | `EWC_EggHunt_Ambush` | An ambush triggered when an Alien Egg is removed in Egg Hunt.<br>虫蛋收集任务中挖开虫蛋时触发的虫潮。 |
 | 3 | Extraction<br>常规撤离 | `EWC_EndMission` | Enemy pressure during the extraction phase of standard missions.<br>常规任务呼叫空降舱后，撤离阶段出现的虫潮。 |

@@ -5,7 +5,7 @@
 #include <iterator>
 #include "PresentationBootstrap.h"
 
-namespace nwi {
+namespace ewi {
 struct ModHubRegistrationApi {
     void* (*find)(const WideView*) = nullptr;
     bool (*valid)(void*) = nullptr;
@@ -27,4 +27,4 @@ inline bool rescanAndRefreshModHub(ModHubRegistrationApi api, void* hub) {
     return callModHubNoArgs(api, hub, ModHubSearchPath)
         && callModHubNoArgs(api, hub, ModHubRefreshPath);
 }
-} // namespace nwi
+} // namespace ewi
