@@ -7,7 +7,7 @@
 
 Enemy Wave Indicator marks detected enemy spawn areas with glowing spheres, customizable labels, and distance readouts. It currently supports normal waves and 46 stock scripted waves.
 
-> This is a Windows public beta. The current build targets the Steam version of DRG 1.40 (tested build 24903151).
+> This is a Windows public beta. Version 1.0.1 targets Steam build 25433570. Binary compatibility and offline tests pass; in-game verification of this update is pending.
 
 ## Features
 

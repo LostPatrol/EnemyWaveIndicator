@@ -154,7 +154,7 @@ void BuildSettings()
         auto* Slot = Grid->AddChildToGrid(Widget, Row, Column); Slot->SetPadding(FMargin(4.f, 2.f));
         Slot->SetVerticalAlignment(VAlign_Center); Slot->SetHorizontalAlignment(Fill ? HAlign_Fill : HAlign_Left);
     };
-    AddText(TEXT("Title"), TEXT("Enemy Wave Indicator  |  1.0.0"), nullptr, PageTitleFontSize);
+    AddText(TEXT("Title"), TEXT("Enemy Wave Indicator  |  1.0.1"), nullptr, PageTitleFontSize);
     AddText(TEXT("WaveSection"), TEXT("Wave broadcasts"), nullptr, SectionTitleFontSize);
     auto* WaveGrid = BP->WidgetTree->ConstructWidget<UGridPanel>(UGridPanel::StaticClass(), TEXT("WaveGrid")); WaveGrid->bIsVariable = true; Root->AddChildToVerticalBox(WaveGrid);
     WaveGrid->SetColumnFill(2, 1.f); WaveGrid->SetColumnFill(5, 1.f);
@@ -206,7 +206,7 @@ void BuildSettings()
     auto Localize = [&](const TCHAR* Widget, const FString& English, const FString& ZhCn) {
         auto* SetText = SetLocalizedWidgetText(G, Chinese, Widget, English, ZhCn); Link(Exec, TEXT("then"), SetText, TEXT("execute")); Exec = SetText;
     };
-    Localize(TEXT("Title"), TEXT("Enemy Wave Indicator  |  1.0.0"), TEXT("敌潮指示器  |  1.0.0"));
+    Localize(TEXT("Title"), TEXT("Enemy Wave Indicator  |  1.0.1"), TEXT("敌潮指示器  |  1.0.1"));
     Localize(TEXT("WaveSection"), TEXT("Wave broadcasts"), TEXT("虫潮播报"));
     for (int32 Wave = 0; Wave < ewi::WaveTypeCount; ++Wave) Localize(*FString::Printf(TEXT("WaveName%d"), Wave), ewi::WaveTypes[Wave].title, WaveTitlesZhCn[Wave]);
     Localize(TEXT("TextSection"), TEXT("Warning text"), TEXT("播报警示文本"));
@@ -272,7 +272,7 @@ void AddControllerSettings(UBlueprint* BP)
     auto* Info = HubResult(BP, TEXT("GetModInfo"));
     // Match the last working registration contract: no runtime calls inside GetModInfo.
     const TCHAR* Names[] = {TEXT("ModName"), TEXT("ModAuthor"), TEXT("ModVersion")};
-    const TCHAR* Values[] = {TEXT("Enemy Wave Indicator"), TEXT("LostPatrol"), TEXT("1.0.0")};
+    const TCHAR* Values[] = {TEXT("Enemy Wave Indicator"), TEXT("LostPatrol"), TEXT("1.0.1")};
     for (int32 I = 0; I < 3; ++I)
         GetDefault<UEdGraphSchema_K2>()->TrySetDefaultText(*Pin(Info, Names[I]), FText::FromString(Values[I]));
 }

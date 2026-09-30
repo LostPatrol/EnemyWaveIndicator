@@ -58,7 +58,7 @@ bool readKey(const Array& array, uint32_t index, SpawnKey& key) noexcept {
     return key.valid();
 }
 // Both entry context and spawn manager are registered UActorComponents. +0xA8 is WorldPrivate,
-// as independently used by game code at 16ab6c8/1657202. Never equate the component pointer to UWorld.
+// as independently used by build 25433570 at 16aa5d8/1656182. Never equate the component pointer to UWorld.
 bool componentWorld(void* owner) noexcept {
     __try { return *reinterpret_cast<void**>(static_cast<unsigned char*>(owner) + 0xa8) == world; }
     __except(EXCEPTION_EXECUTE_HANDLER) { return false; }

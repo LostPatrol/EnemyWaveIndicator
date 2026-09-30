@@ -7,13 +7,13 @@
 namespace ewi {
 class EngineThreadIdentity {
 public:
-    static constexpr uintptr_t InitCodeRva = 0x864655;
-    static constexpr uintptr_t ThreadIdRva = 0x65170b8;
+    static constexpr uintptr_t InitCodeRva = 0x860705; // Steam build 25433570 startup thread stores.
+    static constexpr uintptr_t ThreadIdRva = 0x64db0a8; // GGameThreadId; initialized flag is 16 bytes later.
     static constexpr size_t SnapshotSize = 17; // uint32 thread ID at +0; initialized byte at +16.
     // FEngineLoop::PreInit stores Windows GetCurrentThreadId and the initialized flag here.
     inline static constexpr unsigned char Signature[] = {
-        0xff,0x15,0x9d,0xb1,0xdf,0x03,0x49,0x8b,0xcf,0x44,0x88,0x35,
-        0x63,0x2a,0xcb,0x05,0x89,0x05,0x4d,0x2a,0xcb,0x05};
+        0xff,0x15,0xed,0x10,0xe0,0x03,0x49,0x8b,0xcf,0x44,0x88,0x35,
+        0xa3,0xa9,0xc7,0x05,0x89,0x05,0x8d,0xa9,0xc7,0x05};
     static bool matches(const unsigned char* bytes, size_t count) noexcept {
         return bytes && count == sizeof(Signature) && memcmp(bytes, Signature, count) == 0;
     }

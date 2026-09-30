@@ -225,7 +225,7 @@ void record(const char* event) noexcept {
 #if EWI_NORMAL_PREDICTION
         "{\"probe\":\"0.9.4-prediction-test.6\",\"prediction_test\":true,\"event\":\"%s\",\"utc\":\"%04u-%02u-%02uT%02u:%02u:%02u.%03uZ\","
 #else
-        "{\"probe\":\"1.0.0\",\"prediction_test\":false,\"event\":\"%s\",\"utc\":\"%04u-%02u-%02uT%02u:%02u:%02u.%03uZ\","
+        "{\"probe\":\"1.0.1\",\"prediction_test\":false,\"event\":\"%s\",\"utc\":\"%04u-%02u-%02uT%02u:%02u:%02u.%03uZ\","
 #endif
         "\"pid\":%lu,\"tid\":%lu,\"elapsed_ms\":%llu,\"updates\":%llu,\"thread_changes\":%llu,"
         "\"gap_min_ms\":%.6f,\"gap_max_ms\":%.6f,\"gap_mean_ms\":%.6f,"

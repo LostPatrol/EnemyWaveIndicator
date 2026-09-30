@@ -480,22 +480,24 @@ bool configure(HMODULE runtime, HMODULE game, uint32_t gameThread) noexcept {
     if (!waveManagerFunction || *parameters(waveManagerFunction) != sizeof(void*)) return false;
 #endif
     capture::Binding binding;
-    binding.normal = target(base, 0x19db3a0, "4883ec4833c0488944243048894424380fb6442470884424");
-    binding.enqueue = target(base, 0x16571c0, "48895c24184c894c24204889542410555657415441554156");
-    binding.actor = target(base, 0x37e89a0, "488bc4555356574154415541564157488da8b8feffff4881");
-    binding.shrink = target(base, 0x16517f0, "40534883ec20448b410c488bd948635108458bc8442bca49");
-    binding.normalReturn = base + 0x16abe53;
-    binding.enqueueReturns[0] = base + 0x19dba4d; binding.enqueueReturns[1] = base + 0x19dbbf6;
-    binding.actorReturn = base + 0x166132c; binding.shrinkReturn = base + 0x166161a;
+    // Steam build 25433570: entry ABIs and queue layout audited against build 24903151.
+    binding.normal = target(base, 0x19da060, "4883ec4833c0488944243048894424380fb6442470884424");
+    binding.enqueue = target(base, 0x1656140, "48895c24184c894c24204889542410555657415441554156");
+    binding.actor = target(base, 0x37ebb00, "488bc4555356574154415541564157488da8b8feffff4881");
+    binding.shrink = target(base, 0x1650770, "40534883ec20448b410c488bd948635108458bc8442bca49");
+    binding.normalReturn = base + 0x16aad63;
+    binding.enqueueReturns[0] = base + 0x19da70d; binding.enqueueReturns[1] = base + 0x19da8b6;
+    binding.actorReturn = base + 0x16602ac; binding.shrinkReturn = base + 0x166059a;
     binding.imageBase = base; binding.imageEnd = base + 0x7000000;
-    binding.sourceChain = {base + 0x19dba4d, base + 0x19dbe76, base + 0x19db33d, base + 0x19db3c8, base + 0x16abe53, base + 0x16af697};
+    // The two enqueue returns were checked individually after batch-helper register allocation changed.
+    binding.sourceChain = {base + 0x19da70d, base + 0x19dab36, base + 0x19d9ffd, base + 0x19da088, base + 0x16aad63, base + 0x16ae5a7};
     binding.threadId = thread;
-    binding.pool = target(base, 0x19db030, "4c894424185355574881eca00000000fb605a2f1ab04498b");
-    binding.location = target(base, 0x19dab90, "4055565741554156488d6c24f04881ec10010000488b058d");
-    binding.group = target(base, 0x19dbf00, "4c8bdc49895b1849896b20565741564881eca0000000803d");
-    binding.spread = target(base, 0x19dc1b0, "4c8bdc53565741564881ec98000000803d22e0ab0405488d");
-    binding.spreadCallback = target(base, 0x19dc470, "405355565741574881eca0000000803d63ddab0405498bf1");
-    binding.center = target(base, 0x19db3d0, "40555356574154415541564157488dac2428ffffff4881ec");
+    binding.pool = target(base, 0x19d9cf0, "4c894424185355574881eca00000000fb605e244a804498b");
+    binding.location = target(base, 0x19d9850, "4055565741554156488d6c24f04881ec10010000488b05fd");
+    binding.group = target(base, 0x19dabc0, "4c8bdc49895b1849896b20565741564881eca0000000803d");
+    binding.spread = target(base, 0x19dae70, "4c8bdc53565741564881ec98000000803d6233a80405488d");
+    binding.spreadCallback = target(base, 0x19db130, "405355565741574881eca0000000803da330a80405498bf1");
+    binding.center = target(base, 0x19da090, "4055535657415441554156488dac2420ffffff4881ece001");
 #if EWI_NORMAL_PREDICTION
     binding.normalCenter = target(base, 0x40079e0, "4883ec48488b442478f30f104424704889442430f30f1144");
     binding.normalCenterReturn = base + 0x16abde9;

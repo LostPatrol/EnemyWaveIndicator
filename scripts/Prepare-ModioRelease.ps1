@@ -4,7 +4,7 @@ param([Parameter(Mandatory)][string]$BuildDirectory, [Parameter(Mandatory)][stri
 $ErrorActionPreference='Stop'
 $root=Split-Path $PSScriptRoot -Parent
 # Public release identity; legacy names below are runtime compatibility identifiers only.
-$version='1.0.0'
+$version='1.0.1'
 $archiveName="EnemyWaveIndicator-$version.zip"
 $native=Get-Content -LiteralPath (Join-Path $BuildDirectory 'verification.json') -Raw | ConvertFrom-Json
 $cook=Get-Content -LiteralPath (Join-Path $PresentationCook 'verification.json') -Raw | ConvertFrom-Json
@@ -43,8 +43,9 @@ $licensePath=Join-Path $output 'LICENSES.txt'; Set-Content -LiteralPath $license
     SupportedSources=$sourceNames; PerTypeEnableAndText=$true; UnsupportedRequestedFeatures=@('independent non-wave-controller boss/direct summons','multi-second exact prediction')
     Localization=@{Languages=@('en','zh-CN');Automatic=$true;MarkerDefaults='English in every language; user editable'}
     ClientRequiresPak=$true; HostRequiresDll=$true; MaximumRegions=8
-    Requires=@('MintCat with UE4SSL.JavaScript stable 0.31.0 audited runtime','Mod Hub','matching 1.0.0 Pak on participating clients')
-    GameSHA256='9B005BB6E1072F3CD98FCFAA75698316DC47B808D83A99DDF96DE529D00BAC13'
+    Requires=@('MintCat with UE4SSL.JavaScript stable 0.31.0 audited runtime','Mod Hub','matching 1.0.1 Pak on participating clients')
+    GameSteamBuild='25433570'
+    GameSHA256='112B29CAA86D643210571FBBF841C384E93C06AECBE6D0F12C1F71BA91F7A06D'
     RuntimeSHA256='D1AC7156B8C8C16E46CE5CE06667457274816358329C5641CE1D2F80B53B4EB7'
     Files=@{'main.dll'=$native.SHA256;'EnemyWaveIndicator_P.pak'=(Get-FileHash $pak).Hash;'LICENSES.txt'=(Get-FileHash $licensePath).Hash}
     Verification=$cook.Verification; Cook=$PresentationCook; NativeBuild=$BuildDirectory
