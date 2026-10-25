@@ -62,6 +62,7 @@ function Invoke-RestMethod {
             return @{modfile=@{id=$global:EwiModioPublishMock.LiveId};platforms=@(if ($global:EwiModioPublishMock.HasWindows) { @{platform='windows';modfile_live=$global:EwiModioPublishMock.LiveId} })}
         }
         '^PUT /games/7/mods/9/files/555$' {
+            if ($ContentType -cne 'application/x-www-form-urlencoded') { throw 'Activation must use the API-supported exact form content type.' }
             if (!$global:EwiModioPublishMock.ScanReads -or $Body.active -cne 'true') { throw 'Activation occurred before scan verification or used the wrong body.' }
             $global:EwiModioPublishMock.LiveId = 555
             return New-MockModfile

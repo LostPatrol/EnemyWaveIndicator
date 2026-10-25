@@ -58,7 +58,8 @@ function Invoke-ModioRequest([string]$Method, [string]$Path, [hashtable]$Form, [
     if ($Windows) { $requestHeaders['X-Modio-Platform'] = 'windows' }
     $arguments = @{Method=$Method; Uri=($ApiBase + $Path); Headers=$requestHeaders; MaximumRedirection=0; TimeoutSec=120; ErrorAction='Stop'; Verbose=$false; Debug=$false}
     if ($Form) { $arguments.Form = $Form }
-    if ($Body) { $arguments.Body = $Body; $arguments.ContentType = 'application/x-www-form-urlencoded; charset=utf-8' }
+    # The API rejects a charset suffix on URL-encoded updates (error_ref 13006).
+    if ($Body) { $arguments.Body = $Body; $arguments.ContentType = 'application/x-www-form-urlencoded' }
     try { Invoke-RestMethod @arguments }
     catch {
         $status = if ($_.Exception.Response) { [int]$_.Exception.Response.StatusCode } else { 'network error' }
