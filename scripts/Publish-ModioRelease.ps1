@@ -56,7 +56,7 @@ $headers = @{ Authorization="Bearer $accessToken"; Accept='application/json'; 'U
 function Invoke-ModioRequest([string]$Method, [string]$Path, [hashtable]$Form, [hashtable]$Body, [switch]$Windows) {
     $requestHeaders = $headers.Clone()
     if ($Windows) { $requestHeaders['X-Modio-Platform'] = 'windows' }
-    $arguments = @{Method=$Method; Uri=($ApiBase + $Path); Headers=$requestHeaders; TimeoutSec=120; ErrorAction='Stop'; Verbose=$false; Debug=$false}
+    $arguments = @{Method=$Method; Uri=($ApiBase + $Path); Headers=$requestHeaders; MaximumRedirection=0; TimeoutSec=120; ErrorAction='Stop'; Verbose=$false; Debug=$false}
     if ($Form) { $arguments.Form = $Form }
     if ($Body) { $arguments.Body = $Body; $arguments.ContentType = 'application/x-www-form-urlencoded; charset=utf-8' }
     try { Invoke-RestMethod @arguments }
@@ -64,7 +64,10 @@ function Invoke-ModioRequest([string]$Method, [string]$Path, [hashtable]$Form, [
         $status = if ($_.Exception.Response) { [int]$_.Exception.Response.StatusCode } else { 'network error' }
         $reference = ''
         try { $reference = [string](($_.ErrorDetails.Message | ConvertFrom-Json).error.error_ref) } catch { }
-        throw "mod.io $Method failed ($status; error_ref=$reference). Check account permissions/token or connection; no automatic write retry was sent."
+        $failure = [InvalidOperationException]::new("mod.io $Method failed ($status; error_ref=$reference). Check account permissions/token or connection; no automatic write retry was sent.")
+        $failure.Data['HttpStatus'] = $status
+        $failure.Data['ErrorRef'] = $reference
+        throw $failure
     }
 }
 
@@ -94,6 +97,7 @@ $games = Invoke-ModioRequest GET ("/games?name_id=$gameSlug")
 $gameMatches = @($games.data | Where-Object name_id -CEQ $gameSlug)
 if ($gameMatches.Count -ne 1) { throw 'Could not uniquely resolve the Deep Rock Galactic game ID.' }
 $game = $gameMatches[0]
+$ApiBase = "https://g-$($game.id).modapi.io/v1" # Use the documented game host directly; never forward bearer credentials through redirects.
 $gamePlatform = @($game.platforms | Where-Object { $_.platform -ieq 'windows' })
 $platformModerated = $gamePlatform.Count -gt 0 -and $gamePlatform[0].moderated # Reviewed platforms cannot go live before approval.
 $mods = Invoke-ModioRequest GET ("/games/$($game.id)/mods?name_id=$modSlug")
@@ -127,8 +131,15 @@ if (!$file -and !$Publish) { $result.Status='ReadyToUpload'; return [pscustomobj
 if (!$file) {
     if ($state.Stage -eq 'Uploading') { throw 'Previous upload outcome is unknown. Inspect mod.io or use -CheckRemote before retrying; a second upload was not sent.' }
     Save-PublicationState 'Uploading' 0
-    $form = @{filedata=$archive; version=$Version; changelog=$html; filehash=$md5; active='false'; 'platforms[]'='windows'}
-    $file = Invoke-ModioRequest POST "$basePath/files" -Form $form
+    $form = @{filedata=$archive; version=$Version; changelog=$html; filehash=$md5; active='false'}
+    # Games without per-platform modfiles reject a platforms[] field (error_ref 14037).
+    if ($gamePlatform.Count) { $form['platforms[]'] = 'windows' }
+    try { $file = Invoke-ModioRequest POST "$basePath/files" -Form $form }
+    catch {
+        # A definite request rejection cannot have created a file; timeouts and server failures remain unknown.
+        if ($_.Exception.Data['HttpStatus'] -in 400,401,403,404,405,413,415,422,429) { Save-PublicationState 'Rejected' 0 }
+        throw
+    }
     if (!$file.id) { throw 'Upload response did not include a file ID; its outcome is unknown. Inspect mod.io before retrying.' }
     Save-PublicationState 'Uploaded' $file.id
     $result.Uploaded = $true

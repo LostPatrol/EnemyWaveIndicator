@@ -32,17 +32,17 @@ Publish the already verified ZIP. `-ExpectedSHA256` can pin it to the hash verif
     -ExpectedSHA256 397289FDF61B364D46962570417B4A63AC76E974F1BB4B41251D0F1DA8FBB044
 ```
 
-`-ArchivePath` and `-ChangelogPath` override the default input locations. `-ApiBase` supports the official `https://api.mod.io/v1` endpoint or the account/game-specific `https://u-<id>.modapi.io/v1` / `https://g-<id>.modapi.io/v1` path shown in the Access page.
+`-ArchivePath` and `-ChangelogPath` override the default input locations. `-ApiBase` selects the initial discovery endpoint: official `https://api.mod.io/v1` or the account/game-specific `https://u-<id>.modapi.io/v1` / `https://g-<id>.modapi.io/v1` path shown in the Access page. Once the game ID is resolved, requests use its canonical game host directly. Authenticated requests do not automatically follow redirects.
 
 ## Publication and recovery
 
 The publisher resolves the exact game/mod slugs and account, then checks existing files for the same version and MD5. Matching bytes are reused. A conflicting existing version stops with an error. The API's `filehash` field uses MD5; independent local/CDN verification also uses SHA256.
 
-New files are uploaded as inactive with Windows targeting and the authored changelog. After verifying metadata and scan status, the publisher activates the file. For moderated Windows submissions it waits for platform approval. It verifies both the current modfile and any Windows `modfile_live` reference, then downloads and compares the actual archive. The bearer token is not sent to the download CDN.
+New files are uploaded as inactive with the authored changelog. Windows targeting is supplied only when the game supports per-platform modfiles; DRG otherwise rejects that field. After verifying metadata and scan status, the publisher activates the file. For moderated Windows submissions it waits for platform approval. It verifies both the current modfile and any Windows `modfile_live` reference, then downloads and compares the actual archive. The bearer token is not sent to the download CDN.
 
 Default polling lasts up to 60 seconds; `-WaitSeconds` can extend it. `Published` means the current Windows file and downloaded bytes were verified. `PendingScan`, `ScanUnavailable`, `PendingPlatformApproval` and `ReadyToActivate` report unfinished states; they must not be described as a completed publication. A malicious scan result or denied Windows submission stops activation. The separate potentially-harmful flag produces a warning rather than being silently treated as a clean scan.
 
-Publication state and verification summaries are stored under `agent/codex/modio-publish-<version>/`. Re-running `-Publish` reuses the recorded file ID and can activate a file after approval. A write request is never automatically retried. If an upload times out before returning its ID, use `-CheckRemote` or inspect the listing before retrying; an unresolved upload intent prevents a second blind upload. `-EvidenceDirectory` selects another local evidence directory when needed.
+Publication state and verification summaries are stored under `agent/codex/modio-publish-<version>/`. Re-running `-Publish` reuses the recorded file ID and can activate a file after approval. A write request is never automatically retried. Definite request rejections are recorded separately from an unknown upload outcome. If an upload times out before returning its ID, use `-CheckRemote` or inspect the listing before retrying; an unresolved upload intent prevents a second blind upload. `-EvidenceDirectory` selects another local evidence directory when needed.
 
 ## Maintenance
 

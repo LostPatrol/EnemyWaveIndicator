@@ -16,23 +16,38 @@ $global:EwiModioPublishMock = $null
 # Model only the authenticated publication endpoints needed by the core lifecycle tests.
 function Invoke-RestMethod {
     [CmdletBinding()]
-    param([string]$Method, [string]$Uri, [hashtable]$Headers, [hashtable]$Form, [hashtable]$Body, [string]$ContentType, [int]$TimeoutSec)
+    param([string]$Method, [string]$Uri, [hashtable]$Headers, [hashtable]$Form, [hashtable]$Body, [string]$ContentType, [int]$TimeoutSec, [int]$MaximumRedirection)
     $global:EwiModioPublishHttpCalls++
     if (!$global:EwiModioPublishMock) { throw 'Unexpected HTTP request in a local-only publication test.' }
     $address = [Uri]$Uri
-    if ($address.Host -ne 'api.mod.io' -or $Headers.Authorization -cne ('Bearer ' + $env:MODIO_TOKEN)) { throw 'Unexpected API host or authentication header.' }
     $request = $Method + ' ' + ($address.PathAndQuery -replace '^/v1', '')
+    $expectedHost = if ($request -match '^GET /(?:me|games\?name_id=drg)$') { 'api.mod.io' } else { 'g-7.modapi.io' }
+    if ($address.Host -cne $expectedHost -or $Headers.Authorization -cne ('Bearer ' + $env:MODIO_TOKEN)) { throw 'Unexpected API host or authentication header.' }
+    if (!$PSBoundParameters.ContainsKey('MaximumRedirection') -or $MaximumRedirection -ne 0) { throw 'Authenticated API requests must disable redirects.' }
     $global:EwiModioPublishMock.Calls.Add($request)
     switch -Regex ($request) {
         '^GET /me$' { return @{id=42} }
-        '^GET /games\?name_id=drg$' { return @{data=@(@{id=7;name_id='drg';platforms=@(@{platform='windows';moderated=$global:EwiModioPublishMock.Moderated})})} }
+        '^GET /games\?name_id=drg$' {
+            $platforms = if ($global:EwiModioPublishMock.HasWindows) { @(@{platform='windows';moderated=$global:EwiModioPublishMock.Moderated}) } else { $null }
+            return @{data=@(@{id=7;name_id='drg';platforms=$platforms})}
+        }
         '^GET /games/7/mods\?name_id=enemy-wave-indicator$' { return @{data=@(@{id=9;game_id=7;name_id='enemy-wave-indicator';submitted_by=@{id=42}})} }
         '^GET /games/7/mods/9/files\?version=1\.1\.1&_limit=100$' {
             return @{data=@(if ($global:EwiModioPublishMock.Exists) { New-MockModfile })}
         }
         '^POST /games/7/mods/9/files$' {
-            if ($Form.active -cne 'false' -or $Form.'platforms[]' -cne 'windows' -or $Form.version -cne '1.1.1' -or $Form.filehash -ine $global:EwiModioPublishMock.MD5 -or $Form.filedata.FullName -cne $global:EwiModioPublishMock.Archive -or $Form.changelog -notmatch '<h1') { throw 'Incorrect inactive upload form.' }
+            if ($Form.active -cne 'false' -or $Form.version -cne '1.1.1' -or $Form.filehash -ine $global:EwiModioPublishMock.MD5 -or $Form.filedata.FullName -cne $global:EwiModioPublishMock.Archive -or $Form.changelog -notmatch '<h1') { throw 'Incorrect inactive upload form.' }
+            if ($global:EwiModioPublishMock.HasWindows) {
+                if ($Form.'platforms[]' -cne 'windows') { throw 'A per-platform game upload omitted the Windows platform.' }
+            } elseif ($Form.ContainsKey('platforms[]')) { throw 'A legacy game upload must omit the unsupported platforms field.' }
             if ($global:EwiModioPublishMock.UploadTimeout) { throw 'Synthetic upload timeout after request dispatch.' }
+            if ($global:EwiModioPublishMock.RejectUpload) {
+                $response = [Net.Http.HttpResponseMessage]::new([Net.HttpStatusCode]::Unauthorized)
+                $failure = [Microsoft.PowerShell.Commands.HttpResponseException]::new('Synthetic upload rejection.', $response)
+                $record = [Management.Automation.ErrorRecord]::new($failure, 'SyntheticUnauthorized', [Management.Automation.ErrorCategory]::AuthenticationError, $null)
+                $record.ErrorDetails = [Management.Automation.ErrorDetails]::new('{"error":{"error_ref":11001}}')
+                $PSCmdlet.ThrowTerminatingError($record)
+            }
             $global:EwiModioPublishMock.Exists = $true
             $global:EwiModioPublishMock.Changelog = $Form.changelog
             return New-MockModfile
@@ -44,7 +59,7 @@ function Invoke-RestMethod {
         }
         '^GET /games/7/mods/9$' {
             if ($Headers.'X-Modio-Platform' -cne 'windows') { throw 'Current file was checked without the Windows platform header.' }
-            return @{modfile=@{id=$global:EwiModioPublishMock.LiveId};platforms=@(@{platform='windows';modfile_live=$global:EwiModioPublishMock.LiveId})}
+            return @{modfile=@{id=$global:EwiModioPublishMock.LiveId};platforms=@(if ($global:EwiModioPublishMock.HasWindows) { @{platform='windows';modfile_live=$global:EwiModioPublishMock.LiveId} })}
         }
         '^PUT /games/7/mods/9/files/555$' {
             if (!$global:EwiModioPublishMock.ScanReads -or $Body.active -cne 'true') { throw 'Activation occurred before scan verification or used the wrong body.' }
@@ -68,12 +83,12 @@ function Invoke-WebRequest {
 
 # Provide matching immutable bytes and completed scan metadata for an uploaded file.
 function New-MockModfile {
-    return @{id=555;version='1.1.1';filesize=$global:EwiModioPublishMock.Bytes;filehash=@{md5=$global:EwiModioPublishMock.MD5};changelog=$global:EwiModioPublishMock.Changelog;virus_status=1;virus_positive=0;platforms=@(@{platform='windows';status=$global:EwiModioPublishMock.PlatformStatus});download=@{binary_url='https://example.invalid/release.zip'}}
+    return @{id=555;version='1.1.1';filesize=$global:EwiModioPublishMock.Bytes;filehash=@{md5=$global:EwiModioPublishMock.MD5};changelog=$global:EwiModioPublishMock.Changelog;virus_status=1;virus_positive=0;platforms=@(if ($global:EwiModioPublishMock.HasWindows) { @{platform='windows';status=$global:EwiModioPublishMock.PlatformStatus} });download=@{binary_url='https://example.invalid/release.zip'}}
 }
 
 # Start a fresh server model while keeping every request inside the test process.
 function New-MockSession([string]$Archive) {
-    $global:EwiModioPublishMock = @{Archive=$Archive;Bytes=(Get-Item -LiteralPath $Archive).Length;MD5=(Get-FileHash -LiteralPath $Archive -Algorithm MD5).Hash;Exists=$false;LiveId=0;ScanReads=0;Changelog='';Moderated=$false;PlatformStatus=1;UploadTimeout=$false;Calls=[Collections.Generic.List[string]]::new()}
+    $global:EwiModioPublishMock = @{Archive=$Archive;Bytes=(Get-Item -LiteralPath $Archive).Length;MD5=(Get-FileHash -LiteralPath $Archive -Algorithm MD5).Hash;Exists=$false;LiveId=0;ScanReads=0;Changelog='';HasWindows=$false;Moderated=$false;PlatformStatus=1;UploadTimeout=$false;RejectUpload=$false;Calls=[Collections.Generic.List[string]]::new()}
 }
 
 # Create a tiny ZIP with the same three root entries as the player distribution.
@@ -184,11 +199,24 @@ try {
     $script:cases++
 
     New-MockSession $archive
+    $global:EwiModioPublishMock.HasWindows = $true
     $global:EwiModioPublishMock.Moderated = $true
     $global:EwiModioPublishMock.PlatformStatus = 0
     $pending = $remotePublish.Clone(); $pending.EvidenceDirectory = Join-Path $fixture 'pending-platform'
     $pendingResult = & $publisher @pending
     if ($pendingResult.Status -cne 'PendingPlatformApproval' -or $pendingResult.Activated -or $pendingResult.Live -or @($global:EwiModioPublishMock.Calls | Where-Object { $_ -match '^PUT |^DOWNLOAD ' }).Count) { throw 'A moderated pending file was activated or downloaded before approval.' }
+    $script:cases++
+
+    New-MockSession $archive
+    $global:EwiModioPublishMock.RejectUpload = $true
+    $rejected = $remotePublish.Clone(); $rejected.EvidenceDirectory = Join-Path $fixture 'rejected-upload'
+    $failure = $null
+    try { & $publisher @rejected | Out-Null } catch { $failure = $_.Exception }
+    $rejectedState = Get-Content -LiteralPath (Join-Path $rejected.EvidenceDirectory 'publication.json') -Raw | ConvertFrom-Json
+    if (!$failure -or $failure.Data['HttpStatus'] -ne 401 -or $failure.Data['ErrorRef'] -ne '11001' -or $rejectedState.Stage -cne 'Rejected' -or $rejectedState.FileId -ne 0) { throw 'A definite HTTP rejection was not recorded distinctly from an unknown upload.' }
+    $global:EwiModioPublishMock.RejectUpload = $false
+    $retried = & $publisher @rejected
+    if (!$retried.DownloadVerified -or @($global:EwiModioPublishMock.Calls | Where-Object { $_ -match '^POST ' }).Count -ne 2) { throw 'A definitely rejected upload could not be retried safely.' }
     $script:cases++
     Write-Output "PASS: $script:cases publication cases; all HTTP used local substitutes. Evidence: $fixture"
 } finally {
