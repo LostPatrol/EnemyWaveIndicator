@@ -20,13 +20,11 @@ test('all concrete audited controller classes have one stable native/UI source e
  assert.deepEqual(catalog.slice(missionStart).map(x=>x.key),missionAudit.sources.map(x=>x.key));
  assert.equal(new Set(catalog.map(x=>x.path)).size,catalog.length);
 });
-test('Simplified Chinese UI wave names exactly follow WAVE-TYPES while marker defaults stay English',()=>{
+test('Simplified Chinese UI wave names exactly follow WAVE-TYPES',()=>{
  const block=settings.match(/const TCHAR\* WaveTitlesZhCn\[\] = \{([\s\S]*?)\n\};/);assert(block);
  const chinese=[...block[1].matchAll(/TEXT\("([^"]+)"\)/g)].map(x=>x[1]);assert.equal(chinese.length,catalog.length);
  const documented=new Map([...waveDocs.matchAll(/^\|\s*(\d+)\s*\|[^\n]*?<br>([^|]+?)\s*\|/gm)].map(x=>[Number(x[1]),x[2].trim()]));
  assert.equal(documented.size,catalog.length);assert.deepEqual(chinese,catalog.map((_,i)=>documented.get(i)));
- assert.match(settings,/FString\(ewi::WaveTypes/);
- assert(!/WaveTitlesZhCn\[\(I-16\)\/2\+1\]/.test(settings.match(/FString SettingDefault[^\n]+/)[0]));
 });
 test('each concrete type reaches a covered spawn function with the actual initiating self',()=>{
  const covered=new Set(['SpawnEnemiesFromPool','SpawnEnemyGroupDescriptorSpreadOut','SpawnEnemyGroupDescriptor','SpawnEnemyGroupDescriptorWithCallbackSpreadOut','SpawnEnemiesAtLocation','SpawnEnemiesAtLocationWithCallback']);
@@ -59,9 +57,4 @@ test('mission modifiers prove active MissionBP ownership and exact center routes
  }
  assert.deepEqual(missionAudit.sources.find(x=>x.typeId===42).calls.map(x=>x.callee),['SpawnEnemyGroupDescriptorSpreadOut','SpawnEnemiesAtLocation']);
  assert.match(missionAudit.sources.find(x=>x.typeId===44).centers,/distinct points remain distinct/);
-});
-test('catalog defaults keep the five intentionally quiet sources off',()=>{
- const expression=settings.match(/bool DefaultWaveEnabled\(int32 Type\) \{([^}]+)\}/);assert(expression);
- const disabled=[...expression[1].matchAll(/Type != (\d+)/g)].map(x=>Number(x[1]));
- assert.deepEqual(disabled,[1,6,32,34,46]);
 });

@@ -1,8 +1,12 @@
 # Build and test the standalone C ABI probe using the installed x64 MSVC toolchain.
 [CmdletBinding()]
-param([switch]$PredictionTest)
+param([switch]$PredictionTest, [switch]$Diagnostics)
 $ErrorActionPreference = 'Stop'
+# Prediction experiments retain the detailed diagnostics needed to inspect their behavior.
+$diagnosticsEnabled = [bool]($Diagnostics -or $PredictionTest)
 $projectRoot = Split-Path -Parent $PSScriptRoot
+& node (Join-Path $PSScriptRoot 'Generate-GameBindings.cjs') --check | Out-Host
+if ($LASTEXITCODE -ne 0) { throw 'Regenerate the reviewed game binding profile before building.' }
 $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
 $vsPath = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
 if (!$vsPath) { throw 'Install Desktop development with C++, including MSVC x64 and Windows SDK.' }
@@ -18,24 +22,30 @@ try {
     $hookObjects = @('buffer.obj','hook.obj','trampoline.obj','hde64.obj')
     $nativeSources = @('main.cpp','GameCapture.cpp','AutomaticPresentation.cpp') | ForEach-Object { Join-Path $projectRoot ('mods\EnemyWaveNativeProbe\' + $_) }
     # Static CRT avoids passing STL/CRT ownership across the module boundary or shipping new runtimes.
-    $nativeDefines = @(if ($PredictionTest) { '/DEWI_NORMAL_PREDICTION=1' })
+    $nativeDefines = @("/DEWI_DIAGNOSTICS=$([int]$diagnosticsEnabled)", "/DEWI_NORMAL_PREDICTION=$([int][bool]$PredictionTest)")
     & cl.exe /nologo /std:c++17 /O2 /MT /EHsc /W4 /WX /utf-8 @nativeDefines /LD /Zi @nativeSources @hookObjects /link /OUT:main.dll /DEBUG /INCREMENTAL:NO 2>&1 | Tee-Object build-dll.txt | Out-Host
     if ($LASTEXITCODE -ne 0) { throw 'Native probe compilation failed.' }
-    & cl.exe /nologo /std:c++17 /O2 /MT /EHsc /W4 /WX /utf-8 (Join-Path $projectRoot 'tests\native-probe-host.cpp') /Fe:probe-host.exe 2>&1 | Tee-Object build-host.txt | Out-Host
+    & cl.exe /nologo /std:c++17 /O2 /MT /EHsc /W4 /WX /utf-8 @nativeDefines (Join-Path $projectRoot 'tests\native-game-bindings.cpp') /Fe:bindings-test.exe 2>&1 | Tee-Object build-bindings-test.txt | Out-Host
+    if ($LASTEXITCODE -ne 0) { throw 'Binding resolver test compilation failed.' }
+    & .\bindings-test.exe | Tee-Object bindings-test.txt | Out-Host
+    if ($LASTEXITCODE -ne 0) { throw 'Structural binding discovery/rejection tests failed.' }
+    & cl.exe /nologo /std:c++17 /O2 /MT /EHsc /W4 /WX /utf-8 @nativeDefines (Join-Path $projectRoot 'tests\native-probe-host.cpp') /Fe:probe-host.exe 2>&1 | Tee-Object build-host.txt | Out-Host
     if ($LASTEXITCODE -ne 0) { throw 'Standalone test host compilation failed.' }
-    & cl.exe /nologo /std:c++17 /O2 /MT /EHsc /W4 /WX /utf-8 (Join-Path $projectRoot 'tests\native-dispatch-probe.cpp') /Fe:dispatch-test.exe 2>&1 | Tee-Object build-dispatch-test.txt | Out-Host
+    & cl.exe /nologo /std:c++17 /O2 /MT /EHsc /W4 /WX /utf-8 @nativeDefines (Join-Path $projectRoot 'tests\native-dispatch-probe.cpp') /Fe:dispatch-test.exe 2>&1 | Tee-Object build-dispatch-test.txt | Out-Host
     if ($LASTEXITCODE -ne 0) { throw 'Dispatch test compilation failed.' }
     & .\dispatch-test.exe | Tee-Object dispatch-test.txt | Out-Host
     if ($LASTEXITCODE -ne 0) { throw 'Dispatch state/lifetime tests failed.' }
-    & cl.exe /nologo /std:c++17 /O2 /MT /EHsc /W4 /WX /utf-8 (Join-Path $projectRoot 'tests\native-presentation-bootstrap.cpp') /Fe:presentation-test.exe 2>&1 | Tee-Object build-presentation-test.txt | Out-Host
+    & cl.exe /nologo /std:c++17 /O2 /MT /EHsc /W4 /WX /utf-8 @nativeDefines (Join-Path $projectRoot 'tests\native-presentation-bootstrap.cpp') /Fe:presentation-test.exe 2>&1 | Tee-Object build-presentation-test.txt | Out-Host
     if ($LASTEXITCODE -ne 0) { throw 'Presentation test compilation failed.' }
     & .\presentation-test.exe | Tee-Object presentation-test.txt | Out-Host
     if ($LASTEXITCODE -ne 0) { throw 'Presentation bootstrap tests failed.' }
-    & cl.exe /nologo /std:c++17 /O2 /MT /EHsc /W4 /WX /utf-8 (Join-Path $projectRoot 'tests\native-normal-prediction.cpp') /Fe:prediction-test.exe 2>&1 | Tee-Object build-prediction-test.txt | Out-Host
-    if ($LASTEXITCODE -ne 0) { throw 'Normal-wave prediction tests failed to compile.' }
-    & .\prediction-test.exe | Tee-Object prediction-test.txt | Out-Host
-    if ($LASTEXITCODE -ne 0) { throw 'Normal-wave prediction geometry/gate tests failed.' }
-    & cl.exe /nologo /std:c++17 /O2 /MT /EHsc /W4 /WX /utf-8 (Join-Path $projectRoot 'tests\native-game-capture.cpp') GameCapture.obj @hookObjects /Fe:capture-test.exe /link /OPT:NOICF 2>&1 | Tee-Object build-capture-test.txt | Out-Host
+    if ($PredictionTest) {
+        & cl.exe /nologo /std:c++17 /O2 /MT /EHsc /W4 /WX /utf-8 @nativeDefines (Join-Path $projectRoot 'tests\native-normal-prediction.cpp') /Fe:prediction-test.exe 2>&1 | Tee-Object build-prediction-test.txt | Out-Host
+        if ($LASTEXITCODE -ne 0) { throw 'Normal-wave prediction tests failed to compile.' }
+        & .\prediction-test.exe | Tee-Object prediction-test.txt | Out-Host
+        if ($LASTEXITCODE -ne 0) { throw 'Normal-wave prediction geometry/gate tests failed.' }
+    }
+    & cl.exe /nologo /std:c++17 /O2 /MT /EHsc /W4 /WX /utf-8 @nativeDefines (Join-Path $projectRoot 'tests\native-game-capture.cpp') GameCapture.obj @hookObjects /Fe:capture-test.exe /link /OPT:NOICF 2>&1 | Tee-Object build-capture-test.txt | Out-Host
     if ($LASTEXITCODE -ne 0) { throw 'Native capture ABI harness failed to compile.' }
     & .\capture-test.exe | Tee-Object capture-test.txt | Out-Host
     if ($LASTEXITCODE -ne 0) { throw 'Actual trampoline/ABI and capture integration tests failed.' }
@@ -43,23 +53,13 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'PE inspection failed.' }
     & .\probe-host.exe (Join-Path $output 'main.dll') | Tee-Object standalone-test.txt | Out-Host
     if ($LASTEXITCODE -ne 0) { throw 'Standalone lifecycle test failed.' }
-    $logs = @(Get-ChildItem -Filter 'probe-*.jsonl' | Sort-Object LastWriteTime)
-    if ($logs.Count -ne 2) { throw 'Expected two separate synthetic runs.' }
-    $totals = @()
-    foreach ($log in $logs) {
-        $events = @(Get-Content -LiteralPath $log.FullName | ForEach-Object { $_ | ConvertFrom-Json })
-        $names = @($events.event)
-        $expected = @('start','program_start','unreal_init','ui_init','first_update')
-        if ($events.Count -eq 7) { $expected += 'heartbeat' }
-        $expected += 'uninstall'
-        if (($names -join ',') -ne ($expected -join ',')) { throw 'Lifecycle order or log throttling failed.' }
-        $total = $events[-1].updates
-        $totals += $total
-        if ($events[-1].gap_min_ms -lt 0 -or $events[-1].thread_changes -ne 0) { throw 'Invalid callback statistics.' }
-    }
-    if (($totals | Measure-Object -Sum).Sum -ne 20001 -or (($totals | Sort-Object) -join ',') -ne '10000,10001') { throw 'Callback totals failed.' }
+    # The last writable session replaces the bounded support log; the host also verifies a denied log open.
+    $logs = @(Get-ChildItem -Filter 'probe-*.jsonl')
+    if ($logs.Count -ne 1 -or $logs[0].Name -ne 'probe-latest.jsonl') { throw 'Expected one bounded support log.' }
+    $events = @(Get-Content -LiteralPath $logs[0].FullName | ForEach-Object { $_ | ConvertFrom-Json })
+    if (!$events.Count -or $events[0].event -ne 'start' -or $events[-1].event -ne 'uninstall') { throw 'Missing standalone lifecycle log boundaries.' }
     $toolchain = (Get-Command cl.exe).Source
-    [pscustomobject]@{
+    $verification = [ordered]@{
         Description = 'Synthetic standalone host only; not an in-game compatibility result.'
         BuildDirectory = $output; Compiler = $toolchain; WindowsSdk = $env:WindowsSDKVersion
         SHA256 = (Get-FileHash main.dll -Algorithm SHA256).Hash
@@ -68,13 +68,19 @@ try {
         EngineHeaderSHA256 = (Get-FileHash (Join-Path $projectRoot 'mods\EnemyWaveNativeProbe\EngineThreadIdentity.h')).Hash
         PresentationHeaderSHA256 = (Get-FileHash (Join-Path $projectRoot 'mods\EnemyWaveNativeProbe\PresentationBootstrap.h')).Hash
         WorldHeaderSHA256 = (Get-FileHash (Join-Path $projectRoot 'mods\EnemyWaveNativeProbe\ActiveWorld.h')).Hash
-        ProbeVersion = if ($PredictionTest) { '0.9.4-prediction-test.6' } else { '1.0.1' }
-        PredictionTest = [bool]$PredictionTest
-        DispatchOfflinePassed = $true; PresentationOfflinePassed = $true; CaptureOfflinePassed = $true; PredictionOfflinePassed = $true
-        SourceFiles = @(@(Get-ChildItem (Join-Path $projectRoot 'mods\EnemyWaveNativeProbe') -File | Where-Object Extension -in '.cpp','.h') + @(Get-Item (Join-Path $projectRoot 'engine\Authoring\EwiAuthoring\Source\EwiAuthoring\Public\EwiWaveTypes.h')) + @(Get-ChildItem $vendor -File -Recurse) | Get-FileHash)
+        ProbeVersion = if ($PredictionTest) { '0.9.4-prediction-test.6' } else { '1.1.1' }
+        DiagnosticsEnabled = $diagnosticsEnabled
+        DispatchOfflinePassed = $true; PresentationOfflinePassed = $true; CaptureOfflinePassed = $true; BindingOfflinePassed = $true
+        SourceFiles = @(@(Get-ChildItem (Join-Path $projectRoot 'mods\EnemyWaveNativeProbe') -File | Where-Object Extension -in '.cpp','.h','.json') + @(Get-Item (Join-Path $projectRoot 'engine\Authoring\EwiAuthoring\Source\EwiAuthoring\Public\EwiWaveTypes.h')) + @(Get-ChildItem $vendor -File -Recurse) | Get-FileHash)
         OfflinePassed = $true; InGameVerified = $false; GameThreadVerified = $false
-        Runs = 2; Updates = 20001
-    } | ConvertTo-Json | Set-Content verification.json -Encoding utf8
+        NormalRuns = 2; NormalUpdates = if ($diagnosticsEnabled) { 20001 } else { 20000 }
+        LogOpenFailureTestPassed = $true
+    }
+    if ($PredictionTest) {
+        $verification.PredictionTest = $true
+        $verification.PredictionOfflinePassed = $true
+    }
+    $verification | ConvertTo-Json | Set-Content verification.json -Encoding utf8
 } finally { Pop-Location }
 Write-Output $output
 

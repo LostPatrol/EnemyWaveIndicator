@@ -8,12 +8,11 @@
 #include "AutomaticPresentation.h"
 #include "PresentationBootstrap.h"
 #include "GameCapture.h"
+#include "GameBindings.h"
 #include "OriginRegions.h"
 #include "EnemyBuckets.h"
+#if EWI_NORMAL_PREDICTION
 #include "NormalWavePrediction.h"
-
-#ifndef EWI_NORMAL_PREDICTION
-#define EWI_NORMAL_PREDICTION 0
 #endif
 
 namespace ewi::automatic {
@@ -384,6 +383,7 @@ void update(void* actor) {
 #endif
         float cost = 0;
         if (eligible(event, cost)) {
+#if EWI_DIAGNOSTICS
             if (waveType(event.wave) == 0 && event.selectedMs && event.capturedMs >= event.selectedMs && event.capturedMs >= event.queuedMs) {
                 const auto lead=event.capturedMs-event.selectedMs;
                 if (!counters.timingSamples || lead<counters.centerMinMs) counters.centerMinMs=lead;
@@ -392,19 +392,32 @@ void update(void* actor) {
                 if (event.capturedMs-event.queuedMs>counters.queueMaxMs) counters.queueMaxMs=event.capturedMs-event.queuedMs;
                 if (now-event.capturedMs>counters.handoffMaxMs) counters.handoffMaxMs=now-event.capturedMs;
             }
+#endif
             const auto type = waveType(event.wave);
             if (type < WaveTypeCount && *enabledTypes[type]) regions.add(event, now, cost);
         } else ++counters.filtered;
     }
     regions.expire(now);
-    for (auto& r : regions.items) if (r.visible && (capture::stats().fault
-        || (waveType(r.wave) != prediction::RegionType && (waveType(r.wave) >= WaveTypeCount || !*enabledTypes[waveType(r.wave)])))) { r.visible = 0; ++r.serial; }
+    for (auto& r : regions.items) {
+        if (!r.visible) continue;
+        const auto type = waveType(r.wave);
+#if EWI_NORMAL_PREDICTION
+        const bool disabledType = type != prediction::RegionType && (type >= WaveTypeCount || !*enabledTypes[type]);
+#else
+        const bool disabledType = type >= WaveTypeCount || !*enabledTypes[type];
+#endif
+        if (capture::stats().fault || disabledType) { r.visible = 0; ++r.serial; }
+    }
     for (uint32_t i = 0; i < OriginRegions::Capacity; ++i) {
         const auto& r = regions.items[i];
         if (*output[i].serial == r.serial) continue;
         memcpy(output[i].point, &r.point.x, 12);
         *output[i].expires = *worldTime + (r.expires > now ? static_cast<float>(r.expires - now) / 1000.f : 0.f);
+#if EWI_NORMAL_PREDICTION
         *output[i].scale = waveType(r.wave) == prediction::RegionType ? 0.6f : r.scale();
+#else
+        *output[i].scale = r.scale();
+#endif
         *output[i].type = static_cast<int32_t>(waveType(r.wave));
         *output[i].visible = r.visible; *output[i].serial = r.serial;
     }
@@ -422,6 +435,12 @@ void nativePoll(void* actor, void* stack, void*) {
     if (code) ++code;
     try { guardedUpdate(actor); } catch (...) { counters.fault = 3; capture::stop(); }
 }
+// Keep discovery-time entry bytes so a later hook from another mod cannot become the expected signature.
+capture::Target target(uintptr_t base, uintptr_t rva, const std::array<unsigned char, 24>& expected) {
+    return {reinterpret_cast<void*>(base + rva), expected};
+}
+#if EWI_NORMAL_PREDICTION
+// Archived prediction bindings retain their explicitly audited byte contract.
 capture::Target target(uintptr_t base, uintptr_t rva, const char* hex) {
     capture::Target result; result.address = reinterpret_cast<void*>(base + rva);
     for (size_t i = 0; i < result.bytes.size(); ++i) {
@@ -430,6 +449,7 @@ capture::Target target(uintptr_t base, uintptr_t rva, const char* hex) {
     }
     return result;
 }
+#endif
 // Match the initiating controller/event's exact class path, never an enemy name or an active-wave list.
 // Stock scripted callers pass EX_Self as WorldContextObject (recorded in the source audits).
 int32_t sourceClassUnchecked(void* context, void* world) {
@@ -479,25 +499,39 @@ bool configure(HMODULE runtime, HMODULE game, uint32_t gameThread) noexcept {
     waveManagerFunction = find(&managerView);
     if (!waveManagerFunction || *parameters(waveManagerFunction) != sizeof(void*)) return false;
 #endif
+    const auto& discovery = bindings::discover(game);
+    if (!discovery.resolution.ok) return false;
+    auto found = discovery.resolution;
+    bindings::Image image;
+    // The loader discovered these sites earlier; recheck complete spans before installing on the game thread.
+    if (!bindings::openImage(game, discovery.imageSize, image)
+        || !bindings::validateResolved(image, bindings::profile::Data, found)) { counters.fault = 4; return false; }
+    using Site = bindings::profile::Site;
+    using Call = bindings::profile::Call;
+    const auto entry = [&found, base](Site bindingSite) {
+        const auto i = static_cast<size_t>(bindingSite);
+        return target(base, found.rvas[i], found.entryBytes[i]);
+    };
+    const auto caller = [&found, base](Call bindingCall) { return base + found.returns[static_cast<size_t>(bindingCall)]; };
     capture::Binding binding;
-    // Steam build 25433570: entry ABIs and queue layout audited against build 24903151.
-    binding.normal = target(base, 0x19da060, "4883ec4833c0488944243048894424380fb6442470884424");
-    binding.enqueue = target(base, 0x1656140, "48895c24184c894c24204889542410555657415441554156");
-    binding.actor = target(base, 0x37ebb00, "488bc4555356574154415541564157488da8b8feffff4881");
-    binding.shrink = target(base, 0x1650770, "40534883ec20448b410c488bd948635108458bc8442bca49");
-    binding.normalReturn = base + 0x16aad63;
-    binding.enqueueReturns[0] = base + 0x19da70d; binding.enqueueReturns[1] = base + 0x19da8b6;
-    binding.actorReturn = base + 0x16602ac; binding.shrinkReturn = base + 0x166059a;
-    binding.imageBase = base; binding.imageEnd = base + 0x7000000;
-    // The two enqueue returns were checked individually after batch-helper register allocation changed.
-    binding.sourceChain = {base + 0x19da70d, base + 0x19dab36, base + 0x19d9ffd, base + 0x19da088, base + 0x16aad63, base + 0x16ae5a7};
+    binding.normal = entry(Site::Normal);
+    binding.enqueue = entry(Site::Enqueue);
+    binding.actor = entry(Site::Actor);
+    binding.shrink = entry(Site::Shrink);
+    binding.normalReturn = caller(Call::Scheduler);
+    binding.enqueueReturns[0] = caller(Call::Enqueue0); binding.enqueueReturns[1] = caller(Call::Enqueue1);
+    binding.actorReturn = caller(Call::Actor); binding.shrinkReturn = caller(Call::Shrink);
+    binding.imageBase = base; binding.imageEnd = base + discovery.imageSize;
+    // Retain the exact six-frame provenance check using the verified calls in the discovered graph.
+    binding.sourceChain = {caller(Call::Enqueue0), caller(Call::Center), caller(Call::Pool),
+        caller(Call::Normal), caller(Call::Scheduler), caller(Call::Tick)};
     binding.threadId = thread;
-    binding.pool = target(base, 0x19d9cf0, "4c894424185355574881eca00000000fb605e244a804498b");
-    binding.location = target(base, 0x19d9850, "4055565741554156488d6c24f04881ec10010000488b05fd");
-    binding.group = target(base, 0x19dabc0, "4c8bdc49895b1849896b20565741564881eca0000000803d");
-    binding.spread = target(base, 0x19dae70, "4c8bdc53565741564881ec98000000803d6233a80405488d");
-    binding.spreadCallback = target(base, 0x19db130, "405355565741574881eca0000000803da330a80405498bf1");
-    binding.center = target(base, 0x19da090, "4055535657415441554156488dac2420ffffff4881ece001");
+    binding.pool = entry(Site::Pool);
+    binding.location = entry(Site::Location);
+    binding.group = entry(Site::Group);
+    binding.spread = entry(Site::Spread);
+    binding.spreadCallback = entry(Site::SpreadCallback);
+    binding.center = entry(Site::Center);
 #if EWI_NORMAL_PREDICTION
     binding.normalCenter = target(base, 0x40079e0, "4883ec48488b442478f30f104424704889442430f30f1144");
     binding.normalCenterReturn = base + 0x16abde9;

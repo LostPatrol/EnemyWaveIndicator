@@ -8,6 +8,10 @@ Copy-Item (Join-Path $root 'LICENSE') $testRoot
 $catalogRelative='engine\Authoring\EwiAuthoring\Source\EwiAuthoring\Public\EwiWaveTypes.h'
 New-Item -ItemType Directory -Force (Split-Path (Join-Path $testRoot $catalogRelative)) | Out-Null
 Copy-Item (Join-Path $root $catalogRelative) (Join-Path $testRoot $catalogRelative)
+# The fixture uses the same reviewed baseline metadata as the real packaging script.
+$profileRelative='mods\EnemyWaveNativeProbe\GameBindingProfile.json'
+New-Item -ItemType Directory -Force (Split-Path (Join-Path $testRoot $profileRelative)) | Out-Null
+Copy-Item (Join-Path $root $profileRelative) (Join-Path $testRoot $profileRelative)
 Copy-Item (Join-Path $root 'third_party\MinHook\LICENSE.txt') (Join-Path $testRoot 'third_party\MinHook')
 $cookDir=Join-Path $testRoot 'cook';$assetsDir=Join-Path $testRoot 'assets';$nativeDir=Join-Path $testRoot 'native'
 $source=Join-Path $testRoot 'source\fixture.cpp';$asset=Join-Path $assetsDir 'fixture.uasset';$config=Join-Path $testRoot 'config.ini';$dll=Join-Path $nativeDir 'main.dll'
@@ -16,9 +20,10 @@ $names=@('BP_EwiAuto','BP_EwiResources','BP_EwiPulse','WBP_EwiMarker','SG_EwiSet
 $files=@($names | ForEach-Object {foreach($extension in @('uasset','uexp')) {$p=Join-Path $cookDir "$_.${extension}";Set-Content $p 'fixture cooked bytes';Get-FileHash $p}})
 $pak=Join-Path $cookDir 'EnemyWavePresentation-assets-only.pak';Set-Content $pak 'fixture Pak payload'
 $audit=Join-Path $cookDir 'dependency-audit.json';@{passed=$true;contentOnly=$false;nativeAbi=65536;assets=9} | ConvertTo-Json | Set-Content $audit
-$native=@{ProbeVersion='1.0.1';OfflinePassed=$true;CaptureOfflinePassed=$true;DispatchOfflinePassed=$true;PresentationOfflinePassed=$true;SourceFiles=@(Get-FileHash $source);SHA256=(Get-FileHash $dll).Hash}
-$assets=@{Success=$true;SourceFiles=@(Get-FileHash $source);Assets=@(Get-FileHash $asset);Validation=@{success=$true;native_contract_test=$true;replication_metadata_test=$true;content_only=$false;automatic_pool_test=$true;settings_test=$true;async_resource_tests=$true;red_material_test=$true;edge_cases=1452}}
-$cook=@{Success=$true;ContentOnly=$false;RuntimeDllRequired=$true;Version='1.0.1';AssetsOnly=$true;ContainsGameAssetCopies=$false;InlineMaterialShaders=$true;PakHashesVerified=$true;Files=$files;Verification=$assetsDir;Pak=Get-FileHash $pak;DependencyAudit=Get-FileHash $audit;PackagingConfig=Get-FileHash $config}
+$native=@{ProbeVersion='1.1.1';OfflinePassed=$true;CaptureOfflinePassed=$true;DispatchOfflinePassed=$true;PresentationOfflinePassed=$true;BindingOfflinePassed=$true;SourceFiles=@(Get-FileHash $source);SHA256=(Get-FileHash $dll).Hash}
+# Behavioral results determine readiness; the number of placement samples is informational.
+$assets=@{Success=$true;SourceFiles=@(Get-FileHash $source);Assets=@(Get-FileHash $asset);Validation=@{success=$true;native_contract_test=$true;replication_metadata_test=$true;content_only=$false;automatic_pool_test=$true;settings_test=$true;async_resource_tests=$true;red_material_test=$true;edge_cases=24}}
+$cook=@{Success=$true;ContentOnly=$false;RuntimeDllRequired=$true;Version='1.1.1';AssetsOnly=$true;ContainsGameAssetCopies=$false;InlineMaterialShaders=$true;PakHashesVerified=$true;Files=$files;Verification=$assetsDir;Pak=Get-FileHash $pak;DependencyAudit=Get-FileHash $audit;PackagingConfig=Get-FileHash $config}
 function Save-Fixture {$native | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $nativeDir 'verification.json');$assets | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $assetsDir 'verification.json');$cook | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $cookDir 'verification.json')}
 $script=Join-Path $testRoot 'scripts\Prepare-ModioRelease.ps1';$rejections=0
 function Assert-Rejected([string]$Pattern) {
@@ -29,12 +34,13 @@ function Assert-Rejected([string]$Pattern) {
     $script:rejections++
 }
 Save-Fixture
-foreach($flag in @('OfflinePassed','CaptureOfflinePassed','DispatchOfflinePassed','PresentationOfflinePassed')) {$native[$flag]=$false;Save-Fixture;Assert-Rejected 'Missing native validation';$native[$flag]=$true}
-$native.ProbeVersion='0.6.0';Save-Fixture;Assert-Rejected 'Missing native validation';$native.ProbeVersion='1.0.1'
+foreach($flag in @('OfflinePassed','CaptureOfflinePassed','DispatchOfflinePassed','PresentationOfflinePassed','BindingOfflinePassed')) {$native[$flag]=$false;Save-Fixture;Assert-Rejected 'Missing native validation';$native[$flag]=$true}
+foreach($flag in @('DiagnosticsEnabled','PredictionTest')) {$native[$flag]=$true;Save-Fixture;Assert-Rejected 'Missing native validation';$native[$flag]=$false}
+$native.ProbeVersion='0.6.0';Save-Fixture;Assert-Rejected 'Missing native validation';$native.ProbeVersion='1.1.1'
 foreach($flag in @('Success','RuntimeDllRequired','AssetsOnly','InlineMaterialShaders','PakHashesVerified')) {$cook[$flag]=$false;Save-Fixture;Assert-Rejected 'Missing native-Pak';$cook[$flag]=$true}
 $cook.ContentOnly=$true;Save-Fixture;Assert-Rejected 'Missing native-Pak';$cook.ContentOnly=$false
 $cook.ContainsGameAssetCopies=$true;Save-Fixture;Assert-Rejected 'Missing native-Pak';$cook.ContainsGameAssetCopies=$false
-foreach($flag in @('native_contract_test','replication_metadata_test','settings_test','automatic_pool_test')) {$assets.Validation[$flag]=$false;Save-Fixture;Assert-Rejected 'Missing native Blueprint';$assets.Validation[$flag]=$true}
+foreach($flag in @('success','native_contract_test','replication_metadata_test','settings_test','automatic_pool_test','async_resource_tests','red_material_test')) {$assets.Validation[$flag]=$false;Save-Fixture;Assert-Rejected 'Missing native Blueprint';$assets.Validation[$flag]=$true}
 $assets.Validation.content_only=$true;Save-Fixture;Assert-Rejected 'Missing native Blueprint';$assets.Validation.content_only=$false
 $originalSources=$native.SourceFiles;$native.SourceFiles=@();Save-Fixture;Assert-Rejected 'Missing input hashes';$native.SourceFiles=$originalSources
 Save-Fixture
@@ -45,7 +51,7 @@ foreach($p in @($source,$asset,$files[0].Path,$config,$pak,$audit,$dll)) {
 $release=& $script -BuildDirectory $nativeDir -PresentationCook $cookDir
 $m=Get-Content (Join-Path $release 'manifest.json') -Raw | ConvertFrom-Json
 if($m.ModioSubscriptionOnly -or !$m.RuntimeDllRequired -or $m.MintCatInstallTested -or $m.NetworkTested -or $m.ReleaseReady){throw 'Untruthful acceptance metadata.'}
-if($m.ArchiveName -ne 'EnemyWaveIndicator-1.0.1.zip'){throw 'Unexpected public archive name.'}
+if($m.ArchiveName -ne 'EnemyWaveIndicator-1.1.1.zip'){throw 'Unexpected public archive name.'}
 if(!$m.Localization.Automatic -or @($m.Localization.Languages).Count -ne 2 -or 'en' -notin $m.Localization.Languages -or 'zh-CN' -notin $m.Localization.Languages -or $m.Localization.MarkerDefaults -notmatch 'English'){throw 'Missing bilingual localization metadata.'}
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $zip=[IO.Compression.ZipFile]::OpenRead($release+'.zip')
@@ -57,9 +63,9 @@ try {
         if($hash -ne $m.Files.($entry.FullName)){throw 'ZIP payload differs from manifest.'}
     }
 } finally {$zip.Dispose()}
-$publicArchive=Join-Path $testRoot 'dist\EnemyWaveIndicator-1.0.1.zip'
+$publicArchive=Join-Path $testRoot 'dist\EnemyWaveIndicator-1.1.1.zip'
 if(!(Test-Path -LiteralPath $publicArchive)){throw 'Missing public EnemyWaveIndicator archive.'}
 if((Get-FileHash -LiteralPath $publicArchive).Hash -ne (Get-FileHash -LiteralPath ($release+'.zip')).Hash){throw 'Public archive differs from staged archive.'}
 $archives=@(Get-ChildItem -LiteralPath (Join-Path $testRoot 'dist') -Filter '*.zip' -File)
-if($archives.Count -ne 1 -or $archives[0].Name -ne 'EnemyWaveIndicator-1.0.1.zip'){throw 'Unexpected public archive set.'}
+if($archives.Count -ne 1 -or $archives[0].Name -ne 'EnemyWaveIndicator-1.1.1.zip'){throw 'Unexpected public archive set.'}
 Write-Output "PASS: $rejections refusal cases and all three ZIP hashes. Evidence: $testRoot"

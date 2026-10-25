@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <cwchar>
 #include <cstring>
+#include "BuildOptions.h"
 #include "DispatchProbe.h"
 #include "EngineThreadIdentity.h"
 #include "PresentationBootstrap.h"
@@ -14,7 +15,8 @@
 #include "GameCapture.h"
 
 namespace {
-constexpr ULONGLONG kHeartbeatMs = 5000; // Summarize callbacks at most once per five seconds.
+constexpr ULONGLONG kReportIntervalMs = 5000; // Check startup/fault changes without a per-frame log stream.
+constexpr LONGLONG kMaximumLogBytes = 4 * 1024 * 1024; // Bound the latest session's optional log to four MiB.
 HMODULE moduleHandle = nullptr;
 SRWLOCK stateLock = SRWLOCK_INIT;
 ewi::DispatchProbe dispatchProbe; // Static context is retained by pinning this DLL before enqueueing.
@@ -65,7 +67,8 @@ ewi::WorldResult guardedWorld(void* viewport) {
 ewi::WorldResult readViewportWorld(void* viewport) noexcept {
     try { return guardedWorld(viewport); } catch (...) { return {nullptr, true}; }
 }
-void* currentWorld() noexcept { return activeWorld.read(); }
+// Use the monotonic dispatch clock for retrying delayed viewport discovery.
+void* currentWorld() noexcept { return activeWorld.read(GetTickCount64()); }
 // Audited host wrapper owns its temporary string and copies into our bounded caller-owned buffer.
 ewi::WorldKind worldKind(void* world) noexcept {
     wchar_t name[256]{};
@@ -139,15 +142,21 @@ void showPresentation(ewi::ThreadSample& sample) noexcept {
     sample.excludedWorlds = presentation.excluded;
     const auto captured = ewi::capture::stats(); const auto automatic = ewi::automatic::stats();
     sample.nativeWaves = captured.waves; sample.tagged = captured.tagged; sample.spawnSuccesses = captured.successes;
-    sample.delivered = captured.delivered; sample.deliveryMaxMs = captured.deliveryMaxMs;
+    sample.delivered = captured.delivered;
+#if EWI_DIAGNOSTICS
+    sample.deliveryMaxMs = captured.deliveryMaxMs;
     sample.deliveryMaxUs = captured.deliveryMaxUs;
+#endif
     sample.autoFrames = automatic.frames; sample.regionsDropped = automatic.regionsDropped;
     sample.sourceRejected = captured.sourceRejected; sample.skipped = captured.skipped; sample.failedSpawns = captured.failures;
     sample.lateEvents = automatic.stale; sample.autoBindings = automatic.bindings;
     sample.normalEntries = captured.normalEntries; sample.normalSiteMatches = captured.normalSiteMatches;
     sample.noMissionWorld = captured.noMissionWorld; sample.contextRejected = captured.contextRejected;
     sample.rejectedSourceFrames = captured.rejectedSourceFrames;
+#if EWI_DIAGNOSTICS
     sample.timing = {automatic.timingSamples, automatic.centerMinMs, automatic.centerMaxMs, automatic.queueMaxMs, automatic.handoffMaxMs, automatic.filtered};
+#endif
+#if EWI_NORMAL_PREDICTION
     sample.predictionCounts = {automatic.predictionAttempts, automatic.predictionSuccesses,
         automatic.predictionFailures, automatic.predictionComparisons};
     sample.predictionProbe = {automatic.predictionManagerLookups, automatic.predictionManagerResolved,
@@ -165,6 +174,7 @@ void showPresentation(ewi::ThreadSample& sample) noexcept {
         captured.normalCenterOverrides, captured.normalCenterFallbacks};
     sample.predictionErrors = {automatic.predictionLastErrorCm, automatic.predictionMinErrorCm,
         automatic.predictionMaxErrorCm, automatic.predictionErrorTotalCm};
+#endif
     sample.captureFault = captured.fault; sample.autoFault = automatic.fault; sample.hookStatus = captured.hookStatus;
 }
 
@@ -207,9 +217,13 @@ void configureDispatch() noexcept {
 }
 struct State {
     HANDLE log = INVALID_HANDLE_VALUE;
-    ULONGLONG started = 0, lastReport = 0, updates = 0, threadChanges = 0;
+    ULONGLONG started = 0, lastReport = 0, updates = 0;
+#if EWI_DIAGNOSTICS
+    ULONGLONG threadChanges = 0;
     LONGLONG previousQpc = 0, minGap = 0, maxGap = 0, gapTotal = 0, frequency = 0;
     DWORD previousThread = 0;
+#endif
+    std::array<uint64_t, 11> reportedStatus{}; // Only startup, binding and fault changes produce normal-build records.
     bool active = false;
 } state;
 
@@ -218,14 +232,16 @@ void record(const char* event) noexcept {
     if (state.log == INVALID_HANDLE_VALUE) return;
     SYSTEMTIME utc{};
     GetSystemTime(&utc);
-    const double scale = state.frequency ? 1000.0 / static_cast<double>(state.frequency) : 0.0;
     const auto& probe = dispatchProbe.stats;
-    char line[4096];
+    const auto& binding = ewi::bindings::state();
+    char line[8192]; // Includes structural-discovery diagnostics and the bounded capture snapshot.
+#if EWI_DIAGNOSTICS
+    const double scale = state.frequency ? 1000.0 / static_cast<double>(state.frequency) : 0.0;
     const int size = sprintf_s(line,
 #if EWI_NORMAL_PREDICTION
         "{\"probe\":\"0.9.4-prediction-test.6\",\"prediction_test\":true,\"event\":\"%s\",\"utc\":\"%04u-%02u-%02uT%02u:%02u:%02u.%03uZ\","
 #else
-        "{\"probe\":\"1.0.1\",\"prediction_test\":false,\"event\":\"%s\",\"utc\":\"%04u-%02u-%02uT%02u:%02u:%02u.%03uZ\","
+        "{\"probe\":\"1.1.1\",\"prediction_test\":false,\"event\":\"%s\",\"utc\":\"%04u-%02u-%02uT%02u:%02u:%02u.%03uZ\","
 #endif
         "\"pid\":%lu,\"tid\":%lu,\"elapsed_ms\":%llu,\"updates\":%llu,\"thread_changes\":%llu,"
         "\"gap_min_ms\":%.6f,\"gap_max_ms\":%.6f,\"gap_mean_ms\":%.6f,"
@@ -235,6 +251,9 @@ void record(const char* event) noexcept {
         "\"dispatch_other_thread\":%llu,\"dispatch_uninitialized\":%llu,\"dispatch_tid\":%u,"
         "\"dispatch_latency_max_ms\":%llu,\"dispatch_latency_mean_ms\":%.3f,"
         "\"identity_source\":\"engine_globals\",\"engine_identity_available\":%s,\"engine_thread_id\":%u,"
+        "\"binding_attempted\":%s,\"binding_matched\":%s,\"binding_ms\":%llu,"
+        "\"binding_profile\":\"%s\","
+        "\"binding_error\":\"%s\",\"binding_site\":\"%s\",\"binding_candidates\":%u,"
         "\"runtime_initialized_samples\":%llu,\"identity_read_failures\":%llu,"
         "\"bootstrap_status\":%u,\"visual_test_actors\":%u,\"visual_class_loads\":%u,"
         "\"bootstrap_readiness_checks\":%u,\"bootstrap_preparation_failures\":%u,"
@@ -248,6 +267,7 @@ void record(const char* event) noexcept {
         "\"normal_entries\":%llu,\"normal_site_matches\":%llu,\"normal_no_mission_world\":%llu,\"normal_context_rejected\":%llu,"
         "\"rejected_source_rvas\":[%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu],"
         "\"timing\":[%llu,%llu,%llu,%llu,%llu,%llu],"
+#if EWI_NORMAL_PREDICTION
         "\"prediction_counts\":[%llu,%llu,%llu,%llu],"
         "\"prediction_probe\":[%llu,%llu,%llu,%llu],"
         "\"prediction_stages\":[%llu,%llu,%llu,%llu,%llu],"
@@ -255,6 +275,7 @@ void record(const char* event) noexcept {
         "\"prediction_candidate_probe\":[%llu,%llu,%llu,%llu],"
         "\"prediction_override\":[%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu],"
         "\"prediction_error_cm\":[%.3f,%.3f,%.3f,%.3f],"
+#endif
         "\"capture_fault\":%u,\"auto_fault\":%u,\"hook_status\":%u}\n",
         event, utc.wYear, utc.wMonth, utc.wDay, utc.wHour, utc.wMinute, utc.wSecond, utc.wMilliseconds,
         GetCurrentProcessId(), GetCurrentThreadId(), GetTickCount64() - state.started,
@@ -264,7 +285,11 @@ void record(const char* event) noexcept {
         probe.disabled ? "true" : "false", probe.queued, probe.completed, probe.rejected,
         probe.timedOut, probe.stale, probe.gameThread, probe.otherThread, probe.uninitialized, probe.lastTid,
         probe.latencyMax, probe.completed ? static_cast<double>(probe.latencyTotal) / probe.completed : 0.0,
-        engineIdentity.available() ? "true" : "false", probe.expectedTid, probe.runtimeInitialized, probe.identityReadFailures,
+        engineIdentity.available() ? "true" : "false", probe.expectedTid,
+        binding.attempted ? "true" : "false", binding.resolution.ok ? "true" : "false", binding.elapsedMs,
+        ewi::bindings::profile::Sha256,
+        binding.resolution.error ? binding.resolution.error : "", binding.resolution.failedName ? binding.resolution.failedName : "",
+        binding.resolution.candidates, probe.runtimeInitialized, probe.identityReadFailures,
         probe.bootstrapStatus, probe.visualActors, probe.classLoads,
         probe.bootstrapReadinessChecks, probe.bootstrapPreparationFailures,
         probe.hubRefreshAttempts, probe.hubRefreshes, probe.hubRefreshFailures,
@@ -276,6 +301,7 @@ void record(const char* event) noexcept {
         probe.rejectedSourceFrames[0], probe.rejectedSourceFrames[1], probe.rejectedSourceFrames[2], probe.rejectedSourceFrames[3],
         probe.rejectedSourceFrames[4], probe.rejectedSourceFrames[5], probe.rejectedSourceFrames[6], probe.rejectedSourceFrames[7],
         probe.timing[0],probe.timing[1],probe.timing[2],probe.timing[3],probe.timing[4],probe.timing[5],
+#if EWI_NORMAL_PREDICTION
         probe.predictionCounts[0],probe.predictionCounts[1],probe.predictionCounts[2],probe.predictionCounts[3],
         probe.predictionProbe[0],probe.predictionProbe[1],probe.predictionProbe[2],probe.predictionProbe[3],
         probe.predictionStages[0],probe.predictionStages[1],probe.predictionStages[2],probe.predictionStages[3],probe.predictionStages[4],
@@ -284,7 +310,32 @@ void record(const char* event) noexcept {
         probe.predictionOverride[0],probe.predictionOverride[1],probe.predictionOverride[2],probe.predictionOverride[3],probe.predictionOverride[4],
         probe.predictionOverride[5],probe.predictionOverride[6],probe.predictionOverride[7],probe.predictionOverride[8],probe.predictionOverride[9],
         probe.predictionErrors[0],probe.predictionErrors[1],probe.predictionErrors[2],probe.predictionErrors[3],
+#endif
         probe.captureFault, probe.autoFault, probe.hookStatus);
+#else
+    const int size = sprintf_s(line,
+        "{\"probe\":\"1.1.1\",\"event\":\"%s\",\"utc\":\"%04u-%02u-%02uT%02u:%02u:%02u.%03uZ\","
+        "\"pid\":%lu,\"elapsed_ms\":%llu,\"dispatch_enabled\":%s,\"dispatch_disabled\":%s,"
+        "\"engine_identity_available\":%s,\"binding_attempted\":%s,\"binding_matched\":%s,"
+        "\"binding_error\":\"%s\",\"binding_site\":\"%s\",\"bootstrap_status\":%u,"
+        "\"world_faults\":%u,\"capture_fault\":%u,\"auto_fault\":%u,\"hook_status\":%u}\n",
+        event, utc.wYear, utc.wMonth, utc.wDay, utc.wHour, utc.wMinute, utc.wSecond, utc.wMilliseconds,
+        GetCurrentProcessId(), GetTickCount64() - state.started,
+        dispatchProbe.enabled() ? "true" : "false", probe.disabled ? "true" : "false",
+        engineIdentity.available() ? "true" : "false", binding.attempted ? "true" : "false",
+        binding.resolution.ok ? "true" : "false", binding.resolution.error ? binding.resolution.error : "",
+        binding.resolution.failedName ? binding.resolution.failedName : "", probe.bootstrapStatus,
+        probe.worldFaults, probe.captureFault, probe.autoFault, probe.hookStatus);
+#endif
+    LARGE_INTEGER bytes{};
+    if (GetFileSizeEx(state.log, &bytes) && bytes.QuadPart >= kMaximumLogBytes) {
+        LARGE_INTEGER beginning{};
+        if (!SetFilePointerEx(state.log, beginning, nullptr, FILE_BEGIN) || !SetEndOfFile(state.log)) {
+            CloseHandle(state.log);
+            state.log = INVALID_HANDLE_VALUE;
+            return;
+        }
+    }
     DWORD written = 0;
     if (size <= 0 || !WriteFile(state.log, line, static_cast<DWORD>(size), &written, nullptr)
         || written != static_cast<DWORD>(size)) {
@@ -293,7 +344,7 @@ void record(const char* event) noexcept {
     }
 }
 
-// Store each run beside our own DLL. CREATE_NEW preserves all earlier test evidence.
+// Replace the latest session log; logging is optional and never blocks gameplay startup.
 HANDLE openLog() noexcept {
     wchar_t directory[32768];
     constexpr DWORD capacity = sizeof(directory) / sizeof(directory[0]);
@@ -303,14 +354,25 @@ HANDLE openLog() noexcept {
     if (!slash) return INVALID_HANDLE_VALUE;
     slash[1] = L'\0';
     wchar_t path[32768];
-    for (unsigned attempt = 0; attempt < 100; ++attempt) {
-        if (swprintf_s(path, L"%sprobe-%lu-%llu-%u.jsonl", directory,
-            GetCurrentProcessId(), GetTickCount64(), attempt) < 0) return INVALID_HANDLE_VALUE;
-        HANDLE log = CreateFileW(path, GENERIC_WRITE, FILE_SHARE_READ, nullptr,
-            CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr);
-        if (log != INVALID_HANDLE_VALUE || GetLastError() != ERROR_FILE_EXISTS) return log;
+    if (swprintf_s(path, L"%sprobe-latest.jsonl", directory) < 0) return INVALID_HANDLE_VALUE;
+    return CreateFileW(path, GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+}
+
+// Normal builds record state transitions; developer builds retain their detailed heartbeat.
+void reportStatus() noexcept {
+#if EWI_DIAGNOSTICS
+    record("heartbeat");
+#else
+    const auto& probe = dispatchProbe.stats;
+    const auto& binding = ewi::bindings::state();
+    const std::array<uint64_t, 11> status{dispatchProbe.enabled(), probe.disabled,
+        engineIdentity.available(), binding.attempted, binding.resolution.ok, probe.bootstrapStatus,
+        probe.worldFaults, probe.captureFault, probe.autoFault, probe.hookStatus, probe.activeWorld};
+    if (status != state.reportedStatus) {
+        state.reportedStatus = status;
+        record("status");
     }
-    return INVALID_HANDLE_VALUE;
+#endif
 }
 
 void lifecycle(void* instance, const char* event) noexcept {
@@ -334,15 +396,16 @@ extern "C" __declspec(dllexport) void* ue4ssl_mod_start_v1(const void*) noexcept
         state = State{};
         state.log = openLog();
         if (state.log == INVALID_HANDLE_VALUE) {
-            ReleaseSRWLockExclusive(&stateLock);
-            return nullptr;
+            OutputDebugStringW(L"Enemy Wave Indicator: log unavailable; continuing without file diagnostics.\n");
         }
         state.active = true;
         dispatchProbe.start();
         state.started = state.lastReport = GetTickCount64();
+#if EWI_DIAGNOSTICS
         LARGE_INTEGER frequency{};
         QueryPerformanceFrequency(&frequency);
         state.frequency = frequency.QuadPart;
+#endif
         record("start");
     }
     ReleaseSRWLockExclusive(&stateLock);
@@ -369,6 +432,7 @@ extern "C" __declspec(dllexport) void ue4ssl_mod_on_update_v1(void* instance) no
     if (state.active) {
         // The callback never takes stateLock; the optional bootstrap runs only after engine thread verification.
         dispatchProbe.pump();
+#if EWI_DIAGNOSTICS
         LARGE_INTEGER now{};
         QueryPerformanceCounter(&now);
         const DWORD thread = GetCurrentThreadId();
@@ -381,10 +445,12 @@ extern "C" __declspec(dllexport) void ue4ssl_mod_on_update_v1(void* instance) no
         }
         state.previousQpc = now.QuadPart;
         state.previousThread = thread;
+#endif
         ++state.updates;
         const ULONGLONG tick = GetTickCount64();
-        if (state.updates == 1 || tick - state.lastReport >= kHeartbeatMs) {
-            record(state.updates == 1 ? "first_update" : "heartbeat");
+        if (state.updates == 1 || tick - state.lastReport >= kReportIntervalMs) {
+            if (state.updates == 1) record("first_update");
+            else reportStatus();
             state.lastReport = tick;
         }
     }

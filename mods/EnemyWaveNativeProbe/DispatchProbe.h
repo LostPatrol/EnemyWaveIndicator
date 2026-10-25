@@ -1,5 +1,6 @@
 // Single-slot dispatch gate. Owner methods are serialized; complete() may run concurrently.
 #pragma once
+#include "BuildOptions.h"
 #include <atomic>
 #include <cstdint>
 #include <array>
@@ -17,12 +18,18 @@ struct ThreadSample {
     uint32_t viewportFinds = 0, worldReads = 0, worldChanges = 0, worldFaults = 0;
     uint64_t activeWorld = 0;
     uint32_t worldKind = 0, excludedWorlds = 0;
-    uint64_t nativeWaves = 0, tagged = 0, spawnSuccesses = 0, delivered = 0, autoFrames = 0, deliveryMaxMs = 0, deliveryMaxUs = 0, regionsDropped = 0;
+    uint64_t nativeWaves = 0, tagged = 0, spawnSuccesses = 0, delivered = 0, autoFrames = 0, regionsDropped = 0;
+#if EWI_DIAGNOSTICS
+    uint64_t deliveryMaxMs = 0, deliveryMaxUs = 0;
+#endif
     uint32_t captureFault = 0, autoFault = 0, hookStatus = 0, autoBindings = 0;
     uint64_t sourceRejected = 0, skipped = 0, failedSpawns = 0, lateEvents = 0;
     uint64_t normalEntries = 0, normalSiteMatches = 0, noMissionWorld = 0, contextRejected = 0;
     std::array<uint64_t, 8> rejectedSourceFrames{};
+#if EWI_DIAGNOSTICS
     std::array<uint64_t, 6> timing{}; // count, center minimum/maximum, queue maximum, handoff maximum, excluded.
+#endif
+#if EWI_NORMAL_PREDICTION
     std::array<uint64_t, 4> predictionCounts{}; // attempts, successes, failures, actual-center comparisons.
     std::array<uint64_t, 4> predictionProbe{}; // manager lookups/resolutions, countdown samples, in-window samples.
     std::array<uint64_t, 5> predictionStages{}; // player list, geometry, navigation, projection and final-center successes.
@@ -30,6 +37,7 @@ struct ThreadSample {
     std::array<uint64_t, 4> predictionCandidateProbe{}; // total/max nav points and total/max accepted candidates.
     std::array<uint64_t, 10> predictionOverride{}; // lock/reject/validation plus selector sample/call/override/fallback.
     std::array<float, 4> predictionErrors{}; // last, minimum, maximum and total error in centimeters.
+#endif
 };
 using Callback = void (*)(void*);
 struct ProbeApi {
@@ -58,12 +66,18 @@ public:
         uint32_t viewportFinds = 0, worldReads = 0, worldChanges = 0, worldFaults = 0;
         uint64_t activeWorld = 0;
         uint32_t worldKind = 0, excludedWorlds = 0;
-        uint64_t nativeWaves = 0, tagged = 0, spawnSuccesses = 0, delivered = 0, autoFrames = 0, deliveryMaxMs = 0, deliveryMaxUs = 0, regionsDropped = 0;
+        uint64_t nativeWaves = 0, tagged = 0, spawnSuccesses = 0, delivered = 0, autoFrames = 0, regionsDropped = 0;
+#if EWI_DIAGNOSTICS
+        uint64_t deliveryMaxMs = 0, deliveryMaxUs = 0;
+#endif
         uint32_t captureFault = 0, autoFault = 0, hookStatus = 0, autoBindings = 0;
         uint64_t sourceRejected = 0, skipped = 0, failedSpawns = 0, lateEvents = 0;
         uint64_t normalEntries = 0, normalSiteMatches = 0, noMissionWorld = 0, contextRejected = 0;
         std::array<uint64_t, 8> rejectedSourceFrames{};
+#if EWI_DIAGNOSTICS
         std::array<uint64_t, 6> timing{}; // count, center minimum/maximum, queue maximum, handoff maximum, excluded.
+#endif
+#if EWI_NORMAL_PREDICTION
         std::array<uint64_t, 4> predictionCounts{};
         std::array<uint64_t, 4> predictionProbe{};
         std::array<uint64_t, 5> predictionStages{};
@@ -71,6 +85,7 @@ public:
         std::array<uint64_t, 4> predictionCandidateProbe{};
         std::array<uint64_t, 10> predictionOverride{}; // lock/reject/validation plus selector sample/call/override/fallback.
         std::array<float, 4> predictionErrors{};
+#endif
         bool disabled = false;
     } stats;
 
@@ -113,19 +128,29 @@ public:
                 stats.worldKind = result_.worldKind; stats.excludedWorlds = result_.excludedWorlds;
                 stats.nativeWaves = result_.nativeWaves; stats.tagged = result_.tagged;
                 stats.spawnSuccesses = result_.spawnSuccesses; stats.delivered = result_.delivered;
-                stats.autoFrames = result_.autoFrames; stats.deliveryMaxMs = result_.deliveryMaxMs;
-                stats.deliveryMaxUs = result_.deliveryMaxUs; stats.regionsDropped = result_.regionsDropped; stats.captureFault = result_.captureFault;
+                stats.autoFrames = result_.autoFrames;
+#if EWI_DIAGNOSTICS
+                stats.deliveryMaxMs = result_.deliveryMaxMs;
+                stats.deliveryMaxUs = result_.deliveryMaxUs;
+#endif
+                stats.regionsDropped = result_.regionsDropped; stats.captureFault = result_.captureFault;
                 stats.autoFault = result_.autoFault; stats.hookStatus = result_.hookStatus;
                 stats.sourceRejected = result_.sourceRejected; stats.skipped = result_.skipped;
                 stats.failedSpawns = result_.failedSpawns; stats.lateEvents = result_.lateEvents; stats.autoBindings = result_.autoBindings;
                 stats.normalEntries = result_.normalEntries; stats.normalSiteMatches = result_.normalSiteMatches;
                 stats.noMissionWorld = result_.noMissionWorld; stats.contextRejected = result_.contextRejected;
-                stats.rejectedSourceFrames = result_.rejectedSourceFrames; stats.timing = result_.timing;
+                stats.rejectedSourceFrames = result_.rejectedSourceFrames;
+#if EWI_DIAGNOSTICS
+                stats.timing = result_.timing;
+#endif
+#if EWI_NORMAL_PREDICTION
                 stats.predictionCounts = result_.predictionCounts; stats.predictionProbe = result_.predictionProbe;
                 stats.predictionStages = result_.predictionStages;
                 stats.predictionPlayerProbe = result_.predictionPlayerProbe;
                 stats.predictionCandidateProbe = result_.predictionCandidateProbe;
+                stats.predictionOverride = result_.predictionOverride;
                 stats.predictionErrors = result_.predictionErrors;
+#endif
                 }
                 if (result_.runtimeInitialized) ++stats.runtimeInitialized;
                 if (!result_.identityReadOk) { ++stats.identityReadFailures; stats.disabled = true; }

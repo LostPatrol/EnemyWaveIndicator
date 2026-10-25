@@ -95,12 +95,7 @@ int main() {
         bytes[0] = 0; bytes[16] = 1; REQUIRE(!ewi::EngineThreadIdentity::decode(bytes, sizeof(bytes), 0, false).initialized);
         REQUIRE(!ewi::EngineThreadIdentity::decode(bytes, sizeof(bytes) - 1, 42, false).identityReadOk);
         REQUIRE(!ewi::EngineThreadIdentity::decode(nullptr, 0, 42, false).identityReadOk);
-        unsigned char signature[sizeof(ewi::EngineThreadIdentity::Signature)];
-        memcpy(signature, ewi::EngineThreadIdentity::Signature, sizeof(signature));
-        REQUIRE(ewi::EngineThreadIdentity::matches(signature, sizeof(signature)));
-        for (size_t i = 0; i < sizeof(signature); ++i) {
-            signature[i] ^= 1; REQUIRE(!ewi::EngineThreadIdentity::matches(signature, sizeof(signature))); signature[i] ^= 1;
-        }
+        // Instruction discovery and its rejection paths are covered by native-game-bindings.cpp.
         ewi::EngineThreadIdentity identity; identity.configure(nullptr);
         REQUIRE(!identity.available() && !identity.sample(42, false).identityReadOk);
     }
@@ -175,6 +170,6 @@ int main() {
         REQUIRE(p.stats.completed == 299 && calls == 300);
         p.start(); p.pump(); REQUIRE(p.stats.stale == 1); drain(); p.pump();
     }
-    puts("PASS: engine scalar layout, 22-byte signature mutations, failed reads, queue bound, permanent slow lifecycle polling, timeout, late callback, restart, rejection, thread mismatch, initialization, concurrent completion.");
+    puts("PASS: engine scalar layout, failed reads, queue bound, permanent slow lifecycle polling, timeout, late callback, restart, rejection, thread mismatch, initialization, concurrent completion.");
     return 0;
 }

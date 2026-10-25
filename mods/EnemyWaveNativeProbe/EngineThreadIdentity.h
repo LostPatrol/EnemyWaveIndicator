@@ -3,20 +3,13 @@
 #include <windows.h>
 #include <cstring>
 #include "DispatchProbe.h"
+#include "GameBindings.h"
 
 namespace ewi {
 class EngineThreadIdentity {
 public:
-    static constexpr uintptr_t InitCodeRva = 0x860705; // Steam build 25433570 startup thread stores.
-    static constexpr uintptr_t ThreadIdRva = 0x64db0a8; // GGameThreadId; initialized flag is 16 bytes later.
     static constexpr size_t SnapshotSize = 17; // uint32 thread ID at +0; initialized byte at +16.
-    // FEngineLoop::PreInit stores Windows GetCurrentThreadId and the initialized flag here.
-    inline static constexpr unsigned char Signature[] = {
-        0xff,0x15,0xed,0x10,0xe0,0x03,0x49,0x8b,0xcf,0x44,0x88,0x35,
-        0xa3,0xa9,0xc7,0x05,0x89,0x05,0x8d,0xa9,0xc7,0x05};
-    static bool matches(const unsigned char* bytes, size_t count) noexcept {
-        return bytes && count == sizeof(Signature) && memcmp(bytes, Signature, count) == 0;
-    }
+    // Decode the same scalar layout after discovery proves the startup stores and named Windows import.
     static ThreadSample decode(const unsigned char* bytes, size_t count, DWORD tid, bool runtimeReady) noexcept {
         ThreadSample result{tid, false, false};
         result.runtimeInitialized = runtimeReady;
@@ -29,12 +22,10 @@ public:
         return result;
     }
     void configure(HMODULE game) noexcept {
+        address_ = 0;
         if (!game) return;
-        unsigned char bytes[sizeof(Signature)]{};
-        SIZE_T count = 0;
-        const uintptr_t base = reinterpret_cast<uintptr_t>(game);
-        if (ReadProcessMemory(GetCurrentProcess(), reinterpret_cast<const void*>(base + InitCodeRva),
-            bytes, sizeof(bytes), &count) && matches(bytes, count)) address_ = base + ThreadIdRva;
+        const auto& found = bindings::discover(game).resolution;
+        if (found.ok) address_ = reinterpret_cast<uintptr_t>(game) + found.threadIdRva;
     }
     bool available() const noexcept { return address_ != 0; }
     ThreadSample sample(DWORD tid, bool runtimeReady) const noexcept {

@@ -7,7 +7,7 @@
 
 Enemy Wave Indicator marks detected enemy spawn areas with glowing spheres, customizable labels, and distance readouts. It currently supports normal waves and 46 stock scripted waves.
 
-> This is a Windows public beta. Version 1.0.1 targets Steam build 25433570. This compatibility update has passed local in-game testing.
+> This is a Windows public beta. Version 1.1.1 targets Steam build 26107973 and has passed in-game testing.
 
 ## Features
 

@@ -22,21 +22,35 @@ using Location = void (*)(void*, void*, int32_t, const void*, const void*, bool,
 using Group = void (*)(void*, void*, float, const void*, bool, uint8_t);
 using SpreadCallback = void (*)(void*, void*, float, const void*, bool, uint8_t, const void*);
 using Center = void (*)(void*, void*, int32_t, float, const void*, const void*, uint8_t, const void*, bool);
+#if EWI_NORMAL_PREDICTION
 using NormalCenter = bool (*)(void*, uint8_t, uint8_t, const void*, float, void*);
+#endif
 Pool originalPool = nullptr; Location originalLocation = nullptr;
 Group originalGroup = nullptr, originalSpread = nullptr;
 SpreadCallback originalSpreadCallback = nullptr; Center originalCenter = nullptr;
+#if EWI_NORMAL_PREDICTION
 NormalCenter originalNormalCenter = nullptr;
+#endif
 Binding binding; Stats counters; SpawnAttribution ledger;
 void* world = nullptr; void* manager = nullptr;
 uint64_t epoch = 0, frame = 0, scopeWave = 0; void* scopeWorld = nullptr;
 SpawnKey scopeCenter{};
-uint64_t scopeSelectedMs = 0;
+#if EWI_DIAGNOSTICS
+uint64_t scopeSelectedMs = 0; // Source-entry time is used only for developer latency telemetry.
+#endif
 bool installed = false;
 std::atomic<bool> enabled{false}; // Loader-thread retirement never mutates the game-thread ledger.
-int64_t qpcFrequency = 0;
+#if EWI_DIAGNOSTICS
+int64_t qpcFrequency = 0; // Convert optional high-resolution handoff measurements to microseconds.
+#endif
 struct Array { unsigned char* data; int32_t count, capacity; };
-struct Pending { SpawnKey key{}; uint32_t index = 0; uint64_t pawn = 0, capturedMs = 0; int64_t capturedQpc = 0; bool active = false; } pending;
+struct Pending {
+    SpawnKey key{}; uint32_t index = 0; uint64_t pawn = 0, capturedMs = 0;
+#if EWI_DIAGNOSTICS
+    int64_t capturedQpc = 0; // High-resolution delivery telemetry never controls acceptance.
+#endif
+    bool active = false;
+} pending;
 static_assert(sizeof(Array) == 16);
 
 bool onThread() noexcept { return GetCurrentThreadId() == binding.threadId; }
@@ -58,7 +72,7 @@ bool readKey(const Array& array, uint32_t index, SpawnKey& key) noexcept {
     return key.valid();
 }
 // Both entry context and spawn manager are registered UActorComponents. +0xA8 is WorldPrivate,
-// as independently used by build 25433570 at 16aa5d8/1656182. Never equate the component pointer to UWorld.
+// as checked by the shared profile's WorldPrivate window. Never equate the component pointer to UWorld.
 bool componentWorld(void* owner) noexcept {
     __try { return *reinterpret_cast<void**>(static_cast<unsigned char*>(owner) + 0xa8) == world; }
     __except(EXCEPTION_EXECUTE_HANDLER) { return false; }
@@ -107,16 +121,22 @@ SpawnKey readPoint(const void* point) noexcept {
     __except(EXCEPTION_EXECUTE_HANDLER) { return {}; }
     return result.valid() ? result : SpawnKey{};
 }
+#if EWI_NORMAL_PREDICTION
+// Write only the explicitly opted-in experiment's selected replacement center.
 bool writePoint(void* point, const SpawnKey& value) noexcept {
     if (!point || !value.valid()) return false;
     __try { memcpy(point, &value.x, 12); }
     __except(EXCEPTION_EXECUTE_HANDLER) { return false; }
     return true;
 }
+#endif
 // A scope ends when the synchronous source call returns. Queued entries retain their own identity.
 // Nested unrecognized sources clear provenance rather than borrowing another source's wave.
 struct SourceScope {
-    uint64_t previousWave = scopeWave, previousSelected = scopeSelectedMs;
+    uint64_t previousWave = scopeWave;
+#if EWI_DIAGNOSTICS
+    uint64_t previousSelected = scopeSelectedMs;
+#endif
     void* previousWorld = scopeWorld; SpawnKey previousCenter = scopeCenter;
     bool active = enabled.load(std::memory_order_relaxed) && onThread() && !counters.fault && world;
     SourceScope(void* context, SpawnKey center = {}, bool preserveNormal = false) {
@@ -124,10 +144,18 @@ struct SourceScope {
         if (preserveNormal && scopeWave && waveType(scopeWave) == 0 && scopeWorld == world) { active = false; return; }
         const auto type = binding.classifySource ? binding.classifySource(context, world) : -1;
         scopeWave = type > 0 && uint32_t(type) < WaveTypeCount ? waveIdentity(++counters.waves, uint32_t(type)) : 0;
-        scopeWorld = world; scopeCenter = center; scopeSelectedMs = GetTickCount64();
+        scopeWorld = world; scopeCenter = center;
+#if EWI_DIAGNOSTICS
+        scopeSelectedMs = GetTickCount64();
+#endif
     }
     ~SourceScope() {
-        if (active) { scopeWave = previousWave; scopeWorld = previousWorld; scopeCenter = previousCenter; scopeSelectedMs = previousSelected; }
+        if (active) {
+            scopeWave = previousWave; scopeWorld = previousWorld; scopeCenter = previousCenter;
+#if EWI_DIAGNOSTICS
+            scopeSelectedMs = previousSelected;
+#endif
+        }
     }
 };
 void hookPool(void* context, float difficulty, void* locations, void* banned, bool alert, bool pressure) {
@@ -161,6 +189,7 @@ void hookCenter(void* context, void* descriptor, int32_t count, float weight, co
 
 // Intercept only the audited call inside the stock normal scheduler. Every other caller, mode,
 // path size, thread and world runs the original selector unchanged.
+#if EWI_NORMAL_PREDICTION
 bool hookNormalCenter(void* pathfinder, uint8_t mode, uint8_t pathSize, const void* origin, float radius, void* output) {
     const auto caller = reinterpret_cast<uintptr_t>(_ReturnAddress());
     const bool candidate = enabled.load(std::memory_order_relaxed) && onThread() && !counters.fault && world
@@ -176,6 +205,7 @@ bool hookNormalCenter(void* pathfinder, uint8_t mode, uint8_t pathSize, const vo
     }
     return originalNormalCenter(pathfinder, mode, pathSize, origin, radius, output);
 }
+#endif
 
 void hookNormal(void* context, float difficulty, void* locations, bool a, bool b) {
     const auto caller = reinterpret_cast<uintptr_t>(_ReturnAddress());
@@ -190,10 +220,23 @@ void hookNormal(void* context, float difficulty, void* locations, bool a, bool b
         }
     }
     if (!observe) { originalNormal(context, difficulty, locations, a, b); return; }
-    const auto previousWave = scopeWave; auto* previousWorld = scopeWorld; const auto previousCenter = scopeCenter; const auto previousSelected = scopeSelectedMs;
-    if (observe) { scopeWave = ++counters.waves; scopeWorld = world; scopeCenter = readCenter(locations); scopeSelectedMs = GetTickCount64(); }
+    const auto previousWave = scopeWave; auto* previousWorld = scopeWorld; const auto previousCenter = scopeCenter;
+#if EWI_DIAGNOSTICS
+    const auto previousSelected = scopeSelectedMs;
+#endif
+    if (observe) {
+        scopeWave = ++counters.waves; scopeWorld = world; scopeCenter = readCenter(locations);
+#if EWI_DIAGNOSTICS
+        scopeSelectedMs = GetTickCount64();
+#endif
+    }
     originalNormal(context, difficulty, locations, a, b);
-    if (observe) { scopeWave = previousWave; scopeWorld = previousWorld; scopeCenter = previousCenter; scopeSelectedMs = previousSelected; }
+    if (observe) {
+        scopeWave = previousWave; scopeWorld = previousWorld; scopeCenter = previousCenter;
+#if EWI_DIAGNOSTICS
+        scopeSelectedMs = previousSelected;
+#endif
+    }
 }
 bool hookEnqueue(void* owner, void* descriptor, const void* transform, const void* callback, bool a, bool b) {
     const auto caller = reinterpret_cast<uintptr_t>(_ReturnAddress());
@@ -212,7 +255,11 @@ bool hookEnqueue(void* owner, void* descriptor, const void* transform, const voi
         else if (after.count != before.count + 1 || !readKey(after, before.count, key)
             || key.descriptor != reinterpret_cast<uint64_t>(descriptor)
             || !ledger.append(epoch, reinterpret_cast<uint64_t>(manager), before.count, after.count, key, normal ? scopeWave : 0,
-                normal ? scopeCenter : SpawnKey{}, GetTickCount64(), normal ? scopeSelectedMs : 0)) fail(4);
+                normal ? scopeCenter : SpawnKey{}
+#if EWI_DIAGNOSTICS
+                , GetTickCount64(), normal ? scopeSelectedMs : 0
+#endif
+                )) fail(4);
         else if (normal) ++counters.tagged;
     }
     return result;
@@ -237,7 +284,9 @@ void* hookActor(void* context, void* cls, const void* transform, const void* par
     void* result = originalActor(context, cls, transform, parameters);
     if (observe && !counters.fault) {
         pending.pawn = reinterpret_cast<uint64_t>(result); pending.capturedMs = GetTickCount64();
+#if EWI_DIAGNOSTICS
         LARGE_INTEGER stamp{}; QueryPerformanceCounter(&stamp); pending.capturedQpc = stamp.QuadPart;
+#endif
     }
     return result;
 }
@@ -251,7 +300,11 @@ void hookShrink(void* arrayPointer) {
         if (!pending.active || !readArray(manager, after)
             || !ledger.removeSwap(epoch, reinterpret_cast<uint64_t>(manager), pending.index,
                 static_cast<uint32_t>(after.count + 1), static_cast<uint32_t>(after.count), pending.key,
-                pending.pawn, frame, pending.capturedMs, pending.capturedQpc)) fail(8);
+                pending.pawn, frame, pending.capturedMs
+#if EWI_DIAGNOSTICS
+                , pending.capturedQpc
+#endif
+                )) fail(8);
         else {
             SpawnKey moved{};
             if (pending.index < static_cast<uint32_t>(after.count)
@@ -279,14 +332,32 @@ bool install(const Binding& input) noexcept {
     if (installed) return true;
     binding = input;
     if (!onThread()) return false;
+#if EWI_DIAGNOSTICS
     LARGE_INTEGER frequency{}; QueryPerformanceFrequency(&frequency); qpcFrequency = frequency.QuadPart;
-    const Target targets[] = {binding.normal, binding.enqueue, binding.actor, binding.shrink, binding.pool, binding.location, binding.group, binding.spread, binding.spreadCallback, binding.center, binding.normalCenter};
+#endif
+    const Target targets[] = {binding.normal, binding.enqueue, binding.actor, binding.shrink, binding.pool, binding.location, binding.group, binding.spread, binding.spreadCallback, binding.center
+#if EWI_NORMAL_PREDICTION
+        , binding.normalCenter
+#endif
+    };
+#if EWI_NORMAL_PREDICTION
     const size_t count = binding.normalCenter.address ? std::size(targets) : (binding.classifySource ? std::size(targets) - 1 : 4);
+#else
+    const size_t count = binding.classifySource ? std::size(targets) : 4;
+#endif
     for (size_t i = 0; i < count; ++i) if (!targets[i].address || memcmp(targets[i].address, targets[i].bytes.data(), targets[i].bytes.size())) { counters.hookStatus = 100; return false; }
     auto status = MH_Initialize();
     if (status != MH_OK) { counters.hookStatus = static_cast<uint32_t>(status) + 1; return false; }
-    void* replacements[] = {reinterpret_cast<void*>(&hookNormal), reinterpret_cast<void*>(&hookEnqueue), reinterpret_cast<void*>(&hookActor), reinterpret_cast<void*>(&hookShrink), reinterpret_cast<void*>(&hookPool), reinterpret_cast<void*>(&hookLocation), reinterpret_cast<void*>(&hookGroup), reinterpret_cast<void*>(&hookSpread), reinterpret_cast<void*>(&hookSpreadCallback), reinterpret_cast<void*>(&hookCenter), reinterpret_cast<void*>(&hookNormalCenter)};
-    void** originals[] = {reinterpret_cast<void**>(&originalNormal), reinterpret_cast<void**>(&originalEnqueue), reinterpret_cast<void**>(&originalActor), reinterpret_cast<void**>(&originalShrink), reinterpret_cast<void**>(&originalPool), reinterpret_cast<void**>(&originalLocation), reinterpret_cast<void**>(&originalGroup), reinterpret_cast<void**>(&originalSpread), reinterpret_cast<void**>(&originalSpreadCallback), reinterpret_cast<void**>(&originalCenter), reinterpret_cast<void**>(&originalNormalCenter)};
+    void* replacements[] = {reinterpret_cast<void*>(&hookNormal), reinterpret_cast<void*>(&hookEnqueue), reinterpret_cast<void*>(&hookActor), reinterpret_cast<void*>(&hookShrink), reinterpret_cast<void*>(&hookPool), reinterpret_cast<void*>(&hookLocation), reinterpret_cast<void*>(&hookGroup), reinterpret_cast<void*>(&hookSpread), reinterpret_cast<void*>(&hookSpreadCallback), reinterpret_cast<void*>(&hookCenter)
+#if EWI_NORMAL_PREDICTION
+        , reinterpret_cast<void*>(&hookNormalCenter)
+#endif
+    };
+    void** originals[] = {reinterpret_cast<void**>(&originalNormal), reinterpret_cast<void**>(&originalEnqueue), reinterpret_cast<void**>(&originalActor), reinterpret_cast<void**>(&originalShrink), reinterpret_cast<void**>(&originalPool), reinterpret_cast<void**>(&originalLocation), reinterpret_cast<void**>(&originalGroup), reinterpret_cast<void**>(&originalSpread), reinterpret_cast<void**>(&originalSpreadCallback), reinterpret_cast<void**>(&originalCenter)
+#if EWI_NORMAL_PREDICTION
+        , reinterpret_cast<void**>(&originalNormalCenter)
+#endif
+    };
     for (size_t i = 0; i < count; ++i) {
         status = MH_CreateHook(targets[i].address, replacements[i], originals[i]);
         if (status != MH_OK) { counters.hookStatus = static_cast<uint32_t>(status) + 1; return false; }
@@ -308,6 +379,7 @@ bool pop(SpawnEvent& event) noexcept {
     if (!enabled.load(std::memory_order_relaxed) || !onThread() || counters.fault || !manager) return false;
     if (!ledger.pop(epoch, frame, 2, event)) return false;
     ++counters.delivered;
+#if EWI_DIAGNOSTICS
     const auto latency = GetTickCount64() - event.capturedMs;
     if (latency > counters.deliveryMaxMs) counters.deliveryMaxMs = latency;
     LARGE_INTEGER stamp{}; QueryPerformanceCounter(&stamp);
@@ -315,10 +387,13 @@ bool pop(SpawnEvent& event) noexcept {
         const auto microseconds = static_cast<uint64_t>((stamp.QuadPart - event.capturedQpc) * 1000000 / qpcFrequency);
         if (microseconds > counters.deliveryMaxUs) counters.deliveryMaxUs = microseconds;
     }
+#endif
     return true;
 }
 Stats stats() noexcept { return counters; } // Caller is the game thread; publish through DispatchProbe's snapshot.
 void* spawnManager() noexcept { return onThread() ? manager : nullptr; }
+#if EWI_NORMAL_PREDICTION
+// Sample through the experiment's original trampoline without adding a queued spawn.
 bool sampleNormalCenter(void* pathfinder, const SpawnKey& origin, float radius, SpawnKey& output) noexcept {
     output = {};
     if (!originalNormalCenter || !enabled.load(std::memory_order_relaxed) || !onThread() || !world
@@ -330,4 +405,5 @@ bool sampleNormalCenter(void* pathfinder, const SpawnKey& origin, float radius, 
     if (!sampled.valid()) return false;
     output = sampled; return true;
 }
+#endif
 } // namespace ewi::capture

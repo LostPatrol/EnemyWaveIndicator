@@ -4,14 +4,17 @@ param([Parameter(Mandatory)][string]$BuildDirectory, [Parameter(Mandatory)][stri
 $ErrorActionPreference='Stop'
 $root=Split-Path $PSScriptRoot -Parent
 # Public release identity; legacy names below are runtime compatibility identifiers only.
-$version='1.0.1'
+$version='1.1.1'
 $archiveName="EnemyWaveIndicator-$version.zip"
+$bindingProfilePath = Join-Path $root 'mods\EnemyWaveNativeProbe\GameBindingProfile.json'
+$bindingProfile = Get-Content -LiteralPath $bindingProfilePath -Raw | ConvertFrom-Json
+$bindingBaseline = @($bindingProfile.knownBuilds)[-1]
 $native=Get-Content -LiteralPath (Join-Path $BuildDirectory 'verification.json') -Raw | ConvertFrom-Json
 $cook=Get-Content -LiteralPath (Join-Path $PresentationCook 'verification.json') -Raw | ConvertFrom-Json
-if ($native.ProbeVersion -ne $version -or !$native.OfflinePassed -or !$native.CaptureOfflinePassed -or !$native.DispatchOfflinePassed -or !$native.PresentationOfflinePassed) { throw 'Missing native validation.' }
+if ($native.ProbeVersion -ne $version -or $native.DiagnosticsEnabled -or $native.PredictionTest -or !$native.OfflinePassed -or !$native.CaptureOfflinePassed -or !$native.DispatchOfflinePassed -or !$native.PresentationOfflinePassed -or !$native.BindingOfflinePassed) { throw 'Missing native validation.' }
 if (!$cook.Success -or $cook.ContentOnly -or !$cook.RuntimeDllRequired -or $cook.Version -ne $version -or !$cook.AssetsOnly -or $cook.ContainsGameAssetCopies -or !$cook.InlineMaterialShaders -or !$cook.PakHashesVerified -or $cook.Files.Count -ne 18) { throw 'Missing native-Pak cook validation.' }
 $assets=Get-Content -LiteralPath (Join-Path $cook.Verification 'verification.json') -Raw | ConvertFrom-Json
-if (!$assets.Success -or !$assets.Validation.success -or !$assets.Validation.native_contract_test -or !$assets.Validation.replication_metadata_test -or $assets.Validation.content_only -or !$assets.Validation.automatic_pool_test -or !$assets.Validation.settings_test -or !$assets.Validation.async_resource_tests -or !$assets.Validation.red_material_test -or $assets.Validation.edge_cases -ne 1452) { throw 'Missing native Blueprint validation.' }
+if (!$assets.Success -or !$assets.Validation.success -or !$assets.Validation.native_contract_test -or !$assets.Validation.replication_metadata_test -or $assets.Validation.content_only -or !$assets.Validation.automatic_pool_test -or !$assets.Validation.settings_test -or !$assets.Validation.async_resource_tests -or !$assets.Validation.red_material_test) { throw 'Missing native Blueprint validation.' }
 if (!$native.SourceFiles -or !$assets.SourceFiles -or !$assets.Assets -or !$cook.DependencyAudit.Hash -or !$cook.PackagingConfig.Hash) { throw 'Missing input hashes.' }
 foreach ($file in @($native.SourceFiles)+@($assets.SourceFiles)+@($assets.Assets)+@($cook.Files)+@($cook.Pak,$cook.DependencyAudit,$cook.PackagingConfig)) {
     if ((Get-FileHash -LiteralPath $file.Path).Hash -ne $file.Hash) { throw "Input changed: $($file.Path)" }
@@ -43,9 +46,11 @@ $licensePath=Join-Path $output 'LICENSES.txt'; Set-Content -LiteralPath $license
     SupportedSources=$sourceNames; PerTypeEnableAndText=$true; UnsupportedRequestedFeatures=@('independent non-wave-controller boss/direct summons','multi-second exact prediction')
     Localization=@{Languages=@('en','zh-CN');Automatic=$true;MarkerDefaults='English in every language; user editable'}
     ClientRequiresPak=$true; HostRequiresDll=$true; MaximumRegions=8
-    Requires=@('MintCat with UE4SSL.JavaScript stable 0.31.0 audited runtime','Mod Hub','matching 1.0.1 Pak on participating clients')
-    GameSteamBuild='25433570'
-    GameSHA256='112B29CAA86D643210571FBBF841C384E93C06AECBE6D0F12C1F71BA91F7A06D'
+    Requires=@('MintCat with UE4SSL.JavaScript stable 0.31.0 audited runtime','Mod Hub','matching 1.1.1 Pak on participating clients')
+    GameSteamBuild=$bindingBaseline.steamBuild
+    GameSHA256=$bindingBaseline.sha256
+    BindingProfileSHA256=(Get-FileHash -LiteralPath $bindingProfilePath).Hash
+    BindingDiscovery='unique normalized instruction spans, actual call edges, queue ABI and thread import'
     RuntimeSHA256='D1AC7156B8C8C16E46CE5CE06667457274816358329C5641CE1D2F80B53B4EB7'
     Files=@{'main.dll'=$native.SHA256;'EnemyWaveIndicator_P.pak'=(Get-FileHash $pak).Hash;'LICENSES.txt'=(Get-FileHash $licensePath).Hash}
     Verification=$cook.Verification; Cook=$PresentationCook; NativeBuild=$BuildDirectory

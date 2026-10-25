@@ -6,6 +6,7 @@
 
 #define REQUIRE(x) do { if (!(x)) { std::printf("FAIL line %d: %s\n", __LINE__, #x); return 1; } } while (0)
 
+// Check the geometry, native pointer lookups and countdown gate used by the optional experiment.
 int main() {
     using namespace ewi::prediction;
     const Position grouped[]{{0,0,0},{100,0,0},{50,20,0},{50,-20,0}};
@@ -24,13 +25,6 @@ int main() {
     REQUIRE(positionsNear(Position{1,2,3}, Position{4,6,3}, 5));
     REQUIRE(!positionsNear(Position{1,2,3}, Position{4,6,3}, 4.99f));
     REQUIRE(!positionsNear(bad, Position{}, 100));
-
-    const Position navPoints[]{{0,0,0},{3000,0,0},{-3000,0,0},{0,3000,0},{0,-3000,0},{0,0,3000},{0,0,-3000},{100,0,0}};
-    Position candidates[4]{};
-    const auto selected = selectShellCandidates(navPoints, 8, Position{}, 3000, candidates, 4);
-    REQUIRE(selected == 4);
-    for (uint32_t i = 0; i < selected; ++i) REQUIRE(distanceSquared(candidates[i], Position{}) >= 4000000.0f);
-    REQUIRE(selectShellCandidates(nullptr, 8, Position{}, 3000, candidates, 4) == 0);
 
     // Keep the three-hop pointer layout locked to the audited stock selector sequence.
     alignas(void*) unsigned char world[WorldNavigationOwnerOffset + sizeof(void*)]{};

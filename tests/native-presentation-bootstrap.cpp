@@ -46,6 +46,13 @@ bool prepare(void* cls) {
 int viewportToken = 0;
 bool viewportMissing = false, bridgeFault = false;
 unsigned viewportSearches = 0;
+// Drive the viewport reader through the same callback used by the production bootstrap.
+ewi::ActiveWorld* viewportReader = nullptr;
+uint64_t viewportNow = 0; // Fake monotonic milliseconds for startup and recovery checks.
+// A cached viewport can become invalid independently of its current World.
+bool validViewport(void* value) { return valid(value) && (value != &viewportToken || !viewportMissing); }
+// Match main's clock-bearing active-World callback without requiring a Windows clock.
+void* readActiveWorld() { return viewportReader->read(viewportNow); }
 void* findViewport(const wchar_t* name) {
     ++viewportSearches;
     if (wcscmp(name, L"GameViewportClient")) badArguments = true;
@@ -146,21 +153,44 @@ int main() {
     {
         // A persistent viewport changes World during travel; cached registry lookup is not per-frame scanning.
         ewi::ActiveWorld reader; viewportSearches = 0; viewportMissing = bridgeFault = false;
-        reader.configure({findViewport, valid, worldOf});
-        world = &worlds[0]; REQUIRE(reader.read() == world);
-        for (int i = 0; i < 100; ++i) REQUIRE(reader.read() == world);
-        world = nullptr; REQUIRE(reader.read() == nullptr && !reader.disabled);
-        world = &worlds[1]; REQUIRE(reader.read() == world);
+        reader.configure({findViewport, validViewport, worldOf});
+        world = &worlds[0]; REQUIRE(reader.read(0) == world);
+        for (uint64_t now = 1; now <= 100; ++now) REQUIRE(reader.read(now) == world);
+        world = nullptr; REQUIRE(reader.read(101) == nullptr && !reader.disabled);
+        world = &worlds[1]; REQUIRE(reader.read(102) == world);
         REQUIRE(reader.changes == 2 && viewportSearches == 1);
-        bridgeFault = true; REQUIRE(reader.read() == nullptr && reader.faults == 1 && reader.disabled);
+        bridgeFault = true; REQUIRE(reader.read(103) == nullptr && reader.faults == 1 && reader.disabled);
         const auto reads = reader.reads; bridgeFault = false;
-        REQUIRE(reader.read() == nullptr && reader.reads == reads);
+        REQUIRE(reader.read(104) == nullptr && reader.reads == reads);
     }
     {
+        // A viewport created after the startup search budget still starts the full bootstrap.
+        ewi::PresentationBootstrap p; setup(p);
         ewi::ActiveWorld reader; viewportMissing = true; viewportSearches = 0;
-        reader.configure({findViewport, valid, worldOf});
-        for (int i = 0; i < 100; ++i) REQUIRE(reader.read() == nullptr);
-        REQUIRE(viewportSearches == 8 && reader.disabled); viewportMissing = false;
+        reader.configure({findViewport, validViewport, worldOf}); viewportReader = &reader;
+        p.configure({find, load, valid, spawn, readActiveWorld, worldKind, ready, controllerReady, prepare, refresh});
+        for (viewportNow = 0; viewportNow < 2000; viewportNow += 250) p.tick();
+        REQUIRE(viewportSearches == 8 && !reader.disabled && !reader.reads && !spawns && p.status == 1);
+        for (viewportNow = 2000; viewportNow < 6750; viewportNow += 250) p.tick();
+        REQUIRE(viewportSearches == 8 && !reader.disabled && !spawns);
+        viewportNow = 6750; p.tick();
+        REQUIRE(viewportSearches == 9 && !reader.disabled && !spawns);
+        viewportMissing = false;
+        viewportNow = 11749; p.tick();
+        REQUIRE(viewportSearches == 9 && !spawns);
+        viewportNow = 11750; p.tick();
+        REQUIRE(viewportSearches == 10 && reader.reads == 1 && spawns == 1 && p.status == 3 && !badArguments);
+
+        // A cached viewport remains readable immediately, even within the previous search backoff.
+        world = &worlds[1]; viewportNow = 11751; p.tick();
+        REQUIRE(viewportSearches == 10 && reader.reads == 2 && reader.changes == 2 && spawns == 2);
+        viewportMissing = true; viewportNow = 16750; p.tick();
+        REQUIRE(viewportSearches == 11 && reader.reads == 2 && !reader.disabled && p.status == 1);
+        viewportMissing = false; viewportNow = 21749; p.tick();
+        REQUIRE(viewportSearches == 11 && reader.reads == 2 && spawns == 2);
+        viewportNow = 21750; p.tick();
+        REQUIRE(viewportSearches == 12 && reader.reads == 3 && spawns == 3 && p.status == 3 && !badArguments);
+        viewportReader = nullptr;
     }
     {
         ewi::PresentationBootstrap p; setup(p); worldIsReady = false;

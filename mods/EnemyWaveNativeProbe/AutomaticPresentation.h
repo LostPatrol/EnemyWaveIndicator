@@ -1,5 +1,6 @@
 // Bind only our zero-argument Blueprint polling function to a native thunk; never hook global Blueprint execution.
 #pragma once
+#include "BuildOptions.h"
 #include <cstdint>
 #include <windows.h>
 namespace ewi::automatic {
@@ -8,7 +9,11 @@ bool prepareClass(void* cls) noexcept;
 void stop() noexcept;
 struct Stats {
     uint64_t frames = 0, regionsDropped = 0, stale = 0; uint32_t bindings = 0, fault = 0;
-    uint64_t timingSamples = 0, centerMinMs = 0, centerMaxMs = 0, queueMaxMs = 0, handoffMaxMs = 0, filtered = 0;
+    uint64_t filtered = 0;
+#if EWI_DIAGNOSTICS
+    uint64_t timingSamples = 0, centerMinMs = 0, centerMaxMs = 0, queueMaxMs = 0, handoffMaxMs = 0;
+#endif
+#if EWI_NORMAL_PREDICTION
     uint64_t predictionAttempts = 0, predictionSuccesses = 0, predictionFailures = 0, predictionComparisons = 0;
     uint64_t predictionManagerLookups = 0, predictionManagerResolved = 0, predictionCountdownSamples = 0, predictionWindowSamples = 0;
     uint64_t predictionPlayersReady = 0, predictionGeometryReady = 0, predictionNavigationReady = 0;
@@ -21,6 +26,7 @@ struct Stats {
     uint64_t predictionValidationRejects = 0, predictionOverrides = 0;
     uint64_t predictionFingerprintQueries = 0, predictionFingerprintFailures = 0;
     float predictionLastErrorCm = 0, predictionMinErrorCm = 0, predictionMaxErrorCm = 0, predictionErrorTotalCm = 0;
+#endif
 };
 Stats stats() noexcept;
 }

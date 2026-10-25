@@ -10,17 +10,25 @@ struct WorldApi {
 };
 class ActiveWorld {
 public:
+    static constexpr uint32_t FastFindAttempts = 8; // Initial discovery follows the dispatch readiness cadence.
+    static constexpr uint64_t FindRetryMs = 5000; // Missing viewports keep retrying without frequent registry scans.
     uint32_t finds = 0, reads = 0, changes = 0, faults = 0;
     bool disabled = false;
     uintptr_t lastWorld = 0; // Historical identity token; a null travel read does not make this current.
+    // Bind the host's validated object accessors before the first game-thread read.
     void configure(WorldApi api) noexcept { api_ = api; }
-    void* read() noexcept {
+    // Missing startup objects are retryable; only a failed World bridge permanently stops reads.
+    void* read(uint64_t now) noexcept {
         if (disabled || !api_.findViewport) return nullptr;
         if (!api_.valid(viewport_)) {
-            if (finds >= 8) { disabled = true; return nullptr; } // No persistent registry scan loop.
+            if (now < nextFindAt_) return nullptr;
             ++finds;
             viewport_ = api_.findViewport(L"GameViewportClient");
-            if (!api_.valid(viewport_)) return nullptr;
+            if (!api_.valid(viewport_)) {
+                if (finds >= FastFindAttempts) nextFindAt_ = now + FindRetryMs;
+                return nullptr;
+            }
+            nextFindAt_ = 0;
         }
         ++reads;
         const auto result = api_.worldOf(viewport_);
@@ -34,5 +42,6 @@ public:
 private:
     WorldApi api_{};
     void* viewport_ = nullptr; // Revalidate before each call; this object normally survives map travel.
+    uint64_t nextFindAt_ = 0; // Backoff applies only to registry discovery, never cached World reads.
 };
 }

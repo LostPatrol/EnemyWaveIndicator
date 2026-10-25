@@ -37,8 +37,8 @@ UK2Node_CallFunction* RegionSetting(UEdGraph* G, int32 I, bool Enabled)
         }
         Current=Select;Output=TEXT("ReturnValue");
     }
-    if (!Enabled) {
-        // 255 is emitted only by the isolated prediction-test DLL and is never a stock wave ID.
+    if (!Enabled && FParse::Param(FCommandLine::Get(), TEXT("EwiPredictionTest"))) {
+        // Experimental labels are generated only for an explicitly requested prediction-test Pak.
         auto* Prediction=Call(G,UKismetMathLibrary::StaticClass(),TEXT("EqualEqual_IntInt"));Link(Get(G,*Region),*Region,Prediction,TEXT("A"));Value(Prediction,TEXT("B"),TEXT("255"));
         auto* PredictionLabel=Call(G,UKismetMathLibrary::StaticClass(),TEXT("SelectString"));Link(Prediction,TEXT("ReturnValue"),PredictionLabel,TEXT("bPickA"));
         Value(PredictionLabel,TEXT("A"),TEXT("[?] PREDICTED NORMAL WAVE (~5s)"));Link(Current,Output,PredictionLabel,TEXT("B"));Select=PredictionLabel;

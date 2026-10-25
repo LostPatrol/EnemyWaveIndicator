@@ -1,5 +1,6 @@
 // Engine-independent shadow queue. Requires complete, ordered mutation observations on one game thread.
 #pragma once
+#include "BuildOptions.h"
 #include <array>
 #include <cmath>
 #include <cstdint>
@@ -19,10 +20,12 @@ struct SpawnEvent {
     uint64_t epoch = 0, wave = 0, pawn = 0, frame = 0;
     SpawnKey origin{};
     uint64_t capturedMs = 0; // Monotonic capture time, for delivery latency and stale-event rejection.
-    int64_t capturedQpc = 0; // High-resolution delivery telemetry; never used as a gameplay deadline.
     SpawnKey center{}; // Verified source center; invalid means use the actual queued origin.
+#if EWI_DIAGNOSTICS
+    int64_t capturedQpc = 0; // High-resolution delivery telemetry; never used as a gameplay deadline.
     uint64_t queuedMs = 0; // Actual admitted request time, not an estimated pre-spawn deadline.
     uint64_t selectedMs = 0; // Source entry immediately after the game's center selection.
+#endif
 };
 enum class AttributionFault : uint32_t { None, Context, Count, Key, Capacity };
 
@@ -61,7 +64,15 @@ public:
         if (before != count_ || after != before + 1) { stop(AttributionFault::Count); return false; }
         if (!key.valid()) { stop(AttributionFault::Key); return false; }
         if (count_ == Capacity) { stop(AttributionFault::Capacity); return false; }
-        entries_[count_++] = {key, wave, center, queuedMs, selectedMs}; ++stats.appended;
+        entries_[count_++] = {key, wave, center
+#if EWI_DIAGNOSTICS
+            , queuedMs, selectedMs
+#endif
+        };
+#if !EWI_DIAGNOSTICS
+        (void)queuedMs; (void)selectedMs; // Retain the optional adapter contract without production telemetry storage.
+#endif
+        ++stats.appended;
         return true;
     }
 
@@ -79,7 +90,14 @@ public:
         if (!pawn) { ++stats.failed; return true; }
         if (!entry.wave) { ++stats.unclassified; return true; }
         if (size_ == Capacity) { ++stats.dropped; return true; } // Drop OUR event; never retry gameplay.
-        events_[(head_ + size_) % Capacity] = {epoch_, entry.wave, pawn, frame, key, capturedMs, capturedQpc, entry.center, entry.queuedMs, entry.selectedMs};
+        events_[(head_ + size_) % Capacity] = {epoch_, entry.wave, pawn, frame, key, capturedMs, entry.center
+#if EWI_DIAGNOSTICS
+            , capturedQpc, entry.queuedMs, entry.selectedMs
+#endif
+        };
+#if !EWI_DIAGNOSTICS
+        (void)capturedQpc;
+#endif
         ++size_; ++stats.published;
         return true;
     }
@@ -110,7 +128,12 @@ public:
         return index < count_ && entries_[index].key == key;
     }
 private:
-    struct Entry { SpawnKey key; uint64_t wave; SpawnKey center{}; uint64_t queuedMs = 0, selectedMs = 0; };
+    struct Entry {
+        SpawnKey key; uint64_t wave; SpawnKey center{};
+#if EWI_DIAGNOSTICS
+        uint64_t queuedMs = 0, selectedMs = 0; // Source/queue timing is diagnostic-only.
+#endif
+    };
     bool context(uint64_t epoch, uint64_t manager) noexcept {
         if (fault_ != AttributionFault::None) return false;
         if (epoch != epoch_ || manager != manager_) { stop(); return false; }
