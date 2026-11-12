@@ -3,10 +3,16 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
+[![Latest release](https://img.shields.io/github/v/release/LostPatrol/EnemyWaveIndicator?label=release&color=58a6ff&logo=github)](https://github.com/LostPatrol/EnemyWaveIndicator/releases/latest)
+[![GitHub downloads](https://img.shields.io/github/downloads/LostPatrol/EnemyWaveIndicator/total?label=GitHub%20downloads&color=2ea043)](https://github.com/LostPatrol/EnemyWaveIndicator/releases)
+[![mod.io](https://img.shields.io/badge/mod.io-subscribe-00b0b9)](https://mod.io/g/drg/m/enemy-wave-indicator)
+[![MIT license](https://img.shields.io/github/license/LostPatrol/EnemyWaveIndicator?color=97ca00)](LICENSE)
+
 ![Enemy Wave Indicator cover](docs/media/cover-new.png)
 
 Enemy Wave Indicator marks detected enemy spawn areas with glowing spheres, customizable labels, and distance readouts. It currently supports normal waves and 46 stock scripted waves.
 
+> [!NOTE]
 > This is a Windows public beta. Version 1.1.1 targets Steam build 26107973 and has passed in-game testing.
 
 ## Features
@@ -34,7 +40,8 @@ Every broadcast is enabled by default except **Drillevator**, **Escort: drilling
 3. In the MintCat UI, confirm that Enemy Wave Indicator and Mod Hub are enabled.
 4. The first time, start the game from MintCat and check that this mod's settings appear in Mod Hub. Later launches can start from Steam.
 
-MintCat installs the DLL and merges the Pak content it manages. No manual DLL or other extra install steps are required.
+> [!TIP]
+> MintCat installs the DLL and merges the Pak content it manages. No manual DLL or other extra install steps are required.
 
 ### 2. Manual installation
 
@@ -48,7 +55,8 @@ MintCat installs the DLL and merges the Pak content it manages. No manual DLL or
    - `EnemyWaveIndicator_P.pak` to `FSD\Content\Paks\EnemyWaveIndicator_P.pak`
 7. Start the game, enter the Space Rig, then configure the mod in Mod Hub once the Space Rig finishes loading.
 
-When updating manually, replace both files. If another loader already owns `dwmapi.dll`, verify compatibility before replacing it.
+> [!IMPORTANT]
+> When updating manually, replace both files. If another loader already owns `dwmapi.dll`, verify compatibility before replacing it.
 
 ## Screenshots
 

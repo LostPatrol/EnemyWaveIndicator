@@ -3,10 +3,16 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
+[![最新版本](https://img.shields.io/github/v/release/LostPatrol/EnemyWaveIndicator?label=release&color=58a6ff&logo=github)](https://github.com/LostPatrol/EnemyWaveIndicator/releases/latest)
+[![GitHub 下载量](https://img.shields.io/github/downloads/LostPatrol/EnemyWaveIndicator/total?label=GitHub%20downloads&color=2ea043)](https://github.com/LostPatrol/EnemyWaveIndicator/releases)
+[![mod.io 订阅入口](https://img.shields.io/badge/mod.io-subscribe-00b0b9)](https://mod.io/g/drg/m/enemy-wave-indicator)
+[![MIT 许可证](https://img.shields.io/github/license/LostPatrol/EnemyWaveIndicator?color=97ca00)](LICENSE)
+
 ![Enemy Wave Indicator 封面](docs/media/cover-new.png)
 
 Enemy Wave Indicator 会用发光球体、可自定义文字和距离信息，标出检测到的敌人生成区域。目前支持自然潮，以及 46 种游戏自带的脚本潮。
 
+> [!NOTE]
 > 本项目目前是 Windows 公开测试版。1.1.1 针对 Steam build 26107973 进行适配，已通过实机测试。
 
 ## 功能
@@ -34,7 +40,8 @@ Enemy Wave Indicator 会用发光球体、可自定义文字和距离信息，�
 4. 在 MintCat 界面检查确定 Enemy Wave Indicator 和 Mod Hub 已启用。
 5. 首次需从MintCat启动游戏并检查 Mod Hub 界面是否出现本mod的设置选项；后续可直接从Steam启动
 
-MintCat 会安装 DLL，并把它管理的 Pak 内容合并到游戏中，不需要进行手动安装DLL等其他操作；
+> [!TIP]
+> MintCat 会安装 DLL，并把它管理的 Pak 内容合并到游戏中，不需要进行手动安装 DLL 等其他操作。
 
 ### 方式二：手动安装
 
@@ -48,7 +55,8 @@ MintCat 会安装 DLL，并把它管理的 Pak 内容合并到游戏中，不需
    - `EnemyWaveIndicator_P.pak` 到 `FSD\Content\Paks\EnemyWaveIndicator_P.pak`
 7. 启动游戏并进入空间站，待空间站完成加载后即可通过 Mod Hub 配置本 Mod。
 
-手动更新时需要同时替换这两个文件。如果其他加载器已经安装了自己的 `dwmapi.dll`，请先确认兼容性再决定是否覆盖。
+> [!IMPORTANT]
+> 手动更新时需要同时替换这两个文件。如果其他加载器已经安装了自己的 `dwmapi.dll`，请先确认兼容性再决定是否覆盖。
 
 ## 游戏截图
 
